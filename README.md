@@ -20,7 +20,7 @@ sudo make
 
 ___
 # Usage:
-`./anicli-ru`
+`anicli-ru`
 ___
 # Commands:
 ```
