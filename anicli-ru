@@ -1,4 +1,4 @@
-import os
+#!/usr/bin/python3
 import re
 from os import system
 
@@ -9,7 +9,7 @@ PLAYER = "mpv"
 # команда для установки заголовка headers
 OS_HEADERS_COMMAND = "--http-header-fields"
 
-# regex для поиска паттернов
+# regex-выражения для поиска строк
 ANIME_FIND_PATTERN = re.compile(r'<a href="(https://animego\.org/anime/.*)" title="(.*?)">')  # url + title
 COUNT_SERIES_PATTERN = re.compile(r'"col-6 col-sm-8 mb-1">(\d+)')  # count series
 WATCH_ID_PATTERN = re.compile(r'data-watched-id="(\d+)"')  # episodes ids
@@ -24,9 +24,8 @@ ANIBOOM_PATTERN = re.compile(r"hls:\{src:(.*\.m3u8)")  # aniboom video pattern
 
 
 class Anime:
-    USER_AGENT = {"user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+    USER_AGENT = {"user-agent": "Mozilla/5.0 (Wayland; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
                                 "Chrome/94.0.4606.104 Safari/537.36", "x-requested-with": "XMLHttpRequest"}
-    USER_AGENT_AJAX = USER_AGENT.copy()
     SEARCH_URL = "https://animego.org/search/anime"
 
     def __init__(self):
@@ -39,7 +38,7 @@ class Anime:
         self.__anime_id = ""
         self._videos = []
 
-    def search(self, pattern: str) -> list:
+    def search(self, pattern: str):
         r = self.session.get("https://animego.org/search/anime", params={"q": pattern})
         anime_urls = re.findall(ANIME_FIND_PATTERN, r.text)
         self.anime_results = anime_urls
@@ -47,9 +46,11 @@ class Anime:
 
     @staticmethod
     def is_unsupported_player(player: str):
+        """:return False if player is kodik"""
         return not ("kodik" in player or "anivod" in player)
 
     def parse_episodes_count(self, index_choose: int):
+        """подсчёт числа эпизодов"""
         self.anime_url = self.anime_results[index_choose][0]
         self.__anime_id = self.anime_url.split("-")[-1]
         r = self.session.get(self.anime_url)
@@ -78,6 +79,7 @@ class Anime:
         self._videos = results
 
     def parse_series(self):
+        """Поиск названий и id эпизодов"""
         r = self.session.get(f"https://animego.org/anime/{self.__anime_id}/player?_allow=true").json()["content"]
         #  доступные эпизоды
         ep_ids = re.findall(EP_PATTERN, r)
@@ -92,29 +94,29 @@ class Anime:
 
     def play(self, player: str):
         if "sibnet" in player:
-            os.system(f"{PLAYER} {'https:' + player}")
+            system(f"{PLAYER} {'https:' + player}")
         elif "aniboom" in player:
-            # заголовки обязательно должны быть с заглавной буквы для удачного запроса
+            # заголовки обязательно должны начинаться с заглавной буквы для удачного запроса
             r = self.session.get("https:" + player,
                                  headers={"Referer": "https://animego.org/",
                                           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                                                         "(KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"})
             r = r.text.replace("&quot;", "").replace("\\", "")
             player = re.findall(ANIBOOM_PATTERN, r)[0]
-            os.system(f'{PLAYER} {OS_HEADERS_COMMAND}="Referer: https://aniboom.one" {player}')
+            system(f'{PLAYER} {OS_HEADERS_COMMAND}="Referer: https://aniboom.one" {player}')
         elif "kodik" in player:
-            # not support
+            print("kodik not supported")
             pass
 
 
 class Menu:
 
     def __init__(self):
-        self.__ACTIONS = {"q": ("quit", self.exit),
-                          "r": ("back next step", self.back_on),
-                          "h": ("help", self.help),
-                          "f": ("find anime action", self.find),
-                          "c": ("clear", self.cls)
+        self.__ACTIONS = {"q": ("[q]uit", self.exit),
+                          "b": ("[b]ack next step", self.back_on),
+                          "h": ("[h]elp", self.help),
+                          "f": ("[f]ind anime by name", self.find),
+                          "c": ("[c]lear", self.cls)
                           }
         self.anime = Anime()
         self.__back_action = True
@@ -134,8 +136,8 @@ class Menu:
         return self.__back_action
 
     def choose_dub(self, result):
-        print(*[f"{i}] {r['dub']}" for i, r in enumerate(result, 1)], sep="\n")
         while self.is_back:
+            print(*[f"{i}] {r['dub']}" for i, r in enumerate(result, 1)], sep="\n")
             print("Choose dub:", 1, "-", len(result))
             command = input("c_d > ")
             if not self.command_wrapper(command) and command.isdigit():
@@ -150,8 +152,8 @@ class Menu:
         self.anime.parse_episodes_count(num - 1)
         episodes = self.anime.parse_series()
         if len(episodes) > 0:
-            print(*[f"{i}] {s[1]}" for i, s in enumerate(episodes, 1)], sep="\n")
             while self.is_back:
+                print(*[f"{i}] {s[1]}" for i, s in enumerate(episodes, 1)], sep="\n")
                 print(f"Choose episode: 1-{len(episodes)}")
                 command = input("c_e > ")
                 if not self.command_wrapper(command) and command.isdigit():
