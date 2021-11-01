@@ -10,8 +10,8 @@ ___
 **Install:**
 
 ```
-git clone https://github.com/vypivshiy/ruanimecli.git
-cd ruanimecli
+git clone https://github.com/vypivshiy/ani-cli-ru.git
+cd ani-cli-ru
 sudo make
 ```
 
