@@ -7,10 +7,10 @@ ___
 Видеоплеер kodik **не поддерживает**, так как у него запросы с видео шифруется **AES**, 
 поэтому не все сериалы в необходимом дубляже получится посмотреть.
 ___
-#Dependencies:
+# Dependencies:
 * mpv или видеоплеер, поддерживающий __hls__ и __cli__ команды
 ___
-#Install:
+# Install:
 
 ```
 git clone https://github.com/vypivshiy/ani-cli-ru.git
@@ -19,10 +19,10 @@ sudo make
 ```
 
 ___
-#Usage:
+# Usage:
 `./anicli-ru`
 ___
-#Commands:
+# Commands:
 ```
 q [q]uit - выход из программы
 b [b]ack next step - возвратиться на предыдущий шаг
