@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 import re
 from os import system
+from random import shuffle
 
+# import requests
 from requests import Session
 
 # основной плеер для запуска видео
@@ -22,15 +24,45 @@ EP_NAME_PATTERN = re.compile(r'data-episode-title="(.*)"')  # episode name
 
 ANIBOOM_PATTERN = re.compile(r"hls:\{src:(.*\.m3u8)")  # aniboom video pattern
 
+ONGOING_DATA = re.compile(
+    r'span class="last-update-title font-weight-600">(.*?)</span></span></div><div class="ml-3 text-right"><div class="font-weight-600 text-truncate">(\d+) серия</div><div class="text-gray-dark-6">(\(.*?\))</div>')  # ongoing ep title, ep_num, dub_name
+
+USER_AGENT = {"user-agent": "Mozilla/5.0 (Wayland; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/94.0.4606.104 Safari/537.36", "x-requested-with": "XMLHttpRequest"}
+
+
+def proxy_parser():
+    """простой граббер и чекер прокси socks5
+    """
+    urls = [
+        "https://raw.githubusercontent.com/mmpx12/proxy-list/master/socks5.txt",
+        "https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt"
+    ]
+
+    s = Session()
+    s.headers.update(USER_AGENT)
+    for uri in urls:
+        proxies = s.get(uri).text.split()
+        shuffle(proxies)
+        for proxy in proxies:
+            try:
+                r = s.get("https://animego.org/anime/random",
+                          proxies={'http': f"socks5h://{proxy}", 'https': f"socks5h://{proxy}"},
+                          timeout=2)
+                if r.status_code == 200:
+                    s.close()
+                    return {'http': f"socks5h://{proxy}", 'https': f"socks5h://{proxy}"}
+            except Exception:
+                pass
+    return None
+
 
 class Anime:
-    USER_AGENT = {"user-agent": "Mozilla/5.0 (Wayland; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                                "Chrome/94.0.4606.104 Safari/537.36", "x-requested-with": "XMLHttpRequest"}
     SEARCH_URL = "https://animego.org/search/anime"
 
     def __init__(self):
         self.session = Session()
-        self.session.headers.update(self.USER_AGENT)
+        self.session.headers.update(USER_AGENT)
         self.anime_results = []
         self.series_count = 0
         self._episodes = []
@@ -43,6 +75,11 @@ class Anime:
         anime_urls = re.findall(ANIME_FIND_PATTERN, r.text)
         self.anime_results = anime_urls
         return self.anime_results
+
+    def get_ongoing(self):
+        r = self.session.get("https://animego.org/")
+        ongoing_data = re.findall(ONGOING_DATA, r.text)
+        return ongoing_data
 
     @staticmethod
     def is_unsupported_player(player: str):
@@ -116,6 +153,9 @@ class Menu:
                           "b": ("[b]ack next step", self.back_on),
                           "h": ("[h]elp", self.help),
                           "f": ("[f]ind anime by name", self.find),
+                          "o": ("[o]ngoing print", self.ongoing),
+                          "p": ("[p]roxy set", self.set_proxy),
+                          "pс": ("[p]roxy [c]lear",),
                           "c": ("[c]lear", self.cls)
                           }
         self.anime = Anime()
@@ -131,9 +171,28 @@ class Menu:
     def cls():
         system("clear")
 
+    def set_proxy(self):
+        print("Check proxy (will be take some time)...")
+        proxy = proxy_parser()
+        if proxy:
+            print("Proxy connected success")
+            self.anime.session.proxies.update(proxy)
+        else:
+            print("Proxy not connected :(")
+
+    def clear_proxy(self):
+        self.anime.session.proxies.clear()
+        print("Remove proxy!")
+
     @property
     def is_back(self):
         return self.__back_action
+
+    def ongoing(self):
+        ongoing_data = self.anime.get_ongoing()
+        ongoing_data.sort(key=lambda l: l[0])  # сортировка списка в алфавитном порядке
+        for i, line in enumerate(ongoing_data, 1):
+            print(f"{i}] {line[0]}, ep: {line[1]}, dub: {line[2]}")
 
     def choose_dub(self, result):
         while self.is_back:
@@ -169,7 +228,7 @@ class Menu:
     def choose_anime(self):
         while self.is_back:
             print("Choose anime:", 1, "-", len(self.anime.anime_results))
-            command = input(" > ")
+            command = input("c_a > ")
             if not self.command_wrapper(command) and command.isdigit():
                 self.choose_episode(int(command))
         self.back_off()
@@ -203,8 +262,11 @@ class Menu:
 
     @staticmethod
     def exit():
-        exit(1)
+        exit(0)
 
 
 if __name__ == '__main__':
-    Menu().main()
+    try:
+        Menu().main()
+    except KeyboardInterrupt:
+        print("Exit")
