@@ -1,14 +1,13 @@
 #!/usr/bin/python3
 import re
 from os import system
-from random import shuffle
+import argparse
 
-# import requests
 from requests import Session
 
 # основной плеер для запуска видео
 PLAYER = "mpv"
-# команда для установки заголовка headers
+# опциональный аргумент для установки заголовка
 OS_HEADERS_COMMAND = "--http-header-fields"
 
 # regex-выражения для поиска строк
@@ -23,38 +22,16 @@ EP_PATTERN = re.compile(r'data-id="(\d+)"')  # episodes id
 EP_NAME_PATTERN = re.compile(r'data-episode-title="(.*)"')  # episode name
 
 ANIBOOM_PATTERN = re.compile(r"hls:\{src:(.*\.m3u8)")  # aniboom video pattern
-
+# ongoing ep title, ep_num, dub_name
 ONGOING_DATA = re.compile(
-    r'span class="last-update-title font-weight-600">(.*?)</span></span></div><div class="ml-3 text-right"><div class="font-weight-600 text-truncate">(\d+) серия</div><div class="text-gray-dark-6">(\(.*?\))</div>')  # ongoing ep title, ep_num, dub_name
+    r'600">(.*?)</span></span></div><div class="ml-3 text-right"><div class="font-weight-600 text-truncate">(\d+) серия</div><div class="text-gray-dark-6">(\(.*?\))</div>')
 
 USER_AGENT = {"user-agent": "Mozilla/5.0 (Wayland; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
                             "Chrome/94.0.4606.104 Safari/537.36", "x-requested-with": "XMLHttpRequest"}
 
-
-def proxy_parser():
-    """простой граббер и чекер прокси socks5
-    """
-    urls = [
-        "https://raw.githubusercontent.com/mmpx12/proxy-list/master/socks5.txt",
-        "https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt"
-    ]
-
-    s = Session()
-    s.headers.update(USER_AGENT)
-    for uri in urls:
-        proxies = s.get(uri).text.split()
-        shuffle(proxies)
-        for proxy in proxies:
-            try:
-                r = s.get("https://animego.org/anime/random",
-                          proxies={'http': f"socks5h://{proxy}", 'https': f"socks5h://{proxy}"},
-                          timeout=2)
-                if r.status_code == 200:
-                    s.close()
-                    return {'http': f"socks5h://{proxy}", 'https': f"socks5h://{proxy}"}
-            except Exception:
-                pass
-    return None
+parser = argparse.ArgumentParser()
+parser.add_argument("-p", "--proxy", dest="PROXY", type=str, default="", help="add proxy")
+PROXY = parser.parse_args().PROXY
 
 
 class Anime:
@@ -154,8 +131,6 @@ class Menu:
                           "h": ("[h]elp", self.help),
                           "f": ("[f]ind anime by name", self.find),
                           "o": ("[o]ngoing print", self.ongoing),
-                          "p": ("[p]roxy set", self.set_proxy),
-                          "pс": ("[p]roxy [c]lear",),
                           "c": ("[c]lear", self.cls)
                           }
         self.anime = Anime()
@@ -171,34 +146,20 @@ class Menu:
     def cls():
         system("clear")
 
-    def set_proxy(self):
-        print("Check proxy (will be take some time)...")
-        proxy = proxy_parser()
-        if proxy:
-            print("Proxy connected success")
-            self.anime.session.proxies.update(proxy)
-        else:
-            print("Proxy not connected :(")
-
-    def clear_proxy(self):
-        self.anime.session.proxies.clear()
-        print("Remove proxy!")
-
     @property
     def is_back(self):
         return self.__back_action
 
     def ongoing(self):
         ongoing_data = self.anime.get_ongoing()
-        ongoing_data.sort(key=lambda l: l[0])  # сортировка списка в алфавитном порядке
-        for i, line in enumerate(ongoing_data, 1):
-            print(f"{i}] {line[0]}, ep: {line[1]}, dub: {line[2]}")
+        ongoing_data.sort(key=lambda k: k[0])  # сортировка списка в алфавитном порядке
+        print(*[f"{i}] {v[0]}, ep: {v[1]}, dub: {v[2]}" for i, v in enumerate(ongoing_data, 1)], sep="\n")
 
     def choose_dub(self, result):
         while self.is_back:
             print(*[f"{i}] {r['dub']}" for i, r in enumerate(result, 1)], sep="\n")
             print("Choose dub:", 1, "-", len(result))
-            command = input("c_d > ")
+            command = input(f"c_d [1-{len(result)}] > ")
             if not self.command_wrapper(command) and command.isdigit():
                 command = int(command)
                 print("Start playing")
@@ -214,13 +175,13 @@ class Menu:
             while self.is_back:
                 print(*[f"{i}] {s[1]}" for i, s in enumerate(episodes, 1)], sep="\n")
                 print(f"Choose episode: 1-{len(episodes)}")
-                command = input("c_e > ")
+                command = input(f"c_e [1-{len(episodes)}] > ")
                 if not self.command_wrapper(command) and command.isdigit():
                     result = self.anime.choose_episode(int(command) - 1)
                     if len(result) > 0:
                         self.choose_dub(result)
                     else:
-                        print("Not available dubs")
+                        print("No available dubs")
                         return
             self.back_off()
         return
@@ -228,7 +189,7 @@ class Menu:
     def choose_anime(self):
         while self.is_back:
             print("Choose anime:", 1, "-", len(self.anime.anime_results))
-            command = input("c_a > ")
+            command = input(f"c_a [1-{len(self.anime.anime_results)}] > ")
             if not self.command_wrapper(command) and command.isdigit():
                 self.choose_episode(int(command))
         self.back_off()
@@ -254,6 +215,17 @@ class Menu:
         return False
 
     def main(self):
+        if PROXY:
+            print("Check proxy")
+            try:
+                self.anime.session.get("https://animego.org", proxies=dict(http=PROXY, https=PROXY),
+                                       timeout=10)
+            except Exception as e:
+                print(e)
+                print("Failed proxy connect")
+                self.exit()
+            self.anime.session.proxies.update(dict(http=PROXY, https=PROXY))
+            print("Proxy connect success")
         print("Input anime name or USAGE: h for get commands")
         while True:
             command = input("m > ")
