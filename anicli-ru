@@ -22,16 +22,16 @@ ONGOING_DATA = re.compile(
 # ongoing url anime
 ONGOING_URL = re.compile(r'onclick="location\.href=\'(.*?)\'"')
 
-
-USER_AGENT = {"user-agent": "Mozilla/5.0 (Wayland; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                            "Chrome/94.0.4606.104 Safari/537.36", "x-requested-with": "XMLHttpRequest"}
+# мобильный юзер-агент обходит блокировку, только это секрет, никому не рассказывайте!
+USER_AGENT = {"user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, "
+                            "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
+              "x-requested-with": "XMLHttpRequest"}
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--proxy", dest="PROXY", type=str, default="", help="add proxy")
 parser.add_argument("-v", "--videoplayer", dest="PLAYER", type=str, default="mpv", help="edit videoplayer. default mpv")
 parser.add_argument("-hc", "--headers-command", dest="OS_HEADERS_COMMAND", type=str, default="--http-header-fields",
                     help="edit headers argument name. default --http-header-fields")
-
 
 args = parser.parse_args()
 PROXY = args.PROXY
@@ -153,7 +153,6 @@ class Menu:
         self.__ACTIONS = {"q": ("[q]uit", self.exit),
                           "b": ("[b]ack next step", self.back_on),
                           "h": ("[h]elp", self.help),
-                          "f": ("[f]ind anime by name", self.find),
                           "o": ("[o]ngoing print", self.ongoing),
                           "c": ("[c]lear", self.cls)
                           }
@@ -191,8 +190,9 @@ class Menu:
             command = input(f"c_d [1-{len(result)}] > ")
             if not self.command_wrapper(command) and command.isdigit():
                 command = int(command)
-                print("Start playing")
+                print("Load player...")
                 player = result[command - 1]["player"][0]
+                print("Start playing!")
                 self.anime.play(player)
             return
         self.back_off()
@@ -213,6 +213,12 @@ class Menu:
                         print("No available dubs")
                         return
             self.back_off()
+        else:
+            print("""Warning! Episodes not found :(
+This anime-title maybe blocked in your country, try using a vpn/proxy and repeat operation
+            
+""")
+            print()
         return
 
     def choose_anime(self):
@@ -238,6 +244,7 @@ class Menu:
             print(k, v[0])
 
     def command_wrapper(self, command):
+        self.cls()
         if self.__ACTIONS.get(command):
             self.__ACTIONS[command][1]()
             return True
