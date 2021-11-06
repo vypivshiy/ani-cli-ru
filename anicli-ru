@@ -19,6 +19,9 @@ ANIBOOM_PATTERN = re.compile(r"hls:\{src:(.*\.m3u8)")  # aniboom video pattern
 # ongoing ep title, ep_num, dub_name
 ONGOING_DATA = re.compile(
     r'600">(.*?)</span></span></div><div class="ml-3 text-right"><div class="font-weight-600 text-truncate">(\d+) серия</div><div class="text-gray-dark-6">(\(.*?\))</div>')
+# ongoing url anime
+ONGOING_URL = re.compile(r'onclick="location\.href=\'(.*?)\'"')
+
 
 USER_AGENT = {"user-agent": "Mozilla/5.0 (Wayland; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
                             "Chrome/94.0.4606.104 Safari/537.36", "x-requested-with": "XMLHttpRequest"}
@@ -48,17 +51,33 @@ class Anime:
         self.anime_url = ""
         self.__anime_id = ""
         self._videos = []
+        self._ongoings = []
 
     def search(self, pattern: str):
+        self.anime_results.clear()
         r = self.session.get("https://animego.org/search/anime", params={"q": pattern})
         anime_urls = re.findall(ANIME_FIND_PATTERN, r.text)
         self.anime_results = anime_urls
         return self.anime_results
 
     def get_ongoing(self):
+        self._ongoings.clear()
         r = self.session.get("https://animego.org/")
-        ongoing_data = re.findall(ONGOING_DATA, r.text)
-        return ongoing_data
+        ongoing_data = [list(i) for i in re.findall(ONGOING_DATA, r.text)]
+        ongoing_urls = ["https://animego.org" + i for i in re.findall(ONGOING_URL, r.text)]
+        [i[0].append(i[-1]) for i in zip(ongoing_data, ongoing_urls)]
+
+        # сортировка онгоингов по названию и номеру серии
+        for data in ongoing_data:
+            if len(self._ongoings) > 0 and data[0] in [i[0] for i in self._ongoings]:
+                for data2 in self._ongoings:
+                    if data2[0] == data[0] and int(data2[1]) == int(data2[1]):
+                        data2[2] += ", " + data[2]
+            else:
+                self._ongoings.append(data.copy())
+        self._ongoings.sort(key=lambda v: v[0])  # сортировка по алфавиту
+        self.anime_results = [i[-1] for i in self._ongoings]
+        return self._ongoings
 
     @staticmethod
     def is_unsupported_player(player: str):
@@ -67,7 +86,10 @@ class Anime:
 
     def parse_episodes_count(self, index_choose: int):
         """подсчёт числа эпизодов"""
-        self.anime_url = self.anime_results[index_choose][0]
+        if isinstance(self.anime_results[index_choose], list):
+            self.anime_url = self.anime_results[index_choose][0]
+        else:
+            self.anime_url = self.anime_results[index_choose]
         self.__anime_id = self.anime_url.split("-")[-1]
         r = self.session.get(self.anime_url)
         self.series_count = re.findall(COUNT_SERIES_PATTERN, r.text)
@@ -153,9 +175,14 @@ class Menu:
         return self.__back_action
 
     def ongoing(self):
-        ongoing_data = self.anime.get_ongoing()
-        ongoing_data.sort(key=lambda k: k[0])  # сортировка списка в алфавитном порядке
-        print(*[f"{i}] {v[0]}, ep: {v[1]}, dub: {v[2]}" for i, v in enumerate(ongoing_data, 1)], sep="\n")
+        while self.is_back:
+            ongoing_data = self.anime.get_ongoing()
+            print(*[f"{i}] {v[0]}, ep: {v[1]}, dub: {v[2]}" for i, v in enumerate(ongoing_data, 1)], sep="\n")
+            print("Choose anime:", 1, "-", len(ongoing_data))
+            command = input(f"c_o [1-{len(ongoing_data)}] > ")
+            if not self.command_wrapper(command) and command.isdigit():
+                self.choose_episode(int(command))
+        self.back_off()
 
     def choose_dub(self, result):
         while self.is_back:
