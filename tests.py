@@ -39,14 +39,12 @@ class TestRequests(unittest.TestCase):
 
     def test_search_4(self):
         """Test get ongoing series"""
-        ongoings = self.anime.get_ongoing()
-        if len(ongoings) > 0:
-            episodes_count = self.anime.parse_episodes_count(1)
-            self.assertIsInstance(episodes_count, int)
-            self.anime.parse_series()
-            self.assertGreater(len(self.anime._episodes), 0)
-        else:
-            self.skipTest("Cannot get ongoings in your country or ip address")
+        self.anime.get_ongoing()
+        episodes_count = self.anime.parse_episodes_count(1)
+        self.assertIsInstance(episodes_count, int)
+        self.anime.parse_series()
+        self.assertGreater(len(self.anime._episodes), 0)
+
 
     def test_search_5(self):
         """Test get anime episodes, but they have only an unsupported kodik player :( """
