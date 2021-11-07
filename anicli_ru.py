@@ -86,7 +86,7 @@ class Anime:
 
     def parse_episodes_count(self, index_choose: int):
         """подсчёт числа эпизодов"""
-        if isinstance(self.anime_results[index_choose], list):
+        if isinstance(self.anime_results[index_choose], tuple):
             self.anime_url = self.anime_results[index_choose][0]
         else:
             self.anime_url = self.anime_results[index_choose]
