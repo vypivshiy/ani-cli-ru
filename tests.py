@@ -56,3 +56,12 @@ class TestRequests(unittest.TestCase):
         self.assertIsInstance(players, ListObj)
         self.assertEqual(len(players), 0)
 
+    def test_search_random(self):
+        """Test get random anime title
+
+        Maybe fail due to bans in your country"""
+        result = self.anime.random()  # return ListObj with one element
+        self.assertIsInstance(result, ListObj)
+        eps = result[0].episodes()
+        self.assertIsInstance(eps, ListObj)
+        self.assertGreater(len(eps), 0)
