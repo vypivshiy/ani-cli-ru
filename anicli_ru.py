@@ -18,8 +18,8 @@ USER_AGENT = {"user-agent":
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--proxy", dest="PROXY", type=str, default="", help="add proxy")
 parser.add_argument("-v", "--videoplayer", dest="PLAYER", type=str, default="mpv", help="edit videoplayer. default mpv")
-parser.add_argument("-hc", "--headers-command", dest="OS_HEADERS_COMMAND", type=str, default="--http-header-fields",
-                    help="edit headers argument name. default --http-header-fields")
+parser.add_argument("-hc", "--headers-command", dest="OS_HEADERS_COMMAND", type=str, default="http-header-fields",
+                    help="edit headers argument name. default http-header-fields")
 
 args = parser.parse_args()
 PROXY = args.PROXY
