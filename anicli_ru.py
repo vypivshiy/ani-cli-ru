@@ -316,14 +316,16 @@ class Anime:
             self.__run_player(url, headers="Referer: https://aniboom.one")
         return True
 
-    def random(self) -> ListObj[AnimeResult]:
-        """return random title"""
+    def random(self) -> [ListObj[AnimeResult],  None]:
+        """return random title or None, if fail get title"""
         resp = self.request_get(self.BASE_URL + "/anime/random")
         anime = AnimeResult.parse(resp.text)
         # need create new object
-        anime[0].url = resp.url
-        anime[0].title = re.findall(r"<title>(.*?) смотреть онлайн — Аниме</title>", resp.text)[0]
-        return anime
+        if len(anime) > 0:
+            anime[0].url = resp.url
+            anime[0].title = re.findall(r"<title>(.*?) смотреть онлайн — Аниме</title>", resp.text)[0]
+            return anime
+        return
 
 
 class Menu:
@@ -354,8 +356,9 @@ class Menu:
 
     def random(self):
         anime = self.anime.random()
-        print(anime[0])
-        self.choose_episode(1, anime)
+        if anime:
+            print(anime[0])
+            self.choose_episode(1, anime)
 
     def ongoing(self):
         while self.is_back:
