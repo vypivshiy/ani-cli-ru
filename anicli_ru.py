@@ -2,7 +2,7 @@
 import re
 from os import system
 from os import name as sys_name
-
+from html import unescape
 import argparse
 
 
@@ -68,7 +68,7 @@ class BaseObj(object):
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             if isinstance(v, str):
-                v = int(v) if v.isdigit() else str(v)
+                v = int(v) if v.isdigit() else unescape(str(v))
             self.__setattr__(k, v)
 
     @classmethod
