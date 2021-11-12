@@ -1,14 +1,20 @@
 #!/usr/bin/python3
 import re
 from os import system
+from os import name as sys_name
+
 import argparse
+
+
+from requests import Session
+from typing import Union
+
 
 __all__ = (
     "Anime", "BaseObj"
 )
 
-from requests import Session
-from typing import Union
+
 # mobile user-agent can sometimes gives a chance to bypass the anime title ban
 USER_AGENT = {"user-agent":
                   "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, "
@@ -348,7 +354,7 @@ class Menu:
 
     @staticmethod
     def cls():
-        system("clear")
+        system("cls") if sys_name == 'nt' else system("clear")
 
     @property
     def is_back(self):
