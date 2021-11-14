@@ -178,27 +178,27 @@ class Player(BaseObj):
             re.compile(r'data-dubbing="(\d+)"><span class="video-player-toggle-item-name text-underline-hover">\s+.*'),
         "dub_name":
             re.compile(r'data-dubbing="\d+"><span class="video-player-toggle-item-name text-underline-hover">\s+(.*)'),
-        "player_urls_raw": re.compile(r'data-provider="\d+"\s+data-provide-dubbing="(\d+).*\s+data-player="(.*?)"')
+        "_player": re.compile(r'\s+data-player="(.*?)"')
     }
+    # data-provider="\d+"\s+data-provide-dubbing="(\d+).*\s+data-player="(.*?)"
+    #
     dub_id: int
     dub_name: str
-    player_urls_raw: tuple
     _player: str = ""
 
     @property
     def url(self) -> str:
         if not self._player.startswith("http"):
-            self._player = self.player_urls_raw[1]
             self._player = self._player_prettify(self._player)
-            return self._player
         return self._player
 
-    def is_unsupported(self):
+    def is_supported(self):
+        "True if player is supported"
         return not ("kodik" in self.url or "anivod" in self.url)
 
     @staticmethod
     def _player_prettify(player: str):
-        return "https:" + player.replace("amp;", "").replace("\\", "")
+        return "https:" + unescape(player)
 
     def run(self):
         with Anime() as a:
@@ -218,7 +218,7 @@ class Anime:
     >>> episodes = results[0].episodes()
     """
     BASE_URL = "https://animego.org"
-    ANIBOOM_PATTERN = re.compile(r"hls:\{src:(.*\.m3u8)")
+    ANIBOOM_PATTERN = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
 
     def __init__(self):
         self.session = Session()
@@ -289,7 +289,7 @@ class Anime:
                                                                          "episode": episode.num,
                                                                          "id": episode.id}).json()["content"]
         players = Player.parse(resp)
-        players = ListObj([p for p in players if p.is_unsupported()])
+        players = ListObj([p for p in players if p.is_supported()])
         return players
 
     @staticmethod
@@ -305,7 +305,7 @@ class Anime:
         :param Player player: player object
         :return:
         """
-        if not player.is_unsupported():
+        if not player.is_supported():
             return False
         # hardcoded, because only 2 players are guaranteed to work
         if "sibnet" in player.url:
@@ -317,8 +317,8 @@ class Anime:
                                  headers={"Referer": "https://animego.org/",
                                           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                                                         "(KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"})
-            r = r.text.replace("&quot;", "").replace("\\", "")
-            url = re.findall(self.ANIBOOM_PATTERN, r)[0]
+            r = unescape(r.text)
+            url = re.findall(self.ANIBOOM_PATTERN, r)[0].replace("\\", "")
             self.__run_player(url, headers="Referer: https://aniboom.one")
         return True
 
