@@ -33,8 +33,8 @@ class TestRequests(unittest.TestCase):
         self.assertEqual(len(episodes), 26)
         choose = episodes[0]
         players = choose.player()
-        self.assertEqual(players[0].dub_name, "AniDUB")
-        self.assertTrue("sibnet" in players[0].url)  # sibnet player available
+        self.assertEqual(players[2].dub_name, "AniDUB")
+        self.assertTrue("sibnet" in players[2].url)  # sibnet player available
 
     def test_search_4(self):
         """Test get ongoing series"""
@@ -49,12 +49,24 @@ class TestRequests(unittest.TestCase):
 
     def test_search_5(self):
         """Test get anime episodes, but they have only an unsupported kodik player :( """
+        self.skipTest("Added kodik player support")
         results = self.anime.search("lain")  # experiments lain
         episodes = results[0].episodes()
         self.assertEqual(len(episodes), 13)
         players = episodes[12].player()
         self.assertIsInstance(players, ListObj)
         self.assertEqual(len(players), 0)
+
+    def test_search_6(self):
+        """Test get anime with kodik player"""
+        results = self.anime.search("lain")  # experiments lain
+        episodes = results[0].episodes()
+        self.assertEqual(len(episodes), 13)
+        players = episodes[12].player()
+        self.assertIsInstance(players, ListObj)
+        self.assertEqual(len(players), 1)
+
+
 
     def test_search_random(self):
         """Test get random anime title
