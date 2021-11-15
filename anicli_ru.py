@@ -6,15 +6,12 @@ from html import unescape
 import argparse
 from base64 import b64decode
 
-
 from requests import Session
 from typing import Union
-
 
 __all__ = (
     "Anime", "BaseObj"
 )
-
 
 # mobile user-agent can sometimes gives a chance to bypass the anime title ban
 USER_AGENT = {"user-agent":
@@ -52,7 +49,7 @@ class ListObj(list):
                     print(f"[{i}] {' '.join([_.__getattribute__(arg) for arg in args])}")
             else:
                 for i, _ in enumerate(self, 1):
-                    print(f"[{i}] {_.__str__()}")
+                    print(f"[{i}] {_}")
         else:
             print("Results not founded!")
 
@@ -170,32 +167,46 @@ class Player(BaseObj):
     """
     dub_id int: dubbing ing
 
-    dub_name ont: dubbing name
+    dub_name str: dubbing name
 
     player str: videoplayer url
     """
     SUPPORTED_PLAYERS = ("aniboom", "sibnet", "kodik")
     REGEX = {
-        "dub_id":
-            re.compile(r'data-dubbing="(\d+)"><span class="video-player-toggle-item-name text-underline-hover">\s+.*'),
         "dub_name":
-            re.compile(r'data-dubbing="\d+"><span class="video-player-toggle-item-name text-underline-hover">\s+(.*)'),
-        "_player": re.compile(r'\s+data-player="(.*?)"')
+            re.compile(
+                r'data-dubbing="(\d+)"><span class="video-player-toggle-item-name text-underline-hover">\s+(.*)'),
+        "player":
+            re.compile(
+                r'data-player="(.*?)"\s+data-provider="\d+"\s+data-provide-dubbing="(\d+)"'),
+            "dub_id": re.compile(r"")
     }
-    # data-provider="\d+"\s+data-provide-dubbing="(\d+).*\s+data-player="(.*?)"
-    #
-    dub_id: int
     dub_name: str
-    _player: str = ""
+    _player: str
+    dub_id: int
+
+    @classmethod
+    def parse(cls, html: str) -> ListObj:
+        l_objects = ListObj()
+        # generate dict like {attr_name: list(values)}
+        dub_names = re.findall(cls.REGEX["dub_name"], html)  # dub_id, dub_name
+        players = re.findall(cls.REGEX["player"], html)  # player_url, dub_id
+        for player, dub_id_1 in players:
+            p = Player()
+            for dub_id_2, dub_name in dub_names:
+                if dub_id_1 == dub_id_2 and any([_ for _ in cls.SUPPORTED_PLAYERS if _ in player]):
+                    setattr(p, "_player", player)
+                    setattr(p, "dub_name", dub_name)
+                    setattr(p, "dub_id", int(dub_id_1))
+                    l_objects.append(p)
+        return l_objects
 
     @property
     def url(self) -> str:
-        if not self._player.startswith("http"):
-            self._player = self._player_prettify(self._player)
-        return self._player
+        return self._player_prettify(self._player)
 
     def is_supported(self):
-        "True if player is supported"
+        """True if player is supported"""
         return any([_ for _ in self.SUPPORTED_PLAYERS if _ in self.url])
 
     @staticmethod
@@ -207,7 +218,8 @@ class Player(BaseObj):
             return a.run_hls(self)
 
     def __str__(self):
-        return f"{self.dub_name}"
+        u = self._player.replace("//", "").split(".", 1)[0]
+        return f"{self.dub_name} ({u})"
 
 
 class Anime:
@@ -291,7 +303,6 @@ class Anime:
                                                                          "episode": episode.num,
                                                                          "id": episode.id}).json()["content"]
         players = Player.parse(resp)
-        # players = ListObj([p for p in players if p.is_supported()])
         return players
 
     @staticmethod
@@ -340,14 +351,20 @@ class Anime:
         data["info"], data["bad_user"], data["ref"] = {}, True, "https://animego.org"
 
         resp = self.request("POST", "https://kodik.info/gvi", data=data,
-                         headers={"user-agent":
-                                      "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, "
-                                      "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
-                                  "x-requested-with": "XMLHttpRequest",
-                                  "referer": f"https://{url_data}",
-                                  "orgign": "https://kodik.info",
-                                  "accept": "application/json, text/javascript, */*; q=0.01"}).json()["links"]
+                            headers={"user-agent":
+                                         "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, "
+                                         "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
+                                     "x-requested-with": "XMLHttpRequest",
+                                     "referer": f"https://{url_data}",
+                                     "orgign": "https://kodik.info",
+                                     "accept": "application/json, text/javascript, */*; q=0.01"}).json()["links"]
         if resp.get(quality):
+            # 720 key return 480p video, but replace value work :O
+            if quality == "720":
+                link = self._kodik_decoder(resp[quality][0]["src"])
+                link = link.replace("480.mp4", "720.mp4")
+                return link
+
             return self._kodik_decoder(resp[quality][0]["src"])
         # get available good quality
         else:
@@ -370,9 +387,10 @@ class Anime:
             elif "aniboom" in player.url:
                 # user agent must rows must be write title-style
                 r = self.request_get(player.url,
-                                     headers={"Referer": "https://animego.org/",
-                                              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                                                            "(KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"})
+                                     headers={
+                                         "Referer": "https://animego.org/",
+                                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                                                       "(KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"})
                 r = unescape(r.text)
                 url = re.findall(self.ANIBOOM_PATTERN, r)[0].replace("\\", "")
                 self.__run_player(url, headers="Referer: https://aniboom.one")
@@ -381,12 +399,13 @@ class Anime:
                 url = self.get_kodik_url(player)
                 self.__run_player(url)
             return True
+
         else:
             # catch anything players for add in script
             print("Warning!", player.url, "is not supported!")
             return False
 
-    def random(self) -> [ListObj[AnimeResult],  None]:
+    def random(self) -> [ListObj[AnimeResult], None]:
         """return random title or None, if fail get title"""
         resp = self.request_get(self.BASE_URL + "/anime/random")
         anime = AnimeResult.parse(resp.text)
