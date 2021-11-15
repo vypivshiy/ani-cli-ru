@@ -66,8 +66,6 @@ class TestRequests(unittest.TestCase):
         self.assertIsInstance(players, ListObj)
         self.assertEqual(len(players), 1)
 
-
-
     def test_search_random(self):
         """Test get random anime title
 
