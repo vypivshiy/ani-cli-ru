@@ -4,6 +4,7 @@ from os import system
 from os import name as sys_name
 from html import unescape
 import argparse
+from base64 import b64decode
 
 
 from requests import Session
@@ -173,6 +174,7 @@ class Player(BaseObj):
 
     player str: videoplayer url
     """
+    SUPPORTED_PLAYERS = ("aniboom", "sibnet", "kodik")
     REGEX = {
         "dub_id":
             re.compile(r'data-dubbing="(\d+)"><span class="video-player-toggle-item-name text-underline-hover">\s+.*'),
@@ -194,7 +196,7 @@ class Player(BaseObj):
 
     def is_supported(self):
         "True if player is supported"
-        return not ("kodik" in self.url or "anivod" in self.url)
+        return any([_ for _ in self.SUPPORTED_PLAYERS if _ in self.url])
 
     @staticmethod
     def _player_prettify(player: str):
@@ -289,7 +291,7 @@ class Anime:
                                                                          "episode": episode.num,
                                                                          "id": episode.id}).json()["content"]
         players = Player.parse(resp)
-        players = ListObj([p for p in players if p.is_supported()])
+        # players = ListObj([p for p in players if p.is_supported()])
         return players
 
     @staticmethod
@@ -299,28 +301,90 @@ class Anime:
         else:
             system(f"{PLAYER} {url}")
 
+    @staticmethod
+    def _kodik_decoder(s: str):
+        """kodik player url response decode"""
+        s = s[::-1]
+        if not s.endswith("=="):
+            s += "=="
+        link = b64decode(s).decode()
+        if not link.startswith("https"):
+            link = "https:" + link
+        return link
+
+    def get_kodik_url(self, player: Player, quality: int = 720):
+        """Get hls url in kodik player"""
+        QUALITY = (240, 360, 480, 720)
+        if quality not in QUALITY:
+            quality = 720
+        quality = str(quality)
+
+        # TODO refactoring
+        resp = self.request_get(player.url, headers={
+            "user-agent":
+                "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, "
+                "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
+            "x-requested-with": "XMLHttpRequest",
+            "referer": "https://animego.org/"})
+
+        # prepare values for next POST request
+        data = {}
+        url_data = re.findall(r'iframe.src = "//(.*?)"', resp.text)[0]
+        type_ = re.findall(r"kodik\.info/go/(\w+)/\d+", url_data)[0]
+        id_ = re.findall(r"kodik\.info/go/\w+/(\d+)", url_data)[0]
+        hash_ = re.findall(r"kodik\.info/go/\w+/\d+/(.*?)/\d+p\?", url_data)[0]
+        for _ in url_data.split("?", )[1].split("&"):
+            k, v = _.split("=")
+            data[k] = v
+        data["type"], data["hash"], data["id"] = type_, hash_, id_
+        data["info"], data["bad_user"], data["ref"] = {}, True, "https://animego.org"
+
+        resp = self.request("POST", "https://kodik.info/gvi", data=data,
+                         headers={"user-agent":
+                                      "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, "
+                                      "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
+                                  "x-requested-with": "XMLHttpRequest",
+                                  "referer": f"https://{url_data}",
+                                  "orgign": "https://kodik.info",
+                                  "accept": "application/json, text/javascript, */*; q=0.01"}).json()["links"]
+        if resp.get(quality):
+            return self._kodik_decoder(resp[quality][0]["src"])
+        # get available good quality
+        else:
+            qs = reversed(list(QUALITY))
+            for q in qs:
+                if resp.get(q):
+                    return self._kodik_decoder(resp[q][0]["src"])
+
     def run_hls(self, player: Player) -> bool:
         """Run hls in local videoplayer
 
         :param Player player: player object
         :return:
         """
-        if not player.is_supported():
-            return False
-        # hardcoded, because only 2 players are guaranteed to work
-        if "sibnet" in player.url:
-            self.__run_player(player.url)
+        # TODO refactoring
+        if player.is_supported():
+            if "sibnet" in player.url:
+                self.__run_player(player.url)
 
-        elif "aniboom" in player.url:
-            # user agent must rows must be write title-style
-            r = self.request_get(player.url,
-                                 headers={"Referer": "https://animego.org/",
-                                          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                                                        "(KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"})
-            r = unescape(r.text)
-            url = re.findall(self.ANIBOOM_PATTERN, r)[0].replace("\\", "")
-            self.__run_player(url, headers="Referer: https://aniboom.one")
-        return True
+            elif "aniboom" in player.url:
+                # user agent must rows must be write title-style
+                r = self.request_get(player.url,
+                                     headers={"Referer": "https://animego.org/",
+                                              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                                                            "(KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"})
+                r = unescape(r.text)
+                url = re.findall(self.ANIBOOM_PATTERN, r)[0].replace("\\", "")
+                self.__run_player(url, headers="Referer: https://aniboom.one")
+
+            elif "kodik" in player.url:
+                url = self.get_kodik_url(player)
+                self.__run_player(url)
+            return True
+        else:
+            # catch anything players for add in script
+            print("Warning!", player.url, "is not supported!")
+            return False
 
     def random(self) -> [ListObj[AnimeResult],  None]:
         """return random title or None, if fail get title"""
