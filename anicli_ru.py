@@ -259,7 +259,6 @@ class Anime:
     >>> episodes = results[0].episodes()
     """
     BASE_URL = "https://animego.org"
-    ANIBOOM_PATTERN = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
 
     def __init__(self):
         self.session = Session()
@@ -349,7 +348,6 @@ class Anime:
             quality = 720
         quality = str(quality)
 
-        # regex patterns
         url_data_pattern = re.compile(r'iframe.src = "//(.*?)"')
         video_type_pattern = re.compile(r"kodik\.info/go/(\w+)/\d+")
         video_id_pattern = re.compile(r"kodik\.info/go/\w+/(\d+)")
@@ -380,7 +378,19 @@ class Anime:
         else:
             for q in quality_available:
                 if resp.get(str(q)):
-                    return self.kodik_decoder(resp[q][0]["src"])
+                    return self.kodik_decoder(resp[str(q)][0]["src"])
+
+    def get_aniboom_url(self, player: Player) -> str:
+        """get aniboom video"""
+        aniboom_pattern = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
+        # user agent keys must be write title-style
+        r = self.request_get(player.url, headers={"Referer": "https://animego.org/",
+                                                  "User-Agent":
+                                                      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                                                      "(KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"})
+        r = unescape(r.text)
+        url = re.findall(aniboom_pattern, r)[0].replace("\\", "")
+        return url
 
     def run_hls(self, player: Player) -> bool:
         """Run hls in local videoplayer
@@ -388,22 +398,12 @@ class Anime:
         :param Player player: player object
         :return:
         """
-        # TODO refactoring
         if player.is_supported():
             if "sibnet" in player.url:
                 self.__run_player(player.url)
-
             elif "aniboom" in player.url:
-                # user agent must rows must be write title-style
-                r = self.request_get(player.url,
-                                     headers={
-                                         "Referer": "https://animego.org/",
-                                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                                                       "(KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"})
-                r = unescape(r.text)
-                url = re.findall(self.ANIBOOM_PATTERN, r)[0].replace("\\", "")
+                url = self.get_aniboom_url(player)
                 self.__run_player(url, headers="Referer: https://aniboom.one")
-
             elif "kodik" in player.url:
                 url = self.get_kodik_url(player)
                 self.__run_player(url)
