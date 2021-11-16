@@ -26,10 +26,15 @@ ___
 # Usage:
 `anicli-ru`
 ___
+# Supported video players:
+* sibnet
+* aniboom
+* kodik
+___
 # Commands:
 ```
 q [q]uit - выход из программы
-b [b]ack next step - возвратиться на предыдущий шаг
+b [b]ack to the previous step - возвратиться на предыдущий шаг
 h [h]elp - вывод списка доступных команд
 c [c]lear - очистить консоль
 o [o]ngoing print - напечатать недавно вышедшие онгоинги
