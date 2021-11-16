@@ -75,10 +75,10 @@ class BaseObj(object):
         l_objects = ListObj()
         # generate dict like {attr_name: list(values)}
         results = {k: re.findall(v, html) for k, v in cls.REGEX.items()}
-        for values in list(zip(*results.values())):
-            s = list(zip(results.keys(), values))
+        for values in zip(*results.values()):
+            attrs = zip(results.keys(), values)
             # generate objects like {attr_name: attr_value}
-            l_objects.append(cls(**dict((k, v) for k, v in s)))
+            l_objects.append(cls(**dict((k, v) for k, v in attrs)))
         return l_objects
 
 
@@ -126,6 +126,33 @@ class Ongoing(BaseObj):
     num: str
     dub: str
     url: str
+
+    @classmethod
+    def parse(cls, html: str) -> ListObj:
+        ongoings = ListObj()
+        sorted_ongs = ListObj()
+        # generate dict like {attr_name: list(values)}
+        results = {k: re.findall(v, html) for k, v in cls.REGEX.items()}
+
+        for values in zip(*results.values()):
+            attrs = zip(results.keys(), values)
+            # generate objects like {attr_name: attr_value}
+            ongoings.append(cls(**dict((k, v) for k, v in attrs)))
+
+        # shitty sort duplicates (by title and episode num) algorithm
+        # but ongoings list contains less than 100 elements guaranty
+        for o in ongoings:
+            if o.title in [i.title for i in sorted_ongs]:
+                for o2 in sorted_ongs:
+                    if o2.title == o.title and o.num == o2.num:
+                        o2.dub += ", " + o.dub
+                        break
+                else:
+                    sorted_ongs.append(o)
+            else:
+                sorted_ongs.append(o)
+        sorted_ongs.sort(key=lambda k: k.title)  # sort by title name
+        return sorted_ongs
 
     @property
     def id(self) -> str:
@@ -269,18 +296,7 @@ class Anime:
         :rtype: ListObj
         """
         resp = self.request_get(self.BASE_URL).text
-        ongs = ListObj(Ongoing.parse(resp))
-        sorted_ongs = ListObj()
-        # shitty sort duplicates (by title and episode num) algorithm
-        for o in ongs:
-            if o.title in [i.title for i in sorted_ongs]:
-                for o2 in sorted_ongs:
-                    if o2.title == o.title and o.num == o2.num:
-                        o2.dub += ", " + o.dub
-            else:
-                sorted_ongs.append(o)
-        sorted_ongs.sort(key=lambda k: k.title)  # sort by title name
-        return sorted_ongs
+        return Ongoing.parse(resp)
 
     def episodes(self, result) -> ListObj[Episode]:
         """Get available episodes
