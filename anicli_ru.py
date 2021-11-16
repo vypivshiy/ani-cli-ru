@@ -206,7 +206,7 @@ class Player(BaseObj):
         "player":
             re.compile(
                 r'data-player="(.*?)"\s+data-provider="\d+"\s+data-provide-dubbing="(\d+)"'),
-            "dub_id": re.compile(r"")
+        "dub_id": re.compile(r"")
     }
     dub_name: str
     _player: str
@@ -329,65 +329,58 @@ class Anime:
             system(f"{PLAYER} {url}")
 
     @staticmethod
-    def _kodik_decoder(s: str):
-        """kodik player url response decode"""
-        s = s[::-1]
-        if not s.endswith("=="):
-            s += "=="
-        link = b64decode(s).decode()
+    def kodik_decoder(url_encoded: str) -> str:
+        """kodik player video url decoder
+
+        :param str url_encoded: encoded url
+        :return: decoded video url"""
+        url_encoded = url_encoded[::-1]
+        if not url_encoded.endswith("=="):
+            url_encoded += "=="
+        link = b64decode(url_encoded).decode()
         if not link.startswith("https"):
             link = "https:" + link
         return link
 
     def get_kodik_url(self, player: Player, quality: int = 720):
         """Get hls url in kodik player"""
-        QUALITY = (240, 360, 480, 720)
-        if quality not in QUALITY:
+        quality_available = (720, 480, 360, 240)
+        if quality not in quality_available:
             quality = 720
         quality = str(quality)
 
-        # TODO refactoring
-        resp = self.request_get(player.url, headers={
-            "user-agent":
-                "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, "
-                "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
-            "x-requested-with": "XMLHttpRequest",
-            "referer": "https://animego.org/"})
+        # regex patterns
+        url_data_pattern = re.compile(r'iframe.src = "//(.*?)"')
+        video_type_pattern = re.compile(r"kodik\.info/go/(\w+)/\d+")
+        video_id_pattern = re.compile(r"kodik\.info/go/\w+/(\d+)")
+        video_hash_pattern = re.compile(r"kodik\.info/go/\w+/\d+/(.*?)/\d+p\?")
+
+        resp = self.request_get(player.url, headers=USER_AGENT.copy().update({"referer": "https://animego.org/"}))
 
         # prepare values for next POST request
-        data = {}
-        url_data = re.findall(r'iframe.src = "//(.*?)"', resp.text)[0]
-        type_ = re.findall(r"kodik\.info/go/(\w+)/\d+", url_data)[0]
-        id_ = re.findall(r"kodik\.info/go/\w+/(\d+)", url_data)[0]
-        hash_ = re.findall(r"kodik\.info/go/\w+/\d+/(.*?)/\d+p\?", url_data)[0]
-        for _ in url_data.split("?", )[1].split("&"):
-            k, v = _.split("=")
-            data[k] = v
-        data["type"], data["hash"], data["id"] = type_, hash_, id_
-        data["info"], data["bad_user"], data["ref"] = {}, True, "https://animego.org"
+        url_data, = re.findall(url_data_pattern, resp.text)
+        type_, = re.findall(video_type_pattern, url_data)
+        id_, = re.findall(video_id_pattern, url_data)
+        hash_, = re.findall(video_hash_pattern, url_data)
+        data = {value.split("=")[0]: value.split("=")[1] for value in url_data.split("?", )[1].split("&")}
+        data.update({"type": type_, "hash": hash_, "id": id_, "info": {}, "bad_user": True,
+                     "ref": "https://animego.org"})
 
         resp = self.request("POST", "https://kodik.info/gvi", data=data,
-                            headers={"user-agent":
-                                         "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, "
-                                         "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
-                                     "x-requested-with": "XMLHttpRequest",
-                                     "referer": f"https://{url_data}",
-                                     "orgign": "https://kodik.info",
-                                     "accept": "application/json, text/javascript, */*; q=0.01"}).json()["links"]
+                            headers=USER_AGENT.copy().update({"referer": f"https://{url_data}",
+                                                              "orgign": "https://kodik.info",
+                                                              "accept": "application/json, text/javascript, */*; q=0.01"
+                                                              })
+                            ).json()["links"]
+
         if resp.get(quality):
             # 720 key return 480p video, but replace value work :O
-            if quality == "720":
-                link = self._kodik_decoder(resp[quality][0]["src"])
-                link = link.replace("480.mp4", "720.mp4")
-                return link
-
-            return self._kodik_decoder(resp[quality][0]["src"])
-        # get available good quality
+            return self.kodik_decoder(resp[quality][0]["src"]).replace("480.mp4", "720.mp4") \
+                if quality == "720" else self.kodik_decoder(resp[quality][0]["src"])
         else:
-            qs = reversed(list(QUALITY))
-            for q in qs:
-                if resp.get(q):
-                    return self._kodik_decoder(resp[q][0]["src"])
+            for q in quality_available:
+                if resp.get(str(q)):
+                    return self.kodik_decoder(resp[q][0]["src"])
 
     def run_hls(self, player: Player) -> bool:
         """Run hls in local videoplayer
