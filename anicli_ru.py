@@ -221,10 +221,12 @@ class Player(BaseObj):
         for player, dub_id_1 in players:
             p = Player()
             for dub_id_2, dub_name in dub_names:
-                if dub_id_1 == dub_id_2 and any([_ for _ in cls.SUPPORTED_PLAYERS if _ in player]):
-                    setattr(p, "_player", player)
-                    setattr(p, "dub_name", dub_name)
-                    setattr(p, "dub_id", int(dub_id_1))
+                # removed check for catching unsupported players
+                # TODO add new players support (anivod, etc)
+                if dub_id_1 == dub_id_2:
+                    p._player = player
+                    p.dub_name = dub_name
+                    p.dub_id = dub_id_1
                     l_objects.append(p)
         return l_objects
 
