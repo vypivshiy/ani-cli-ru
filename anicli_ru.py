@@ -350,9 +350,9 @@ class Anime:
             quality = 720
         quality = str(quality)
         re_url_data = re.compile(r'iframe.src = "//(.*?)"')
-        re_video_type = re.compile(r"kodik\.info/go/(\w+)/\d+|anivod\.com/go/(\w+)/\d+")
-        re_video_id = re.compile(r"kodik\.info/go/\w+/(\d+)|anivod\.com/go/\w+/(\d+)")
-        re_video_hash = re.compile(r"kodik\.info/go/\w+/\d+/(.*?)/\d+p\?|anivod\.com/go/\w+/\d+/(.*?)/\d+p\?")
+        re_video_type = re.compile(r"go/(\w+)/\d+")
+        re_video_id = re.compile(r"go/\w+/(\d+)")
+        re_video_hash = re.compile(r"go/\w+/\d+/(.*?)/\d+p\?")
 
         resp = self.request_get(player.url, headers=USER_AGENT.copy().update({"referer": "https://animego.org/"}))
 
