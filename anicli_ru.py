@@ -45,11 +45,11 @@ class ListObj(list):
 
         if len(self) > 0:
             if args:
-                for i, _ in enumerate(self, 1):
-                    print(f"[{i}] {' '.join([_.__getattribute__(arg) for arg in args])}")
+                for i, obj in enumerate(self, 1):
+                    print(f"[{i}]", *(getattr(obj, arg) for arg in args))
             else:
-                for i, _ in enumerate(self, 1):
-                    print(f"[{i}] {_}")
+                for i, obj in enumerate(self, 1):
+                    print(f"[{i}]", obj)
         else:
             print("Results not founded!")
 
@@ -67,7 +67,7 @@ class BaseObj(object):
         for k, v in kwargs.items():
             if isinstance(v, str):
                 v = int(v) if v.isdigit() else unescape(str(v))
-            self.__setattr__(k, v)
+            setattr(self, k, v)
 
     @classmethod
     def parse(cls, html: str) -> ListObj:
@@ -198,7 +198,7 @@ class Player(BaseObj):
 
     player str: videoplayer url
     """
-    SUPPORTED_PLAYERS = ("aniboom", "sibnet", "kodik")
+    SUPPORTED_PLAYERS = ("aniboom", "sibnet", "kodik", "anivod")
     REGEX = {
         "dub_name":
             re.compile(
@@ -344,31 +344,33 @@ class Anime:
         return link
 
     def get_kodik_url(self, player: Player, quality: int = 720):
-        """Get hls url in kodik player"""
+        """Get hls url in kodik/anivod player"""
         quality_available = (720, 480, 360, 240)
         if quality not in quality_available:
             quality = 720
         quality = str(quality)
-
-        url_data_pattern = re.compile(r'iframe.src = "//(.*?)"')
-        video_type_pattern = re.compile(r"kodik\.info/go/(\w+)/\d+")
-        video_id_pattern = re.compile(r"kodik\.info/go/\w+/(\d+)")
-        video_hash_pattern = re.compile(r"kodik\.info/go/\w+/\d+/(.*?)/\d+p\?")
+        re_url_data = re.compile(r'iframe.src = "//(.*?)"')
+        re_video_type = re.compile(r"kodik\.info/go/(\w+)/\d+|anivod\.com/go/(\w+)/\d+")
+        re_video_id = re.compile(r"kodik\.info/go/\w+/(\d+)|anivod\.com/go/\w+/(\d+)")
+        re_video_hash = re.compile(r"kodik\.info/go/\w+/\d+/(.*?)/\d+p\?|anivod\.com/go/\w+/\d+/(.*?)/\d+p\?")
 
         resp = self.request_get(player.url, headers=USER_AGENT.copy().update({"referer": "https://animego.org/"}))
 
         # prepare values for next POST request
-        url_data, = re.findall(url_data_pattern, resp.text)
-        type_, = re.findall(video_type_pattern, url_data)
-        id_, = re.findall(video_id_pattern, url_data)
-        hash_, = re.findall(video_hash_pattern, url_data)
-        data = {value.split("=")[0]: value.split("=")[1] for value in url_data.split("?", )[1].split("&")}
+        url_data, = re.findall(re_url_data, resp.text)
+        type_, = re.findall(re_video_type, url_data)
+        id_, = re.findall(re_video_id, url_data)
+        hash_, = re.findall(re_video_hash, url_data)
+        data = {value.split("=")[0]: value.split("=")[1] for value in url_data.split("?", 1)[1].split("&")}
         data.update({"type": type_, "hash": hash_, "id": id_, "info": {}, "bad_user": True,
                      "ref": "https://animego.org"})
-
-        resp = self.request("POST", "https://kodik.info/gvi", data=data,
+        if "kodik" in player.url:
+            url = "https://kodik.info/gvi"
+        elif "anivod" in player.url:
+            url = "https://anivod.com/gvi"
+        resp = self.request("POST", url, data=data,
                             headers=USER_AGENT.copy().update({"referer": f"https://{url_data}",
-                                                              "orgign": "https://kodik.info",
+                                                              "orgign": url.replace("/gvi", ""),
                                                               "accept": "application/json, text/javascript, */*; q=0.01"
                                                               })
                             ).json()["links"]
@@ -407,6 +409,9 @@ class Anime:
                 url = self.get_aniboom_url(player)
                 self.__run_player(url, headers="Referer: https://aniboom.one")
             elif "kodik" in player.url:
+                url = self.get_kodik_url(player)
+                self.__run_player(url)
+            elif "anivod" in player.url:
                 url = self.get_kodik_url(player)
                 self.__run_player(url)
             return True

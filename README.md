@@ -30,6 +30,7 @@ ___
 * sibnet
 * aniboom
 * kodik
+* anivod (kodik mirror)
 ___
 # Commands:
 ```
