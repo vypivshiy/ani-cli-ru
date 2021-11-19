@@ -1,34 +1,21 @@
-#!/usr/bin/python3
 import re
-from os import system
-from os import name as sys_name
 from html import unescape
-import argparse
-from base64 import b64decode
 
 from requests import Session
-from typing import Union
 
-__all__ = (
-    "Anime", "BaseObj"
-)
+from anicli_ru.utils import kodik_decoder
 
-# mobile user-agent can sometimes gives a chance to bypass the anime title ban
-USER_AGENT = {"user-agent":
-                  "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, "
-                  "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
-              "x-requested-with": "XMLHttpRequest"}
+# aniboom regular expressions
+RE_ANIBOOM = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-p", "--proxy", dest="PROXY", type=str, default="", help="add proxy")
-parser.add_argument("-v", "--videoplayer", dest="PLAYER", type=str, default="mpv", help="edit videoplayer. default mpv")
-parser.add_argument("-hc", "--headers-command", dest="OS_HEADERS_COMMAND", type=str, default="http-header-fields",
-                    help="edit headers argument name. default http-header-fields")
+# kodik/anivod regular expressions
+RE_KODIK_URL_DATA = re.compile(r'iframe.src = "//(.*?)"')
+RE_KODIK_VIDEO_TYPE = re.compile(r"go/(\w+)/\d+")
+RE_KODIK_VIDEO_ID = re.compile(r"go/\w+/(\d+)")
+RE_KODIK_VIDEO_HASH = re.compile(r"go/\w+/\d+/(.*?)/\d+p\?")
 
-args = parser.parse_args()
-PROXY = args.PROXY
-PLAYER = args.PLAYER
-OS_HEADERS_COMMAND = args.OS_HEADERS_COMMAND
+# random anime
+RE_RANDOM_ANIME_TITLE = re.compile(r"<title>(.*?) смотреть онлайн — Аниме</title>")
 
 
 class ListObj(list):
@@ -36,11 +23,6 @@ class ListObj(list):
 
     def print_enumerate(self, *args):
         """print elements with getattr names arg or default invoke __str__ method
-
-        :example:
-        >>> a = Anime()
-        >>> result = a.search("school")
-        >>> result.print_enumerate("title")
         """
 
         if len(self) > 0:
@@ -222,11 +204,8 @@ class Player(BaseObj):
             p = Player()
             for dub_id_2, dub_name in dub_names:
                 # removed check for catching unsupported players
-                # TODO add new players support (anivod, etc)
                 if dub_id_1 == dub_id_2:
-                    p._player = player
-                    p.dub_name = dub_name
-                    p.dub_id = dub_id_1
+                    p._player, p.dub_name, p.dub_id = player, dub_name, dub_id_1
                     l_objects.append(p)
         return l_objects
 
@@ -244,7 +223,7 @@ class Player(BaseObj):
 
     def run(self):
         with Anime() as a:
-            return a.run_hls(self)
+            return a.get_video(self)
 
     def __str__(self):
         u = self._player.replace("//", "").split(".", 1)[0]
@@ -257,14 +236,28 @@ class Anime:
     :example:
     >>> a = Anime()
     >>> results = a.search("school")
-    >>> print(results.print_enumerate())
+    >>> results.print_enumerate()
     >>> episodes = results[0].episodes()
     """
     BASE_URL = "https://animego.org"
 
-    def __init__(self):
-        self.session = Session()
-        self.session.headers.update(USER_AGENT)
+    # mobile user-agent can sometimes gives a chance to bypass the anime title ban
+    USER_AGENT = {"user-agent":
+                      "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, "
+                      "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
+                  "x-requested-with": "XMLHttpRequest"}
+
+    def __init__(self, session: Session = None):
+        """
+
+        :param session: requests Session object with your configuration
+        """
+        if session:
+            self.session = session
+            self.session.headers.update({"x-requested-with": "XMLHttpRequest"})
+        else:
+            self.session = Session()
+            self.session.headers.update(self.USER_AGENT)
 
     def __enter__(self):
         return self
@@ -322,45 +315,20 @@ class Anime:
         players = Player.parse(resp)
         return players
 
-    @staticmethod
-    def __run_player(url, headers=None) -> None:
-        if headers:
-            system(f"{PLAYER} --{OS_HEADERS_COMMAND}={headers} {url}")
-        else:
-            system(f"{PLAYER} {url}")
-
-    @staticmethod
-    def kodik_decoder(url_encoded: str) -> str:
-        """kodik player video url decoder
-
-        :param str url_encoded: encoded url
-        :return: decoded video url"""
-        url_encoded = url_encoded[::-1]
-        if not url_encoded.endswith("=="):
-            url_encoded += "=="
-        link = b64decode(url_encoded).decode()
-        if not link.startswith("https"):
-            link = "https:" + link
-        return link
-
     def get_kodik_url(self, player: Player, quality: int = 720):
         """Get hls url in kodik/anivod player"""
         quality_available = (720, 480, 360, 240)
         if quality not in quality_available:
             quality = 720
         quality = str(quality)
-        re_url_data = re.compile(r'iframe.src = "//(.*?)"')
-        re_video_type = re.compile(r"go/(\w+)/\d+")
-        re_video_id = re.compile(r"go/\w+/(\d+)")
-        re_video_hash = re.compile(r"go/\w+/\d+/(.*?)/\d+p\?")
 
-        resp = self.request_get(player.url, headers=USER_AGENT.copy().update({"referer": "https://animego.org/"}))
+        resp = self.request_get(player.url, headers=self.USER_AGENT.copy().update({"referer": "https://animego.org/"}))
 
         # prepare values for next POST request
-        url_data, = re.findall(re_url_data, resp.text)
-        type_, = re.findall(re_video_type, url_data)
-        id_, = re.findall(re_video_id, url_data)
-        hash_, = re.findall(re_video_hash, url_data)
+        url_data, = re.findall(RE_KODIK_URL_DATA, resp.text)
+        type_, = re.findall(RE_KODIK_VIDEO_TYPE, url_data)
+        id_, = re.findall(RE_KODIK_VIDEO_ID, url_data)
+        hash_, = re.findall(RE_KODIK_VIDEO_HASH, url_data)
         data = {value.split("=")[0]: value.split("=")[1] for value in url_data.split("?", 1)[1].split("&")}
         data.update({"type": type_, "hash": hash_, "id": id_, "info": {}, "bad_user": True,
                      "ref": "https://animego.org"})
@@ -368,8 +336,10 @@ class Anime:
             url = "https://kodik.info/gvi"
         elif "anivod" in player.url:
             url = "https://anivod.com/gvi"
+        else:
+            return
         resp = self.request("POST", url, data=data,
-                            headers=USER_AGENT.copy().update({"referer": f"https://{url_data}",
+                            headers=self.USER_AGENT.copy().update({"referer": f"https://{url_data}",
                                                               "orgign": url.replace("/gvi", ""),
                                                               "accept": "application/json, text/javascript, */*; q=0.01"
                                                               })
@@ -377,49 +347,43 @@ class Anime:
 
         if resp.get(quality):
             # 720 key return 480p video, but replace value work :O
-            return self.kodik_decoder(resp[quality][0]["src"]).replace("480.mp4", "720.mp4") \
-                if quality == "720" else self.kodik_decoder(resp[quality][0]["src"])
+            return kodik_decoder(resp[quality][0]["src"]).replace("480.mp4", "720.mp4") \
+                if quality == "720" else kodik_decoder(resp[quality][0]["src"])
         else:
             for q in quality_available:
                 if resp.get(str(q)):
-                    return self.kodik_decoder(resp[str(q)][0]["src"])
+                    return kodik_decoder(resp[str(q)][0]["src"])
 
     def get_aniboom_url(self, player: Player) -> str:
         """get aniboom video"""
-        aniboom_pattern = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
         # user agent keys must be write title-style
-        r = self.request_get(player.url, headers={"Referer": "https://animego.org/",
-                                                  "User-Agent":
-                                                      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                                                      "(KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"})
+        r = self.request_get(player.url,
+                             headers={k.title(): v for k, v in self.session.headers.copy().items()}.update({
+                                 "Referer": "https://animego.org/"}))
+
         r = unescape(r.text)
-        url = re.findall(aniboom_pattern, r)[0].replace("\\", "")
+        url = re.findall(RE_ANIBOOM, r)[0].replace("\\", "")
         return url
 
-    def run_hls(self, player: Player) -> bool:
-        """Run hls in local videoplayer
+    def get_video(self, player: Player):
+        """Return direct video url
 
         :param Player player: player object
-        :return:
+        :return: direct video url
         """
         if player.is_supported():
             if "sibnet" in player.url:
-                self.__run_player(player.url)
+                return player.url
             elif "aniboom" in player.url:
                 url = self.get_aniboom_url(player)
-                self.__run_player(url, headers="Referer: https://aniboom.one")
-            elif "kodik" in player.url:
+                return url, {"Referer: https://aniboom.one"}
+            elif "kodik" or "anivod" in player.url:
                 url = self.get_kodik_url(player)
-                self.__run_player(url)
-            elif "anivod" in player.url:
-                url = self.get_kodik_url(player)
-                self.__run_player(url)
-            return True
-
+                return url
         else:
             # catch anything players for add in script
             print("Warning!", player.url, "is not supported!")
-            return False
+            return
 
     def random(self) -> [ListObj[AnimeResult], None]:
         """return random title or None, if fail get title"""
@@ -428,146 +392,10 @@ class Anime:
         # need create new object
         if len(anime) > 0:
             anime[0].url = resp.url
-            anime[0].title = re.findall(r"<title>(.*?) смотреть онлайн — Аниме</title>", resp.text)[0]
-            return anime
+            # TODO catch exception for get anime name
+            if len(re.findall(RE_RANDOM_ANIME_TITLE, resp.text)):
+                anime[0].title, = re.findall(RE_RANDOM_ANIME_TITLE, resp.text)
+                return anime
+            else:
+                return
         return
-
-
-class Menu:
-    def __init__(self):
-        self.__ACTIONS = {"b": ("[b]ack next step", self.back_on),
-                          "c": ("[c]lear", self.cls),
-                          "h": ("[h]elp", self.help),
-                          "o": ("[o]ngoing print", self.ongoing),
-                          "r": ("[r]andom title", self.random),
-                          "q": ("[q]uit", self.exit),
-                          }
-        self.anime = Anime()
-        self.__back_action = True
-
-    def back_on(self):
-        self.__back_action = False
-
-    def back_off(self):
-        self.__back_action = True
-
-    @staticmethod
-    def cls():
-        system("cls") if sys_name == 'nt' else system("clear")
-
-    @property
-    def is_back(self):
-        return self.__back_action
-
-    def random(self):
-        anime = self.anime.random()
-        if anime:
-            print(anime[0])
-            self.choose_episode(1, anime)
-
-    def ongoing(self):
-        while self.is_back:
-            ongoings = self.anime.ongoing()
-            ongoings.print_enumerate()
-            print("Choose anime:", 1, "-", len(ongoings))
-            command = input(f"c_o [1-{len(ongoings)}] > ")
-            if not self.command_wrapper(command) and command.isdigit():
-                self.choose_episode(int(command), ongoings)
-        self.back_off()
-
-    def choose_dub(self, results: ListObj[Player]):
-        while self.is_back:
-            results.print_enumerate()
-            print("Choose dub:", 1, "-", len(results))
-            command = input(f"c_d [1-{len(results)}] > ")
-            if not self.command_wrapper(command) and command.isdigit():
-                if int(command) <= len(results):
-                    print("Start playing")
-                    self.anime.run_hls(results.choose(int(command)))
-        self.back_off()
-
-    def choose_episode(self, num: int, result: ListObj[Union[AnimeResult, Ongoing]]):
-        episodes = self.anime.episodes(result.choose(num))
-        if len(episodes) > 0:
-            while self.is_back:
-                episodes.print_enumerate()
-                print(f"Choose episode: 1-{len(episodes)}")
-                command = input(f"c_e [1-{len(episodes)}] > ")
-                if not self.command_wrapper(command) and command.isdigit():
-                    if int(command) <= len(episodes):
-                        results = self.anime.players(episodes.choose(int(command)))
-                        if len(results) > 0:
-                            self.choose_dub(results)
-                        else:
-                            print("No available dubs")
-                            return
-            self.back_off()
-        else:
-            print("""Warning! Episodes not found :(
-This anime-title maybe blocked in your country, try using a vpn/proxy and repeat operation
-
-""")
-            print()
-        return
-
-    def choose_anime(self, results: ListObj[AnimeResult]):
-        while self.is_back:
-            results.print_enumerate()
-            print("Choose anime:", 1, "-", len(results))
-            command = input(f"c_a [1-{len(results)}] > ")
-            if not self.command_wrapper(command) and command.isdigit():
-                self.choose_episode(int(command), results)
-        self.back_off()
-
-    def find(self, pattern):
-        results = self.anime.search(pattern)
-        if len(results) > 0:
-            print("Found", len(results))
-            self.choose_anime(results)
-        else:
-            print("Not found!")
-            return
-
-    def help(self):
-        for k, v in self.__ACTIONS.items():
-            print(k, v[0])
-
-    def command_wrapper(self, command):
-        self.cls()
-        if self.__ACTIONS.get(command):
-            self.__ACTIONS[command][1]()
-            return True
-        return False
-
-    def main(self):
-        if PROXY:
-            print("Check proxy")
-            try:
-                self.anime.session.get("https://animego.org", proxies=dict(http=PROXY, https=PROXY),
-                                       timeout=10)
-            except Exception as e:
-                print(e)
-                print("Failed proxy connect")
-                self.exit()
-            self.anime.session.proxies.update(dict(http=PROXY, https=PROXY))
-            print("Proxy connect success")
-        while True:
-            print("Input anime name or USAGE: h for get commands")
-            command = input("m > ")
-            if not self.command_wrapper(command):
-                self.find(command)
-
-    @classmethod
-    def run(cls):
-        cls().main()
-
-    @staticmethod
-    def exit():
-        exit(0)
-
-
-if __name__ == '__main__':
-    try:
-        Menu.run()
-    except KeyboardInterrupt:
-        print("Exit")
