@@ -1,6 +1,8 @@
 import unittest
+import requests
 
-from anicli_ru import Anime, ListObj
+from anicli_ru import Anime
+from anicli_ru.api import ListObj, Ongoing, AnimeResult, Episode
 
 
 class TestRequests(unittest.TestCase):
@@ -75,3 +77,24 @@ class TestRequests(unittest.TestCase):
         eps = result[0].episodes()
         self.assertIsInstance(eps, ListObj)
         self.assertGreater(len(eps), 0)
+
+    def test_parser_ongoings(self):
+        r = requests.get("https://animego.org").text
+        ongoings = Ongoing.parse(r)
+        self.assertIsInstance(ongoings, ListObj)
+        self.assertGreater(len(ongoings), 0)
+
+    def test_parser_anime(self):
+        r = requests.get("https://animego.org/search/anime", params={"q": "lain"}).text
+        rez = AnimeResult.parse(r)
+        self.assertIsInstance(rez, ListObj)
+        self.assertEqual(len(rez), 1)
+        self.assertEqual(rez[0].id, '1114')
+
+    def test_parser_episodes(self):
+        r = requests.get("https://animego.org/anime/1114/player?_allow=true", headers={
+            'x-requested-with': 'XMLHttpRequest'}).json()["content"]
+        rez = Episode.parse(r)
+        self.assertIsInstance(rez, ListObj)
+        self.assertEqual(len(rez), 13)
+        print()
