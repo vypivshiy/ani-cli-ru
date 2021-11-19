@@ -49,16 +49,6 @@ class TestRequests(unittest.TestCase):
         else:
             self.skipTest("Cannot get ongoings in your country or ip address")
 
-    def test_search_5(self):
-        """Test get anime episodes, but they have only an unsupported kodik player :( """
-        self.skipTest("Added kodik player support")
-        results = self.anime.search("lain")  # experiments lain
-        episodes = results[0].episodes()
-        self.assertEqual(len(episodes), 13)
-        players = episodes[12].player()
-        self.assertIsInstance(players, ListObj)
-        self.assertEqual(len(players), 0)
-
     def test_search_6(self):
         """Test get anime with kodik player"""
         results = self.anime.search("lain")  # experiments lain
