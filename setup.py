@@ -13,6 +13,7 @@ setup(
     license='GPL-3',
     author='georgiy',
     author_email='',
+    python_requires='>=3.6',
     description='anime-ru grabber video api',
     long_description=long_description,
     long_description_content_type='text/markdown',
