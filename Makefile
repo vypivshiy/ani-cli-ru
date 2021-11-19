@@ -8,6 +8,7 @@ install:
 	chmod 0755 $(DESTDIR)$(PREFIX)/bin/anicli-ru
 uninstall:
 	$(RM) $(DESTDIR)$(PREFIX)/bin/anicli-ru
+	python3 -m pip uninstall anicli_ru
 
 
 .PHONY: all install uninstall
