@@ -33,9 +33,6 @@ def run_player(url: str, player: str = "mpv", **commands) -> None:
 
 
 def is_aniboom(url: str):
-    """Костыль, который проверяет принадлежность видео к этому хосту"""
+    """Костыль, который проверяет принадлежность видео к этому балансеру"""
     return "aniboom" in url
 
-
-if __name__ == '__main__':
-    run_player("https://foobar.com", **{"http-header": "Referer: foo.bar"})

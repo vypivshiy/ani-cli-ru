@@ -89,13 +89,13 @@ class AnimeResult(BaseObj):
 
 class Ongoing(BaseObj):
     """
-    title: str - title name
+    title: str title name
 
-    num: str - episode number
+    num: str episode number
 
-    dub: str - dubbing name
+    dub: str dubbing name
 
-    url: str - url
+    url: str url
     """
     REGEX = {
         "url": re.compile(r'onclick="location\.href=\'(.*?)\'"'),
@@ -150,11 +150,11 @@ class Ongoing(BaseObj):
 
 class Episode(BaseObj):
     """
-    num: int - episode number
+    num: int episode number
 
-    name: str 0 episode name
+    name: str episode name
 
-    id: int - episode video id
+    id: int episode video id
     """
     REGEX = {"num": re.compile(r'data-episode="(\d+)"'),
              "id": re.compile(r'data-id="(\d+)"'),
@@ -178,7 +178,7 @@ class Player(BaseObj):
 
     dub_name str: dubbing name
 
-    player str: videoplayer url
+    player str: video player url
     """
     SUPPORTED_PLAYERS = ("aniboom", "sibnet", "kodik", "anivod")
     REGEX = {
@@ -221,7 +221,7 @@ class Player(BaseObj):
     def _player_prettify(player: str):
         return "https:" + unescape(player)
 
-    def run(self):
+    def get_video(self):
         with Anime() as a:
             return a.get_video(self)
 
@@ -340,9 +340,10 @@ class Anime:
             return
         resp = self.request("POST", url, data=data,
                             headers=self.USER_AGENT.copy().update({"referer": f"https://{url_data}",
-                                                              "orgign": url.replace("/gvi", ""),
-                                                              "accept": "application/json, text/javascript, */*; q=0.01"
-                                                              })
+                                                                   "orgign": url.replace("/gvi", ""),
+                                                                   "accept":
+                                                                       "application/json, text/javascript, */*; q=0.01"
+                                                                   })
                             ).json()["links"]
 
         if resp.get(quality):
@@ -376,7 +377,7 @@ class Anime:
                 return player.url
             elif "aniboom" in player.url:
                 url = self.get_aniboom_url(player)
-                return url, {"Referer: https://aniboom.one"}
+                return url
             elif "kodik" or "anivod" in player.url:
                 url = self.get_kodik_url(player)
                 return url
