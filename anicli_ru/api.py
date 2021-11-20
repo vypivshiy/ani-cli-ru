@@ -112,7 +112,6 @@ class Ongoing(BaseObj):
     @classmethod
     def parse(cls, html: str) -> ListObj:
         ongoings = ListObj()
-        sorted_ongs = ListObj()
         # generate dict like {attr_name: list(values)}
         results = {k: re.findall(v, html) for k, v in cls.REGEX.items()}
 
@@ -123,18 +122,18 @@ class Ongoing(BaseObj):
 
         # shitty sort duplicates (by title and episode num) algorithm
         # but ongoings list contains less than 100 elements guaranty
-        for o in ongoings:
-            if o.title in [i.title for i in sorted_ongs]:
-                for o2 in sorted_ongs:
-                    if o2.title == o.title and o.num == o2.num:
-                        o2.dub += ", " + o.dub
+        sorted_ongoings = ListObj()
+        for ongoing in ongoings:
+            if ongoing in sorted_ongoings:
+                for sorted_ong in sorted_ongoings:
+                    if ongoing == sorted_ong:
+                        sorted_ong += ongoing
                         break
-                else:
-                    sorted_ongs.append(o)
             else:
-                sorted_ongs.append(o)
-        sorted_ongs.sort(key=lambda k: k.title)  # sort by title name
-        return sorted_ongs
+                sorted_ongoings.append(ongoing)
+
+        sorted_ongoings.sort(key=lambda k: k.title)
+        return sorted_ongoings
 
     @property
     def id(self) -> str:
@@ -143,6 +142,20 @@ class Ongoing(BaseObj):
     def episodes(self):
         with Anime() as a:
             return a.episodes(result=self)
+
+    def __eq__(self, other):
+        """return True if title name and episode num equals"""
+        return self.num == other.num and self.title == other.title and other.dub not in self.dub
+
+    def __iadd__(self, other):
+        """Add dub name in ongoing object with += operator"""
+        self.dub += f" {other.dub}"
+        return self
+
+    def __add__(self, other):
+        """Add dub name in ongoing object with + operator"""
+        self.dub += f" {other.dub}"
+        return self
 
     def __str__(self):
         return f"{self.title} {self.num} {self.dub}"
