@@ -2,7 +2,7 @@ import unittest
 import requests
 
 from anicli_ru import Anime
-from anicli_ru.api import ListObj, Ongoing, AnimeResult, Episode
+from anicli_ru.api import ListObj, Ongoing, AnimeResult, Episode, AnimeInfo
 
 
 class TestRequests(unittest.TestCase):
@@ -88,3 +88,12 @@ class TestRequests(unittest.TestCase):
         self.assertIsInstance(rez, ListObj)
         self.assertEqual(len(rez), 13)
         print()
+
+    def test_parser_detailed_info(self):
+        r = self.anime.search("lain")[0]
+        info = r.info()
+        self.assertEqual(info.status, "Вышел")
+        self.assertEqual(info.type, "ТВ Сериал")
+        self.assertEqual(info.status, "Вышел")
+        self.assertEqual(info.source, "Оригинал")
+        self.assertEqual(info.title, "Эксперименты Лэйн")
