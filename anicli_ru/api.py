@@ -1,9 +1,11 @@
 import re
 from html import unescape
+from collections import UserList
 
 from requests import Session
 
 from anicli_ru.utils import kodik_decoder
+
 
 # aniboom regular expressions
 RE_ANIBOOM = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
@@ -18,7 +20,7 @@ RE_KODIK_VIDEO_HASH = re.compile(r"go/\w+/\d+/(.*?)/\d+p\?")
 RE_RANDOM_ANIME_TITLE = re.compile(r"<title>(.*?) смотреть онлайн — Аниме</title>")
 
 
-class ListObj(list):
+class ListObj(UserList):
     """Modified list object"""
 
     def print_enumerate(self, *args):
@@ -41,8 +43,8 @@ class ListObj(list):
         return
 
 
-class BaseObj(object):
-    """base superclass object"""
+class BaseObj:
+    """base object for responses"""
     REGEX: dict  # {"attr_name": re.compile(<regular expression>)}
 
     def __init__(self, **kwargs):
