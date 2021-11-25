@@ -104,12 +104,15 @@ class Ongoing(BaseObj):
         "title": re.compile(r'600">(.*?)</span></span></div><div class="ml-3 text-right">'),
         "num":
             re.compile(r'<div class="font-weight-600 text-truncate">(\d+) серия</div><div class="text-gray-dark-6">'),
-        "dub": re.compile('<div class="text-gray-dark-6">(\(.*?\))</div>')}
+        "dub": re.compile(r'<div class="text-gray-dark-6">(\(.*?\))</div>'),
+        "thumbnail": re.compile(
+            r'"background-image: url\((.*?)\);"></div>')}
 
     title: str
     num: str
     dub: str
     url: str
+    thumbnail: str
 
     @classmethod
     def parse(cls, html: str) -> ListObj:
