@@ -1,6 +1,7 @@
 import re
 from html import unescape
 from collections import UserList
+from typing import Union
 
 from requests import Session
 
@@ -22,7 +23,6 @@ RE_RANDOM_ANIME_TITLE = re.compile(r"data-video-player-title>.* «(.*?)»")
 
 class ListObj(UserList):
     """Modified list object"""
-
     def print_enumerate(self, *args):
         """print elements with getattr names arg or default invoke __str__ method
         """
@@ -105,14 +105,32 @@ class Ongoing(BaseObj):
         "num":
             re.compile(r'<div class="font-weight-600 text-truncate">(\d+) серия</div><div class="text-gray-dark-6">'),
         "dub": re.compile(r'<div class="text-gray-dark-6">(\(.*?\))</div>'),
-        "thumbnail": re.compile(
-            r'"background-image: url\((.*?)\);"></div>')}
+        "thumbnail": re.compile(r'"background-image: url\((.*?)\);"></div>'),
+        "description": re.compile(r'<div class="description pb-\d">\s+?(.*)\s+?</div>'),
+        "type": re.compile(r'Тип</dt><dd class="col-6 col-sm-8 mb-1">(.*?)</dd>'),
+        "episodes": re.compile(r'Эпизоды</dt><dd class="col-6 col-sm-8 mb-1">(.*?)</dd>'),
+        "genres": re.compile(r'href="https://animego\.org/anime/genre/\w+" title="(.*?)"'),
+        "source": re.compile(r'Первоисточник</dt><dd class="col-6 col-sm-8 mb-1">(.*?)</dd>'),
+        "release": re.compile(r'data-label=".*?"><span>(.*?)</span>'),
+        "studio": re.compile(r'<a href="https://animego.org/anime/studio/.*?" title="(.*?)"'),
+        "rating": re.compile(r'<span class="rating-value">(.*?)</span>'),
+        "status": re.compile(r'<a href="https://animego\.org/anime/status/.*?" title="(.*?)">')
+    }
 
     title: str
     num: str
     dub: str
     url: str
+
+    type: str
     thumbnail: str
+    description: str
+    genres: tuple
+    source: str
+    release: str
+    studio: str
+    rating: str
+    status: str
 
     @classmethod
     def parse(cls, html: str) -> ListObj:
@@ -310,7 +328,7 @@ class Anime:
         resp = self.request_get(self.BASE_URL).text
         return Ongoing.parse(resp)
 
-    def episodes(self, result) -> ListObj[Episode]:
+    def episodes(self, result: Union[AnimeResult, Ongoing]) -> ListObj[Episode]:
         """Get available episodes
 
         :param result: Ongoing or AnimeSearch object
@@ -320,12 +338,12 @@ class Anime:
         resp = self.request_get(self.BASE_URL + f"/anime/{result.id}/player?_allow=true").json()["content"]
         return Episode.parse(resp)
 
-    def players(self, episode: Episode):
-        """Return videoplayers urls
+    def players(self, episode: Episode) -> ListObj[Player]:
+        """Return video players urls
 
-        :param Episode episode: choosen Episode object
+        :param Episode episode: Episode object
         :return: list available players
-        :rtype: ListObj
+        :rtype: ListObj[Player]
         """
         resp = self.request_get(self.BASE_URL + "/anime/series", params={"dubbing": 2, "provider": 24,
                                                                          "episode": episode.num,
@@ -355,7 +373,7 @@ class Anime:
         elif "anivod" in player.url:
             url = "https://anivod.com/gvi"
         else:
-            return
+            raise TypeError("Unknown player balancer. <get_kodik_url> method support kodik and anivod players")
         resp = self.request("POST", url, data=data,
                             headers=self.USER_AGENT.copy().update({"referer": f"https://{url_data}",
                                                                    "orgign": url.replace("/gvi", ""),
@@ -411,10 +429,7 @@ class Anime:
         # need create new object
         if len(anime) > 0:
             anime[0].url = resp.url
-            # TODO catch exception for get anime name
-            if len(re.findall(RE_RANDOM_ANIME_TITLE, resp.text)):
-                anime[0].title, = re.findall(RE_RANDOM_ANIME_TITLE, resp.text)
-                return anime
-            else:
-                return
+            anime[0].title, = re.findall(RE_RANDOM_ANIME_TITLE, resp.text)
+            return anime
+
         return
