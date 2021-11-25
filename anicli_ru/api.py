@@ -17,7 +17,7 @@ RE_KODIK_VIDEO_ID = re.compile(r"go/\w+/(\d+)")
 RE_KODIK_VIDEO_HASH = re.compile(r"go/\w+/\d+/(.*?)/\d+p\?")
 
 # random anime
-RE_RANDOM_ANIME_TITLE = re.compile(r"<title>(.*?) смотреть онлайн — Аниме</title>")
+RE_RANDOM_ANIME_TITLE = re.compile(r"data-video-player-title>.* «(.*?)»")
 
 
 class ListObj(UserList):
