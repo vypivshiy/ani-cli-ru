@@ -8,7 +8,7 @@ from requests import Session
 from anicli_ru.utils import kodik_decoder
 
 
-# aniboom regular expressions
+# aniboom regular expressions (work after unescape response html page)
 RE_ANIBOOM = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
 
 # kodik/anivod regular expressions
@@ -88,6 +88,59 @@ class AnimeResult(BaseObj):
         with Anime() as a:
             return a.episodes(result=self)
 
+    def info(self):
+        with Anime() as a:
+            return a.anime_result_info(result=self)
+
+
+class AnimeInfo(BaseObj):
+    """Extended Info object for AnimeResult"""
+    REGEX = {
+        "title": re.compile(r'data-video-player-title>.* «(.*?)»'),
+        "thumbnail": re.compile(r'content="(https://animego\.org/media/cache.*?)" />'),
+        "raw_description": re.compile(r'<div data-readmore="content">\s+(.*?)\s+</div>'),
+        "type": re.compile(r'Тип</dt><dd class="col-6 col-sm-8 mb-1">(.*?)</dd>'),
+        "_episodes": re.compile(r'Эпизоды</dt><dd class="col-6 col-sm-8 mb-1">(.*?)</dd>'),
+        "genres": re.compile(r'href="https://animego\.org/anime/genre/\w+" title="(.*?)"'),
+        "source": re.compile(r'Первоисточник</dt><dd class="col-6 col-sm-8 mb-1">(.*?)</dd>'),
+        "release": re.compile(r'Выпуск</dt><dd class="col-6 col-sm-8 mb-1"><span data-label=".*?"><span>(.*?)</span>'),
+        "studio": re.compile(r'<a href="https://animego.org/anime/studio/.*?" title="(.*?)"'),
+        "rating": re.compile(r'<span class="rating-value">(.*?)</span>'),
+        "status": re.compile(r'<a href="https://animego\.org/anime/status/.*?" title="(.*?)">')
+    }
+
+    title: str
+    type: str
+    thumbnail: str
+    raw_description: str
+    _episodes: str
+    genres: list
+    source: str
+    release: str
+    studio: str
+    rating: str
+    status: str
+
+    @property
+    def description(self):
+        return re.sub("<.*?>", "", self.raw_description)
+
+    @property
+    def episodes(self):
+        return re.sub("<.*?>", "", self._episodes)
+
+    def __str__(self):
+        return f"""{self.title} rating: {self.rating}
+{self.status}
+{self.episodes}
+{self.type}
+{self.description}
+{self.genres}
+{self.source}
+{self.release}
+{self.studio}
+        """
+
 
 class Ongoing(BaseObj):
     """
@@ -100,37 +153,20 @@ class Ongoing(BaseObj):
     url: str url
     """
     REGEX = {
-        "url": re.compile(r'onclick="location\.href=\'(.*?)\'"'),
+        "raw_url": re.compile(r'onclick="location\.href=\'(.*?)\'"'),
         "title": re.compile(r'600">(.*?)</span></span></div><div class="ml-3 text-right">'),
         "num":
             re.compile(r'<div class="font-weight-600 text-truncate">(\d+) серия</div><div class="text-gray-dark-6">'),
         "dub": re.compile(r'<div class="text-gray-dark-6">(\(.*?\))</div>'),
-        "thumbnail": re.compile(r'"background-image: url\((.*?)\);"></div>'),
-        "description": re.compile(r'<div class="description pb-\d">\s+?(.*)\s+?</div>'),
-        "type": re.compile(r'Тип</dt><dd class="col-6 col-sm-8 mb-1">(.*?)</dd>'),
-        "episodes": re.compile(r'Эпизоды</dt><dd class="col-6 col-sm-8 mb-1">(.*?)</dd>'),
-        "genres": re.compile(r'href="https://animego\.org/anime/genre/\w+" title="(.*?)"'),
-        "source": re.compile(r'Первоисточник</dt><dd class="col-6 col-sm-8 mb-1">(.*?)</dd>'),
-        "release": re.compile(r'data-label=".*?"><span>(.*?)</span>'),
-        "studio": re.compile(r'<a href="https://animego.org/anime/studio/.*?" title="(.*?)"'),
-        "rating": re.compile(r'<span class="rating-value">(.*?)</span>'),
-        "status": re.compile(r'<a href="https://animego\.org/anime/status/.*?" title="(.*?)">')
+        "thumbnail": re.compile(r'"background-image: url\((.*?)\);"></div>')
     }
 
     title: str
     num: str
     dub: str
-    url: str
+    raw_url: str
 
-    type: str
     thumbnail: str
-    description: str
-    genres: tuple
-    source: str
-    release: str
-    studio: str
-    rating: str
-    status: str
 
     @classmethod
     def parse(cls, html: str) -> ListObj:
@@ -159,12 +195,20 @@ class Ongoing(BaseObj):
         return sorted_ongoings
 
     @property
+    def url(self):
+        return "https://animego.org" + self.raw_url
+
+    @property
     def id(self) -> str:
         return self.url.split("-")[-1]
 
     def episodes(self):
         with Anime() as a:
             return a.episodes(result=self)
+
+    def info(self):
+        with Anime() as a:
+            return a.anime_result_info(result=self)
 
     def __eq__(self, other):
         """return True if title name and episode num equals"""
@@ -338,6 +382,11 @@ class Anime:
         resp = self.request_get(self.BASE_URL + f"/anime/{result.id}/player?_allow=true").json()["content"]
         return Episode.parse(resp)
 
+    def anime_result_info(self, result: [AnimeResult, Ongoing]) -> AnimeInfo:
+        """Get detailed title info for AnimeResult object"""
+        resp = self.request_get(result.url).text
+        return AnimeInfo.parse(resp)[0]
+
     def players(self, episode: Episode) -> ListObj[Player]:
         """Return video players urls
 
@@ -433,3 +482,10 @@ class Anime:
             return anime
 
         return
+
+
+if __name__ == '__main__':
+    a = Anime()
+    #r = a.search("lain")[0]
+    r = a.ongoing()[0]
+    print(r.info())
