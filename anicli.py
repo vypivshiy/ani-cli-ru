@@ -14,14 +14,11 @@ parser.add_argument("-p", "--proxy", dest="PROXY", type=str, default="", help="a
 parser.add_argument("-v", "--videoplayer", dest="PLAYER", type=str, default="mpv", help="edit videoplayer. default mpv")
 parser.add_argument("-hc", "--headers-command", dest="OS_HEADERS_COMMAND", type=str, default="http-header-fields",
                     help="edit headers argument name. default http-header-fields")
-parser.add_argument("-i", "--instant", dest="INSTANT", action="store_true", default=False,
-                    help="Set instant view without change episodes")
 
 args = parser.parse_args()
 PROXY = args.PROXY
 PLAYER = args.PLAYER
 OS_HEADERS_COMMAND = args.OS_HEADERS_COMMAND
-INSTANT = args.INSTANT
 
 
 class Menu:
@@ -80,6 +77,9 @@ class Menu:
                     if is_aniboom(url):
                         command_ = {OS_HEADERS_COMMAND: "Referer: https://aniboom.one"}
                         run_player(url, **command_)
+                    else:
+                        run_player(url, )
+
         self.back_off()
 
     def choose_episode(self, num: int, result: ListObj[Union[AnimeResult, Ongoing]]):
@@ -128,6 +128,7 @@ This anime-title maybe blocked in your country, try using a vpn/proxy and repeat
             print(k, v[0])
 
     def command_wrapper(self, command):
+        self.cls()
         if self.__ACTIONS.get(command):
             self.__ACTIONS[command][1]()
             return True
