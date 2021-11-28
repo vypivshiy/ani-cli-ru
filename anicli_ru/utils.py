@@ -26,8 +26,8 @@ def run_player(url: str, player: str = "mpv", **commands) -> None:
     :return:
     """
     if commands:
-        commands = " ".join((f"--{k} {v}" for k, v in commands.items()))
-        system(f"{player} {commands}")
+        commands = " ".join((f'--{k}="{v}"' for k, v in commands.items()))
+        system(f"{player} {url} {commands}")
     else:
         system(f"{player} {url}")
 
