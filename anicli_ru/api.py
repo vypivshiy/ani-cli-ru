@@ -7,7 +7,6 @@ from requests import Session
 
 from anicli_ru.utils import kodik_decoder
 
-
 # aniboom regular expressions (work after unescape response html page)
 RE_ANIBOOM = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
 
@@ -23,6 +22,7 @@ RE_RANDOM_ANIME_TITLE = re.compile(r"data-video-player-title>.* «(.*?)»")
 
 class ListObj(UserList):
     """Modified list object"""
+
     def print_enumerate(self, *args):
         """print elements with getattr names arg or default invoke __str__ method
         """
@@ -442,10 +442,14 @@ class Anime:
 
     def get_aniboom_url(self, player: Player) -> str:
         """get aniboom video"""
-        # user agent keys must be write title-style
-        r = self.request_get(player.url,
-                             headers={k.title(): v for k, v in self.session.headers.copy().items()}.update({
-                                 "Referer": "https://animego.org/"}))
+        # fix 28 11 2021 request
+        r = self.request_get(
+            player.url,
+            headers={
+                "referer": "https://animego.org/",
+                "user-agent":
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 "
+                    "Safari/537.36"})
 
         r = unescape(r.text)
         url = re.findall(RE_ANIBOOM, r)[0].replace("\\", "")
@@ -486,6 +490,6 @@ class Anime:
 
 if __name__ == '__main__':
     a = Anime()
-    #r = a.search("lain")[0]
+    # r = a.search("lain")[0]
     r = a.ongoing()[0]
     print(r.info())
