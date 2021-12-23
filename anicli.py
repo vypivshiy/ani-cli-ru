@@ -7,18 +7,35 @@ from typing import Union
 from anicli_ru import Anime
 from anicli_ru.api import ListObj, Player, AnimeResult, Ongoing
 from anicli_ru.utils import run_player, is_aniboom
-
+from string import ascii_letters
+from random import sample
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-p", "--proxy", dest="PROXY", type=str, default="", help="add proxy")
-parser.add_argument("-v", "--videoplayer", dest="PLAYER", type=str, default="mpv", help="edit videoplayer. default mpv")
-parser.add_argument("-hc", "--headers-command", dest="OS_HEADERS_COMMAND", type=str, default="http-header-fields",
-                    help="edit headers argument name. default http-header-fields")
+parser.add_argument("-p", "--proxy", dest="PROXY", type=str, default="",
+                    help="Add proxy for bypass a ban")
+parser.add_argument("-d", "--download", dest="DOWNLOAD", default=False, action="store_true",
+                    help="Download mode. Default False. ffmpeg required")
+parser.add_argument("-q", "--quality", dest="QUALITY", type=int, default=720, choices=[360, 480, 720],
+                    help="default video quality. Works only kodik. Default 720")
+parser.add_argument("-i", "--instant", dest="INSTANT", default=False, action="store_true",
+                    help="Instant view mode. Useful if you want to watch a title without manual switching episodes")
+parser.add_argument("-s", "--source", dest="SOURCE", type=int, default=1, choices=[1, 2],
+                    help="Site source. 1-animego, 2-animania. Default 1 (animego)")
+
 
 args = parser.parse_args()
 PROXY = args.PROXY
-PLAYER = args.PLAYER
-OS_HEADERS_COMMAND = args.OS_HEADERS_COMMAND
+DOWNLOAD = args.DOWNLOAD
+QUALITY = args.QUALITY
+INSTANT = args.INSTANT
+PLAYER = "mpv"
+OS_HEADERS_COMMAND = "http-header-fields"
+
+if args.SOURCE == 1:
+    from anicli_ru.api import Anime, ListObj, Player, AnimeResult, Ongoing
+elif args.SOURCE == 2:
+    from anicli_ru.api2 import Anime, ListObj, Player, AnimeResult, Ongoing
+print("Chosen source:", Anime.BASE_URL)
 
 
 class Menu:
@@ -27,13 +44,10 @@ class Menu:
                           "c": ("[c]lear", self.cls),
                           "h": ("[h]elp", self.help),
                           "o": ("[o]ngoing print", self.ongoing),
-                          "r": ("[r]andom title", self.random),
                           "q": ("[q]uit", self.exit),
                           }
         self.anime = Anime()
         self.__back_action = True
-        self.__instant_dub = None
-        self.__instant_player = None
 
     def back_on(self):
         self.__back_action = False
@@ -49,21 +63,47 @@ class Menu:
     def is_back(self):
         return self.__back_action
 
-    def random(self):
-        anime = self.anime.random()
-        if anime:
-            print(anime[0])
-            self.choose_episode(1, anime)
+    def command_wrapper(self, command):
+        self.cls()
+        if self.__ACTIONS.get(command):
+            self.__ACTIONS[command][1]()
+            return True
+        return False
+
+    @staticmethod
+    def exit():
+        exit(0)
 
     def ongoing(self):
         while self.is_back:
             ongoings = self.anime.ongoing()
-            ongoings.print_enumerate()
-            print("Choose anime:", 1, "-", len(ongoings))
-            command = input(f"c_o [1-{len(ongoings)}] > ")
-            if not self.command_wrapper(command) and command.isdigit():
-                self.choose_episode(int(command), ongoings)
+            if len(ongoings) > 0:
+                ongoings.print_enumerate()
+                print("Choose anime:", 1, "-", len(ongoings))
+                command = input(f"c_o [1-{len(ongoings)}] > ")
+                if not self.command_wrapper(command) and command.isdigit():
+                    self.choose_episode(ongoings[int(command)-1])
+            else:
+                print("Cannot grub ongoings")
+                return
         self.back_off()
+
+    def _run_video(self, player: Player):
+        url = self.anime.get_video(player.url, QUALITY)
+        if is_aniboom(url):
+            if DOWNLOAD:
+                self._download(f'ffmpeg -y -headers "Referer: https://aniboom.one" -i "{url}" "{"".join(sample(ascii_letters, 12))}.mp4"')
+            else:
+                command_ = {OS_HEADERS_COMMAND: "Referer: https://aniboom.one"}
+                run_player(url, **command_)
+        else:
+            if DOWNLOAD:
+                self._download(f'ffmpeg -y -i "{url}" "{"".join(sample(ascii_letters, 12))}.mp4"')
+            else:
+                run_player(url)
+
+    def _download(self, command: str):
+        system(command)
 
     def choose_dub(self, results: ListObj[Player]):
         while self.is_back:
@@ -73,17 +113,16 @@ class Menu:
             if not self.command_wrapper(command) and command.isdigit():
                 if int(command) <= len(results):
                     print("Start playing")
-                    url = self.anime.get_video(results.choose(int(command)))
-                    if is_aniboom(url):
-                        command_ = {OS_HEADERS_COMMAND: "Referer: https://aniboom.one"}
-                        run_player(url, **command_)
-                    else:
-                        run_player(url, )
+                    if INSTANT:
+                        for player in results[int(command)-1:]:
+                            self._run_video(player)
 
+                    else:
+                        self._run_video(results[int(command)-1])
         self.back_off()
 
-    def choose_episode(self, num: int, result: ListObj[Union[AnimeResult, Ongoing]]):
-        episodes = self.anime.episodes(result.choose(num))
+    def choose_episode(self, result: Union[AnimeResult, Ongoing]):
+        episodes = result.episodes()
         if len(episodes) > 0:
             while self.is_back:
                 episodes.print_enumerate()
@@ -91,7 +130,7 @@ class Menu:
                 command = input(f"c_e [1-{len(episodes)}] > ")
                 if not self.command_wrapper(command) and command.isdigit():
                     if int(command) <= len(episodes):
-                        results = self.anime.players(episodes.choose(int(command)))
+                        results = episodes[int(command)-1].player()
                         if len(results) > 0:
                             self.choose_dub(results)
                         else:
@@ -99,10 +138,7 @@ class Menu:
                             return
             self.back_off()
         else:
-            print("""Warning! Episodes not found :(
-This anime-title maybe blocked in your country, try using a vpn/proxy and repeat operation
-
-""")
+            print("Warning! Episodes not found :(\nThis anime-title maybe blocked in your country, try using a vpn/proxy or use -s argument and repeat operation")
         return
 
     def choose_anime(self, results: ListObj[AnimeResult]):
@@ -111,7 +147,9 @@ This anime-title maybe blocked in your country, try using a vpn/proxy and repeat
             print("Choose anime:", 1, "-", len(results))
             command = input(f"c_a [1-{len(results)}] > ")
             if not self.command_wrapper(command) and command.isdigit():
-                self.choose_episode(int(command), results)
+                if 0 < int(command) < len(results):
+                    self.choose_episode(results[int(command)-1])
+                return
         self.back_off()
 
     def find(self, pattern):
@@ -123,42 +161,33 @@ This anime-title maybe blocked in your country, try using a vpn/proxy and repeat
             print("Not found!")
             return
 
-    def help(self):
-        for k, v in self.__ACTIONS.items():
-            print(k, v[0])
-
-    def command_wrapper(self, command):
-        self.cls()
-        if self.__ACTIONS.get(command):
-            self.__ACTIONS[command][1]()
-            return True
-        return False
-
     def main(self):
         if PROXY:
-            print("Check proxy")
-            try:
-                self.anime.session.get("https://animego.org", proxies=dict(http=PROXY, https=PROXY),
-                                       timeout=10)
-            except Exception as e:
-                print(e)
-                print("Failed proxy connect")
-                self.exit()
-            self.anime.session.proxies.update(dict(http=PROXY, https=PROXY))
-            print("Proxy connect success")
+            self.proxy()
         while True:
             print("Input anime name or USAGE: h for get commands")
             command = input("m > ")
             if not self.command_wrapper(command):
                 self.find(command)
 
+    def help(self):
+        for k, v in self.__ACTIONS.items():
+            print(k, v[0])
+
+    def proxy(self):
+        print("Check proxy")
+        try:
+            self.anime.session.get(self.anime.BASE_URL, proxies=dict(http=PROXY, https=PROXY),
+                                   timeout=10)
+        except Exception:
+            print("Failed proxy connect")
+            self.exit()
+        self.anime.session.proxies.update(dict(http=PROXY, https=PROXY))
+        print("Proxy connect success")
+
     @classmethod
     def run(cls):
         cls().main()
-
-    @staticmethod
-    def exit():
-        exit(0)
 
 
 if __name__ == '__main__':
