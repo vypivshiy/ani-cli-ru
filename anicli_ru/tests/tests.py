@@ -2,7 +2,11 @@ import unittest
 import requests
 
 from anicli_ru import Anime
-from anicli_ru.api import ListObj, Ongoing, AnimeResult, Episode, AnimeInfo
+from anicli_ru.api import ListObj, Ongoing, AnimeResult, Episode
+from anicli_ru.api2 import Anime as Anime2
+from anicli_ru.api2 import Ongoing as Ongoing2
+from anicli_ru.api2 import Episode as Episode2
+from anicli_ru.api2 import ListObj as ListObj2
 
 
 class TestRequests(unittest.TestCase):
@@ -24,27 +28,25 @@ class TestRequests(unittest.TestCase):
 
     def test_search_2(self):
         """Test get banned title in Russia Federation"""
-        results = self.anime.search("Эльфийская песнь")  # title, who have bigger than 1 episode and banned in Russia
-        episodes = self.anime.episodes(results[0])
+        results = self.anime.search("Elfen Lied")  # title, who have bigger than 1 episode and banned in Russia
+        episodes = results[0].episodes()
         self.assertEqual(len(episodes), 0)
 
     def test_search_3(self):
         """Test normal case search and get episode"""
-        results = self.anime.search("Джо")  # Jo'Jo Adventures
-        episodes = results.choose(6).episodes()  # chapter 1
-        self.assertEqual(len(episodes), 26)
-        choose = episodes[0]
-        players = choose.player()
-        self.assertEqual(players[2].dub_name, "AniDUB")
-        self.assertTrue("sibnet" in players[2].url)  # sibnet player available
+        results = self.anime.search("Angel Beats")
+        episodes = results[1].episodes()
+        self.assertEqual(len(episodes), 13)
+        players = episodes[0].player()
+        self.assertEqual(players[3].dub_name, "AniDUB")
+        self.assertTrue("sibnet" in players[3].url)  # sibnet player available
 
     def test_search_4(self):
         """Test get ongoing series"""
         ongoings = self.anime.ongoing()
         self.assertGreater(len(ongoings), 0)
         if len(ongoings) > 0:
-            episodes = self.anime.episodes(ongoings.choose(1))
-            self.assertIsInstance(episodes, ListObj)
+            episodes = ongoings[0].episodes()
             self.assertGreater(len(episodes), 0)
         else:
             self.skipTest("Cannot get ongoings in your country or ip address")
@@ -57,16 +59,6 @@ class TestRequests(unittest.TestCase):
         players = episodes[12].player()
         self.assertIsInstance(players, ListObj)
         self.assertEqual(len(players), 1)
-
-    def test_search_random(self):
-        """Test get random anime title
-
-        Maybe fail due to bans in your country"""
-        result = self.anime.random()  # return ListObj with one element
-        self.assertIsInstance(result, ListObj)
-        eps = result[0].episodes()
-        self.assertIsInstance(eps, ListObj)
-        self.assertGreater(len(eps), 0)
 
     def test_parser_ongoings(self):
         r = requests.get("https://animego.org").text
@@ -89,11 +81,30 @@ class TestRequests(unittest.TestCase):
         self.assertEqual(len(rez), 13)
         print()
 
-    def test_parser_detailed_info(self):
-        r = self.anime.search("lain")[0]
-        info = r.info()
-        self.assertEqual(info.status, "Вышел")
-        self.assertEqual(info.type, "ТВ Сериал")
-        self.assertEqual(info.status, "Вышел")
-        self.assertEqual(info.source, "Оригинал")
-        self.assertEqual(info.title, "Эксперименты Лэйн")
+
+class TestAnime2(unittest.TestCase):
+    """test animania source"""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.anime = Anime2()
+
+    def test_search(self):
+        res = self.anime.search("experiments lain")
+        self.assertEqual(len(res), 1)
+        episodes = res[0].episodes()
+        self.assertEqual(len(episodes), 1)
+        players = episodes[0].player()
+        self.assertEqual(len(players), 13)
+
+    def test_parser1(self):
+        r = requests.get("https://animania.online/index.php")
+        ongoings = Ongoing2.parse(r.text)
+        self.assertGreater(len(ongoings), 1)
+
+    def test_parser2(self):
+        r = requests.get("https://animania.online/9403-jeksperimenty-ljejn-serial-experiments-lain-1998-smotret-onlajn.html")
+        res: ListObj2[Episode2] = Episode2.parse(r.text)
+        self.assertEqual(len(res), 1)  # get XL Media dub
+        players = res[0].player()
+        self.assertEqual(len(players), 13)  # get 13 episodes
