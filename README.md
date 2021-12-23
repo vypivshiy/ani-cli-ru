@@ -16,6 +16,7 @@ ___
 * mpv
 * ffmpeg (опционально, для скачивания видео через аргумент "**-d**")
 * python 3.6+
+* pip
 * requests
 ___
 # Install:
@@ -31,6 +32,9 @@ git clone https://github.com/vypivshiy/ani-cli-ru.git
 cd ani-cli-ru
 python3 setup.py install
 ```
+Или
+
+`python3 -m pip install anicli-ru`
 ___
 # Usage:
 `anicli-ru`
@@ -67,6 +71,17 @@ o [o]ngoing - напечатать недавно вышедшие онгоин�
 если нет доступа к одному из источников. По умолчанию animego
 
 ---
+# Api quickstart example
+```python
+from anicli_ru import Anime
+
+a = Anime()
+ongoings = a.ongoing()  # get ongoings
+results = a.search("experiments lain")  # search anime
+episodes = results[0].episodes()  # get episodes
+players = episodes[0].player()  # get first dub episode
+print(players[0].get_video())  # get direct video url
+```
 # Roadmap:
 
 - [x] добавить поддержку proxy;
