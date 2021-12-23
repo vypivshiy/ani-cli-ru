@@ -147,7 +147,7 @@ class Menu:
             print("Choose anime:", 1, "-", len(results))
             command = input(f"c_a [1-{len(results)}] > ")
             if not self.command_wrapper(command) and command.isdigit():
-                if 0 < int(command) < len(results):
+                if 0 < int(command) <= len(results):
                     self.choose_episode(results[int(command)-1])
                 return
         self.back_off()
