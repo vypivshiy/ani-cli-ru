@@ -1,2 +1,2 @@
 from anicli_ru.api import Anime
-__version__ = "2.1.2"
+__version__ = "3.0.0"
