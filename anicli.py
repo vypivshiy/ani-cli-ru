@@ -4,8 +4,6 @@ from os import name as sys_name
 import argparse
 from typing import Union
 
-from anicli_ru import Anime
-from anicli_ru.api import ListObj, Player, AnimeResult, Ongoing
 from anicli_ru.utils import run_player, is_aniboom
 from string import ascii_letters
 from random import sample
