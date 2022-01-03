@@ -2,6 +2,7 @@ from typing import Union, List
 
 from anicli_ru.base import BaseAnime, ListObj, BaseObj
 from html.parser import unescape
+from typing import List
 import re
 
 
@@ -114,7 +115,7 @@ class Episode(BaseObj):
     def __str__(self):
         return f"{self.dub_name} count: {self.count}"
 
-    def player(self) -> ListObj[Player]:
+    def player(self) -> List[Player]:
         _players = ListObj()
         for i, videos in enumerate(self.videos, 1):
             p: Player = Player()
@@ -151,15 +152,15 @@ class Episode(BaseObj):
 class Anime(BaseAnime):
     BASE_URL = "https://animania.online/index.php"
 
-    def search(self, q: str) -> ListObj[AnimeResult]:
+    def search(self, q: str) -> List[AnimeResult]:
         r = self.request_get(self.BASE_URL, params=dict(do="search", subaction="search", story=q))
         return AnimeResult.parse(r.text)
 
-    def ongoing(self) -> ListObj[Ongoing]:
+    def ongoing(self) -> List[Ongoing]:
         r = self.request_get(self.BASE_URL)
         return Ongoing.parse(r.text)
 
-    def episodes(self, result: Union[AnimeResult, Ongoing]) -> ListObj[Episode]:
+    def episodes(self, result: Union[AnimeResult, Ongoing]) -> List[Episode]:
         r = self.request_get(result.url)
         return Episode.parse(r.text)
 

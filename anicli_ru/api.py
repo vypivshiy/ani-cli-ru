@@ -1,6 +1,6 @@
 import re
 from html import unescape
-from typing import Union
+from typing import Union, List
 from anicli_ru.base import ListObj, BaseObj, BaseAnime
 
 
@@ -206,7 +206,7 @@ class Anime(BaseAnime):
                       "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
                   "x-requested-with": "XMLHttpRequest"}
 
-    def search(self, q: str) -> ListObj[AnimeResult]:
+    def search(self, q: str) -> List[AnimeResult]:
         """Get search results
 
         :param str q: search query
@@ -216,7 +216,7 @@ class Anime(BaseAnime):
         resp = self.request_get(self.BASE_URL + "/search/anime", params={"q": q}).text
         return ListObj(AnimeResult.parse(resp))
 
-    def ongoing(self) -> ListObj[Ongoing]:
+    def ongoing(self) -> List[Ongoing]:
         """Get ongoings
 
         :return: ongoings results list
@@ -225,7 +225,7 @@ class Anime(BaseAnime):
         resp = self.request_get(self.BASE_URL).text
         return Ongoing.parse(resp)
 
-    def episodes(self, result: Union[AnimeResult, Ongoing]) -> ListObj[Episode]:
+    def episodes(self, result: Union[AnimeResult, Ongoing]) -> List[Episode]:
         """Get available episodes
 
         :param result: Ongoing or AnimeSearch object
@@ -235,12 +235,12 @@ class Anime(BaseAnime):
         resp = self.request_get(self.BASE_URL + f"/anime/{result.id}/player?_allow=true").json()["content"]
         return Episode.parse(resp)
 
-    def players(self, episode: Episode) -> ListObj[Player]:
+    def players(self, episode: Episode) -> List[Player]:
         """Return video players urls
 
         :param Episode episode: Episode object
         :return: list available players
-        :rtype: ListObj[Player]
+        :rtype: List[Player]
         """
         resp = self.request_get(self.BASE_URL + "/anime/series", params={"dubbing": 2, "provider": 24,
                                                                          "episode": episode.num,

@@ -3,6 +3,7 @@ from collections import UserList
 import re
 from html.parser import unescape
 from .utils import kodik_decoder
+from typing import Tuple
 
 # aniboom regular expressions (work after unescape response html page)
 RE_ANIBOOM = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
@@ -96,7 +97,7 @@ class BaseAnime:
         raise NotImplementedError
 
     @staticmethod
-    def _get_kodik_payload(resp: str, referer: str) -> tuple[dict, str]:
+    def _get_kodik_payload(resp: str, referer: str) -> Tuple[dict, str]:
         # prepare values for next POST request
         url_data, = re.findall(RE_KODIK_URL_DATA, resp)
         type_, = re.findall(RE_KODIK_VIDEO_TYPE, url_data)

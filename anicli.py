@@ -2,7 +2,7 @@
 from os import system
 from os import name as sys_name
 import argparse
-from typing import Union
+from typing import Union, List
 
 from anicli_ru.utils import run_player, is_aniboom
 from string import ascii_letters
@@ -103,7 +103,7 @@ class Menu:
     def _download(self, command: str):
         system(command)
 
-    def choose_dub(self, results: ListObj[Player]):
+    def choose_dub(self, results: List[Player]):
         while self.is_back:
             results.print_enumerate()
             print("Choose dub:", 1, "-", len(results))
@@ -139,7 +139,7 @@ class Menu:
             print("Warning! Episodes not found :(\nThis anime-title maybe blocked in your country, try using a vpn/proxy or use -s argument and repeat operation")
         return
 
-    def choose_anime(self, results: ListObj[AnimeResult]):
+    def choose_anime(self, results: List[AnimeResult]):
         while self.is_back:
             results.print_enumerate()
             print("Choose anime:", 1, "-", len(results))
