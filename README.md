@@ -15,7 +15,7 @@ ___
 # Dependencies:
 * mpv
 * ffmpeg (опционально, для скачивания видео через аргумент "**-d**")
-* python 3.6+
+* python 3.7+
 * pip
 * requests
 ___
