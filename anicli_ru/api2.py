@@ -1,5 +1,5 @@
+from __future__ import annotations
 from typing import Union, List
-
 from anicli_ru.base import BaseAnime, ListObj, BaseObj
 from html.parser import unescape
 import re

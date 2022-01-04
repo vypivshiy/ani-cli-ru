@@ -1,10 +1,9 @@
-from pathlib import Path
 from setuptools import setup
-
 from anicli_ru import __version__
 
-this_directory = Path(__file__).parent
-long_description = (this_directory / "README.md").read_text()
+with open("README.md", encoding="utf-8") as f:
+    long_description = f.read()
+
 setup(
     name='anicli-ru',
     version=__version__,
