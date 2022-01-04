@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+from __future__ import annotations
 from os import system
 from os import name as sys_name
 import argparse

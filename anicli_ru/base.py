@@ -1,8 +1,9 @@
+from __future__ import annotations
 from requests import Session
 from collections import UserList
-import re
 from html.parser import unescape
 from .utils import kodik_decoder
+import re
 
 # aniboom regular expressions (work after unescape response html page)
 RE_ANIBOOM = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')

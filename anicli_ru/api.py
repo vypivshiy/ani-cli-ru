@@ -1,7 +1,8 @@
-import re
+from __future__ import annotations
 from html import unescape
 from typing import Union
 from anicli_ru.base import ListObj, BaseObj, BaseAnime
+import re
 
 
 class AnimeResult(BaseObj):
