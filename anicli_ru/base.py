@@ -2,6 +2,7 @@ from __future__ import annotations
 from requests import Session
 from collections import UserList
 from html.parser import unescape
+from urllib.parse import urlparse
 from .utils import kodik_decoder
 import re
 
@@ -131,7 +132,7 @@ class BaseAnime:
                 f"Unknown player balancer. get_kodik_url method support kodik and anivod players\nvideo url: {player_url}")
 
         url_, = RE_KODIK_URL.findall(player_url)
-        url = f"https://{url_}/gvi"
+        url = "https://" + urlparse(url_).netloc + "/gvi"
         resp = self.request("POST", url, data=data,
                             headers=self.USER_AGENT.copy().update({"referer": f"https://{url_data}",
                                                                    "orgign": url.replace("/gvi", ""),
