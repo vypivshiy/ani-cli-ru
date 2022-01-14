@@ -174,4 +174,7 @@ if __name__ == '__main__':
     a = Anime()
     ongs = a.ongoing()
     eps = ongs[0].episodes()
-    print()
+    v = eps[0].player()
+    u = v[0].url
+    q = v[0].get_video()
+    print(len(eps))
