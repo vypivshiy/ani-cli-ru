@@ -45,7 +45,7 @@ class Ongoing(BaseObj):
 
     @property
     def url(self):
-        return "https://animania.online/index.php" + self.raw_url
+        return "https://animania.online" + self.raw_url
 
     def episodes(self):
         with Anime() as a:
@@ -160,16 +160,18 @@ class Anime(BaseAnime):
         return Ongoing.parse(r.text)
 
     def episodes(self, result: Union[AnimeResult, Ongoing]) -> ListObj[Episode]:
-        r = self.request_get(result.url)
+        r = self.request_get(result.url, headers=self.session.headers.copy().update(
+            {"Referer": result.url})
+                             )
         return Episode.parse(r.text)
 
     def players(self):
-        # get players from episodes method
+        # get players from episode object
         raise NotImplementedError
 
 
 if __name__ == '__main__':
     a = Anime()
-    rez = a.ongoing()[4]
-    eps = rez.episodes()
+    ongs = a.ongoing()
+    eps = ongs[0].episodes()
     print()
