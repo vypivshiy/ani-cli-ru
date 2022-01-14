@@ -9,6 +9,7 @@ import re
 RE_ANIBOOM = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
 
 # kodik/anivod regular expressions
+RE_KODIK_URL = re.compile(r"https://\w+\.\w{2,6}/seria/\d+/\w+/\d{3,4}p")
 RE_KODIK_URL_DATA = re.compile(r'iframe.src = "//(.*?)"')
 RE_KODIK_VIDEO_TYPE = re.compile(r"go/(\w+)/\d+")
 RE_KODIK_VIDEO_ID = re.compile(r"go/\w+/(\d+)")
@@ -21,11 +22,10 @@ class ListObj(UserList):
     def print_enumerate(self, *args):
         """print elements with getattr names arg. Default invoke __str__ method"""
         if len(self) > 0:
-            if args:
-                for i, obj in enumerate(self, 1):
+            for i, obj in enumerate(self, 1):
+                if args:
                     print(f"[{i}]", *(getattr(obj, arg) for arg in args))
-            else:
-                for i, obj in enumerate(self, 1):
+                else:
                     print(f"[{i}]", obj)
         else:
             print("Results not founded!")
@@ -50,7 +50,7 @@ class BaseObj:
         for values in zip(*results.values()):
             attrs = zip(results.keys(), values)
             # generate objects like {attr_name: attr_value}
-            l_objects.append(cls(**dict((k, v) for k, v in attrs)))
+            l_objects.append(cls(**dict(attrs)))
         return l_objects
 
 
@@ -61,6 +61,14 @@ class BaseAnime:
         "user-agent":
             "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
             "x-requested-with": "XMLHttpRequest"}
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        # singleton for correct store session
+        if not cls._instance:
+            cls._instance = super(BaseAnime, cls).__new__(
+                cls, *args, **kwargs)
+        return cls._instance
 
     def __init__(self, session: Session = None):
         if session:
@@ -78,8 +86,7 @@ class BaseAnime:
         return
 
     def request(self, method, url, **kwargs):
-        resp = self.session.request(method, url, **kwargs)
-        return resp
+        return self.session.request(method, url, **kwargs)
 
     def request_get(self, url, **kwargs):
         return self.request("GET", url, **kwargs)
@@ -119,13 +126,12 @@ class BaseAnime:
 
         data, url_data = self._get_kodik_payload(resp.text, referer)
         # kodik server regular expr detection
-        if re.match(r'https://(\w+\.\w{2,6})/seria/\d+/\w+/\d{3,4}p', player_url):
-            url_, = re.findall("https://(\w+\.\w{2,6})/seria/\d+/\w+/\d{3,4}p", player_url)
-            url = f"https://{url_}/gvi"
-        else:
+        if not RE_KODIK_URL.match(player_url):
             raise TypeError(
                 f"Unknown player balancer. get_kodik_url method support kodik and anivod players\nvideo url: {player_url}")
 
+        url_, = RE_KODIK_URL.findall(player_url)
+        url = f"https://{url_}/gvi"
         resp = self.request("POST", url, data=data,
                             headers=self.USER_AGENT.copy().update({"referer": f"https://{url_data}",
                                                                    "orgign": url.replace("/gvi", ""),
@@ -148,8 +154,7 @@ class BaseAnime:
                     "Safari/537.36"})
 
         r = unescape(r.text)
-        url = re.findall(RE_ANIBOOM, r)[0].replace("\\", "")
-        return url
+        return re.findall(RE_ANIBOOM, r)[0].replace("\\", "")
 
     def get_video(self, player_url: str, quality: int = 720, *, referer: str = ""):
         """Return direct video url
@@ -162,7 +167,7 @@ class BaseAnime:
         elif "aniboom" in player_url:
             url = self.get_aniboom_url(player_url)
             return url
-        elif re.match(r'https://\w+\.\w{2,6}/seria/\d+/\w+/\d{3,4}p', player_url):
+        elif RE_KODIK_URL.match(player_url):
             url = self.get_kodik_url(player_url, quality, referer=referer)
             return url
         else:
