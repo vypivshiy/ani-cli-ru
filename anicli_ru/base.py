@@ -1,10 +1,11 @@
 from __future__ import annotations
-from requests import Session
+from requests import Session, Response
 from collections import UserList
 from html.parser import unescape
 from urllib.parse import urlparse
 from .utils import kodik_decoder
 import re
+from unittest import TestCase
 
 # aniboom regular expressions (work after unescape method response html page)
 RE_ANIBOOM = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
@@ -32,7 +33,7 @@ class ResultList(UserList):
             print("Results not founded!")
 
 
-class BaseResult:
+class BaseParserObject:
     """base object parser for text respons"""
     REGEX: dict  # {"attr_name": re.compile(<regular expression>)}
     # for ide help add attr ex
@@ -90,13 +91,13 @@ class BaseAnimeHTTP:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.session.close()
 
-    def request(self, method, url, **kwargs):
+    def request(self, method, url, **kwargs) -> Response:
         return self.session.request(method, url, **kwargs)
 
-    def request_get(self, url, **kwargs):
+    def request_get(self, url, **kwargs) -> Response:
         return self.request("GET", url, **kwargs)
 
-    def request_post(self, url, **kwargs):
+    def request_post(self, url, **kwargs) -> Response:
         return self.request("POST", url, **kwargs)
 
     def search(self, q: str):
@@ -183,15 +184,46 @@ class BaseAnimeHTTP:
             print("Warning!", player_url, "is not supported!")
 
 
-class BaseTestParser:
-    def __init__(self, anime: BaseAnimeHTTP):
-        self.anime = anime
+class BasePlayer(BaseParserObject):
+    url: str
 
-    def test_search(self):
+    def get_video(self, quality: int = 720, referer: str = "https://example.com/"):
         raise NotImplementedError
+
+
+class BaseEpisode(BaseParserObject):
+    def player(self):
+        raise NotImplementedError
+
+
+class BaseOngoing(BaseParserObject):
+    def episodes(self):
+        raise NotImplementedError
+
+
+class BaseResult(BaseParserObject):
+    def episodes(self):
+        raise NotImplementedError
+
+
+class BaseTestParser(TestCase):
+    anime: BaseAnimeHTTP
+
+    def test_regex_result(self, url: str):
+        rez = self.anime.search("lain")
+
+    def test_regex_ongoing(self, url: str):
+        rez = self.anime.search("lain")
+
+    def test_regex_episode(self, url: str):
+        rez = self.anime.search("lain")
+
+    def test_regex_player(self, url: str):
+        rez = self.anime.search("lain")
 
     def test_get_ongoing(self):
-        raise NotImplementedError
+        rez = self.anime.ongoing()
+        self.assertGreater(len(rez), 1)
 
     def test_get_video(self):
         raise NotImplementedError
@@ -200,5 +232,5 @@ class BaseTestParser:
 
 # old aliases
 ListObj = ResultList
-BaseObj = BaseResult
+BaseObj = BaseParserObject
 BaseAnime = BaseAnimeHTTP
