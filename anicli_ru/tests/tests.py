@@ -1,12 +1,11 @@
 import unittest
 import requests
 
-from anicli_ru import Anime
-from anicli_ru.api import ListObj, Ongoing, AnimeResult, Episode
-from anicli_ru.api2 import Anime as Anime2
-from anicli_ru.api2 import Ongoing as Ongoing2
-from anicli_ru.api2 import Episode as Episode2
-from anicli_ru.api2 import ListObj as ListObj2
+from anicli_ru.extractors.animego import ResultList, Ongoing, AnimeResult, Episode, Anime
+from anicli_ru.extractors.animania import Anime as Anime2
+from anicli_ru.extractors.animania import Ongoing as Ongoing2
+from anicli_ru.extractors.animania import Episode as Episode2
+from anicli_ru.extractors.animania import ResultList as ListObj2
 
 
 class TestRequests(unittest.TestCase):
@@ -17,14 +16,14 @@ class TestRequests(unittest.TestCase):
     def test_get_ongoings(self):
         """Test get ongoings list"""
         ongoings = self.anime.ongoing()
-        self.assertIsInstance(ongoings, ListObj)
+        self.assertIsInstance(ongoings, ResultList)
         self.assertGreater(len(ongoings), 0)
 
     def test_search_1(self):
         """Test get anime list"""
         results = self.anime.search("Violet Evergarden")
         self.assertEqual(len(results), 4)
-        self.assertIsInstance(results, ListObj)
+        self.assertIsInstance(results, ResultList)
 
     def test_search_2(self):
         """Test get banned title in Russia Federation"""
@@ -57,19 +56,19 @@ class TestRequests(unittest.TestCase):
         episodes = results[0].episodes()
         self.assertEqual(len(episodes), 13)
         players = episodes[12].player()
-        self.assertIsInstance(players, ListObj)
+        self.assertIsInstance(players, ResultList)
         self.assertEqual(len(players), 1)
 
     def test_parser_ongoings(self):
         r = requests.get("https://animego.org").text
         ongoings = Ongoing.parse(r)
-        self.assertIsInstance(ongoings, ListObj)
+        self.assertIsInstance(ongoings, ResultList)
         self.assertGreater(len(ongoings), 0)
 
     def test_parser_anime(self):
         r = requests.get("https://animego.org/search/anime", params={"q": "lain"}).text
         rez = AnimeResult.parse(r)
-        self.assertIsInstance(rez, ListObj)
+        self.assertIsInstance(rez, ResultList)
         self.assertEqual(len(rez), 1)
         self.assertEqual(rez[0].id, '1114')
 
@@ -77,7 +76,7 @@ class TestRequests(unittest.TestCase):
         r = requests.get("https://animego.org/anime/1114/player?_allow=true", headers={
             'x-requested-with': 'XMLHttpRequest'}).json()["content"]
         rez = Episode.parse(r)
-        self.assertIsInstance(rez, ListObj)
+        self.assertIsInstance(rez, ResultList)
         self.assertEqual(len(rez), 13)
         print()
 
