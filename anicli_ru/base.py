@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 from .utils import kodik_decoder
 import re
 
-# aniboom regular expressions (work after unescape response html page)
+# aniboom regular expressions (work after unescape method response html page)
 RE_ANIBOOM = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
 
 # kodik/anivod regular expressions
@@ -17,7 +17,7 @@ RE_KODIK_VIDEO_ID = re.compile(r"go/\w+/(\d+)")
 RE_KODIK_VIDEO_HASH = re.compile(r"go/\w+/\d+/(.*?)/\d+p\?")
 
 
-class ListObj(UserList):
+class ResultList(UserList):
     """Modified list object"""
 
     def print_enumerate(self, *args):
@@ -32,9 +32,12 @@ class ListObj(UserList):
             print("Results not founded!")
 
 
-class BaseObj:
-    """base object for responses"""
+class BaseResult:
+    """base object parser for text respons"""
     REGEX: dict  # {"attr_name": re.compile(<regular expression>)}
+    # for ide help add attr ex
+    # url: str
+    # id: int
 
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
@@ -43,9 +46,9 @@ class BaseObj:
             setattr(self, k, v)
 
     @classmethod
-    def parse(cls, html: str) -> ListObj:
+    def parse(cls, html: str) -> ResultList:
         """class object factory"""
-        l_objects = ListObj()
+        l_objects = ResultList()
         # generate dict like {attr_name: list(values)}
         results = {k: re.findall(v, html) for k, v in cls.REGEX.items()}
         for values in zip(*results.values()):
@@ -55,9 +58,11 @@ class BaseObj:
         return l_objects
 
 
-class BaseAnime:
+class BaseAnimeHTTP:
+    """Base Anime http class"""
     BASE_URL = "your_base_source_link"
     # mobile user-agent can sometimes gives a chance to bypass the anime title ban
+    # XMLHttpRequest value required!
     USER_AGENT = {
         "user-agent":
             "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
@@ -67,7 +72,7 @@ class BaseAnime:
     def __new__(cls, *args, **kwargs):
         # singleton for correct store session
         if not cls._instance:
-            cls._instance = super(BaseAnime, cls).__new__(
+            cls._instance = super(BaseAnimeHTTP, cls).__new__(
                 cls, *args, **kwargs)
         return cls._instance
 
@@ -84,13 +89,15 @@ class BaseAnime:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.session.close()
-        return
 
     def request(self, method, url, **kwargs):
         return self.session.request(method, url, **kwargs)
 
     def request_get(self, url, **kwargs):
         return self.request("GET", url, **kwargs)
+
+    def request_post(self, url, **kwargs):
+        return self.request("POST", url, **kwargs)
 
     def search(self, q: str):
         raise NotImplementedError
@@ -174,3 +181,24 @@ class BaseAnime:
         else:
             # catch any players for add in script
             print("Warning!", player_url, "is not supported!")
+
+
+class BaseTestParser:
+    def __init__(self, anime: BaseAnimeHTTP):
+        self.anime = anime
+
+    def test_search(self):
+        raise NotImplementedError
+
+    def test_get_ongoing(self):
+        raise NotImplementedError
+
+    def test_get_video(self):
+        raise NotImplementedError
+
+
+
+# old aliases
+ListObj = ResultList
+BaseObj = BaseResult
+BaseAnime = BaseAnimeHTTP

@@ -1,11 +1,11 @@
 from __future__ import annotations
 from html import unescape
 from typing import Union
-from anicli_ru.base import ListObj, BaseObj, BaseAnime
+from anicli_ru.base import ResultList, BaseResult, BaseAnimeHTTP
 import re
 
 
-class AnimeResult(BaseObj):
+class AnimeResult(BaseResult):
     """
     url str: anime url
 
@@ -28,7 +28,7 @@ class AnimeResult(BaseObj):
             return a.episodes(result=self)
 
 
-class Ongoing(BaseObj):
+class Ongoing(BaseResult):
     """
     title: str title name
 
@@ -55,19 +55,19 @@ class Ongoing(BaseObj):
     thumbnail: str
 
     @classmethod
-    def parse(cls, html: str) -> ListObj:
-        ongoings = ListObj()
+    def parse(cls, html: str) -> ResultList:
+        ongoings = ResultList()
         # generate dict like {attr_name: list(values)}
         results = {k: re.findall(v, html) for k, v in cls.REGEX.items()}
 
         for values in zip(*results.values()):
             attrs = zip(results.keys(), values)
             # generate objects like {attr_name: attr_value}
-            ongoings.append(cls(**dict((k, v) for k, v in attrs)))
+            ongoings.append(cls(**dict(attrs)))
 
         # shitty sort duplicates (by title and episode num) algorithm
         # but ongoings list contains less than 100 elements guaranty
-        sorted_ongoings = ListObj()
+        sorted_ongoings = ResultList()
         for ongoing in ongoings:
             if ongoing in sorted_ongoings:
                 for sorted_ong in sorted_ongoings:
@@ -110,7 +110,7 @@ class Ongoing(BaseObj):
         return f"{self.title} {self.num} {self.dub}"
 
 
-class Episode(BaseObj):
+class Episode(BaseResult):
     """
     num: int episode number
 
@@ -134,7 +134,7 @@ class Episode(BaseObj):
             return a.players(self)
 
 
-class Player(BaseObj):
+class Player(BaseResult):
     """
     dub_id int: dubbing ing
 
@@ -156,8 +156,8 @@ class Player(BaseObj):
     dub_id: int
 
     @classmethod
-    def parse(cls, html: str) -> ListObj:
-        l_objects = ListObj()
+    def parse(cls, html: str) -> ResultList:
+        l_objects = ResultList()
         # generate dict like {attr_name: list(values)}
         dub_names = re.findall(cls.REGEX["dub_name"], html)  # dub_id, dub_name
         players = re.findall(cls.REGEX["player"], html)  # player_url, dub_id
@@ -187,7 +187,7 @@ class Player(BaseObj):
         return f"{self.dub_name} ({u})"
 
 
-class Anime(BaseAnime):
+class Anime(BaseAnimeHTTP):
     """Anime class parser
 
     :example:
@@ -207,36 +207,36 @@ class Anime(BaseAnime):
                       "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
                   "x-requested-with": "XMLHttpRequest"}
 
-    def search(self, q: str) -> ListObj[AnimeResult]:
+    def search(self, q: str) -> ResultList[AnimeResult]:
         """Get search results
 
         :param str q: search query
         :return: anime results list
-        :rtype: ListObj
+        :rtype: ResultList
         """
         resp = self.request_get(self.BASE_URL + "/search/anime", params={"q": q}).text
-        return ListObj(AnimeResult.parse(resp))
+        return ResultList(AnimeResult.parse(resp))
 
-    def ongoing(self) -> ListObj[Ongoing]:
+    def ongoing(self) -> ResultList[Ongoing]:
         """Get ongoings
 
         :return: ongoings results list
-        :rtype: ListObj
+        :rtype: ResultList
         """
         resp = self.request_get(self.BASE_URL).text
         return Ongoing.parse(resp)
 
-    def episodes(self, result: Union[AnimeResult, Ongoing]) -> ListObj[Episode]:
+    def episodes(self, result: Union[AnimeResult, Ongoing]) -> ResultList[Episode]:
         """Get available episodes
 
         :param result: Ongoing or AnimeSearch object
         :return: list available episodes
-        :rtype: ListObj
+        :rtype: ResultList
         """
         resp = self.request_get(self.BASE_URL + f"/anime/{result.id}/player?_allow=true").json()["content"]
         return Episode.parse(resp)
 
-    def players(self, episode: Episode) -> ListObj[Player]:
+    def players(self, episode: Episode) -> ResultList[Player]:
         """Return video players urls
 
         :param Episode episode: Episode object
@@ -246,5 +246,4 @@ class Anime(BaseAnime):
         resp = self.request_get(self.BASE_URL + "/anime/series", params={"dubbing": 2, "provider": 24,
                                                                          "episode": episode.num,
                                                                          "id": episode.id}).json()["content"]
-        players = Player.parse(resp)
-        return players
+        return Player.parse(resp)

@@ -1,11 +1,11 @@
 from __future__ import annotations
 from typing import Union, List
-from anicli_ru.base import BaseAnime, ListObj, BaseObj
+from anicli_ru.base import BaseAnimeHTTP, ResultList, BaseResult
 from html.parser import unescape
 import re
 
 
-class AnimeResult(BaseObj):
+class AnimeResult(BaseResult):
     """
     url str: anime url
 
@@ -24,7 +24,7 @@ class AnimeResult(BaseObj):
             return a.episodes(result=self)
 
 
-class Ongoing(BaseObj):
+class Ongoing(BaseResult):
     """
     title: str title name
 
@@ -55,7 +55,7 @@ class Ongoing(BaseObj):
         return f"{self.title} {self.num}"
 
 
-class Player(BaseObj):
+class Player(BaseResult):
     """
     dub_id int: dubbing ing
 
@@ -70,7 +70,7 @@ class Player(BaseObj):
     num: int
 
     @classmethod
-    def parse(cls, html: str) -> ListObj:
+    def parse(cls, html: str) -> ResultList:
         raise NotImplementedError("Get <Player> Object from Episode. Ex: Episode().player()")
 
     @property
@@ -90,7 +90,7 @@ class Player(BaseObj):
         return f"{self.num} {self.dub_name} ({u})"
 
 
-class Episode(BaseObj):
+class Episode(BaseResult):
     """
     num: int episode number
 
@@ -114,8 +114,8 @@ class Episode(BaseObj):
     def __str__(self):
         return f"{self.dub_name} count: {self.count}"
 
-    def player(self) -> ListObj[Player]:
-        _players = ListObj()
+    def player(self) -> ResultList[Player]:
+        _players = ResultList()
         for i, videos in enumerate(self.videos, 1):
             p: Player = Player()
             p.dub_id = self.dub_id
@@ -126,9 +126,9 @@ class Episode(BaseObj):
         return _players
 
     @classmethod
-    def parse(cls, html: str) -> ListObj:
+    def parse(cls, html: str) -> ResultList:
         videos_chunks = re.findall(cls.REGEX["video_chunks"], html)
-        l_obj = ListObj()
+        l_obj = ResultList()
         dubs = re.findall(cls.REGEX["dubs"], html)
         videos = [re.findall(cls.REGEX["videos"], chunk[0]) for chunk in videos_chunks]
         for dub_id, dub_name, count, video in zip([int(n[0]) for n in dubs],  # dub id
@@ -148,18 +148,18 @@ class Episode(BaseObj):
         return self.count > other.count
 
 
-class Anime(BaseAnime):
+class Anime(BaseAnimeHTTP):
     BASE_URL = "https://animania.online/index.php"
 
-    def search(self, q: str) -> ListObj[AnimeResult]:
+    def search(self, q: str) -> ResultList[AnimeResult]:
         r = self.request_get(self.BASE_URL, params=dict(do="search", subaction="search", story=q))
         return AnimeResult.parse(r.text)
 
-    def ongoing(self) -> ListObj[Ongoing]:
+    def ongoing(self) -> ResultList[Ongoing]:
         r = self.request_get(self.BASE_URL)
         return Ongoing.parse(r.text)
 
-    def episodes(self, result: Union[AnimeResult, Ongoing]) -> ListObj[Episode]:
+    def episodes(self, result: Union[AnimeResult, Ongoing]) -> ResultList[Episode]:
         r = self.request_get(result.url, headers=self.session.headers.copy().update(
             {"Referer": result.url})
                              )
@@ -169,12 +169,3 @@ class Anime(BaseAnime):
         # get players from episode object
         raise NotImplementedError
 
-
-if __name__ == '__main__':
-    a = Anime()
-    ongs = a.ongoing()
-    eps = ongs[0].episodes()
-    v = eps[0].player()
-    u = v[0].url
-    q = v[0].get_video()
-    print(len(eps))
