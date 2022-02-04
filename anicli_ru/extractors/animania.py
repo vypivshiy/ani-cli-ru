@@ -1,11 +1,11 @@
 from __future__ import annotations
 from typing import Union, List
-from anicli_ru.base import BaseAnimeHTTP, ResultList, BaseResult
+from anicli_ru.base import BaseAnimeHTTP, ResultList, BaseParserObject, BaseTestParser
 from html.parser import unescape
 import re
 
 
-class AnimeResult(BaseResult):
+class AnimeResult(BaseParserObject):
     """
     url str: anime url
 
@@ -24,7 +24,7 @@ class AnimeResult(BaseResult):
             return a.episodes(result=self)
 
 
-class Ongoing(BaseResult):
+class Ongoing(BaseParserObject):
     """
     title: str title name
 
@@ -55,7 +55,7 @@ class Ongoing(BaseResult):
         return f"{self.title} {self.num}"
 
 
-class Player(BaseResult):
+class Player(BaseParserObject):
     """
     dub_id int: dubbing ing
 
@@ -90,7 +90,7 @@ class Player(BaseResult):
         return f"{self.num} {self.dub_name} ({u})"
 
 
-class Episode(BaseResult):
+class Episode(BaseParserObject):
     """
     num: int episode number
 
@@ -161,8 +161,7 @@ class Anime(BaseAnimeHTTP):
 
     def episodes(self, result: Union[AnimeResult, Ongoing]) -> ResultList[Episode]:
         r = self.request_get(result.url, headers=self.session.headers.copy().update(
-            {"Referer": result.url})
-                             )
+            {"Referer": result.url}))
         return Episode.parse(r.text)
 
     def players(self):
