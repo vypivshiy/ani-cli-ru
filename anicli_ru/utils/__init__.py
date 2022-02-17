@@ -1,1 +1,1 @@
-from random_agent import Agent
+from .random_agent import Agent
