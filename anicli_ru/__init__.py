@@ -1,15 +1,11 @@
 from anicli_ru.loader import all_extractors, import_extractor
-__version__ = "4.0.0"
 
 
-def check_update():
+def check_update(package_name: str):
     """check last version package"""
     import requests
-    import re
-    r = requests.get("https://raw.githubusercontent.com/vypivshiy/ani-cli-ru/master/anicli_ru/__init__.py")
-    version, = re.findall(r'__version__ = "([\d.]+)"', r.text)
+    r = requests.get(f"https://pypi.org/pypi/{package_name}/json/").json()
+    version = list(r["releases"].keys())[-1]
     return version
 
 
-if __name__ == '__main__':
-    print(check_update())
