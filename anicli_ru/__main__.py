@@ -1,42 +1,20 @@
 #!/usr/bin/python3
 from __future__ import annotations
-import argparse
+
 from random import sample
 from string import ascii_letters
 from os import system
 from os import name as sys_name
 from typing import Union
 
-from anicli_ru import all_extractors, import_extractor
-from anicli_ru.utils.player_starter import run_player
-from anicli_ru.utils.player_tools import is_aniboom
-
-ALL_PARSERS = {k: v for k, v in enumerate(all_extractors())}
-
-parser = argparse.ArgumentParser()
-parser.add_argument("-p", "--proxy", dest="PROXY", type=str, default="",
-                    help="Add proxy for search requests (not for download video)")
-parser.add_argument("-d", "--download", dest="DOWNLOAD", default=False, action="store_true",
-                    help="Download mode. Default False. ffmpeg required")
-parser.add_argument("-q", "--quality", dest="QUALITY", type=int, default=720, choices=[360, 480, 720],
-                    help="default video quality. Works only kodik. Default 720")
-parser.add_argument("-i", "--instant", dest="INSTANT", default=False, action="store_true",
-                    help="Instant view mode. Useful if you want to watch a title without manual switching episodes")
-parser.add_argument("-s", "--source", dest="SOURCE", type=int, default=0,
-                    choices=[i for i in range(len(ALL_PARSERS))],
-                    help="Site source keys: {}...\nDEFAULT 0. Usage --print-sources for get available parsers".format(
-                        ', '.join((str(i) + ' - ' + str(p) for i, p in ALL_PARSERS.items() if i < 3))
-                    )
-                    )
-parser.add_argument("-U", "--upgrade", dest="UPGRADE", default=False, action="store_true",
-                    help="Update script from git repository")
-parser.add_argument("--force", dest="FORCE", default=False, action="store_true",
-                    help="Force update script from git repository")
-parser.add_argument("--print-sources", dest="PRINT_SOURCES", default=False, action="store_true",
-                    help="Print available source parsers")
+from . import import_extractor
+from .utils.player_starter import run_player
+from .utils.player_tools import is_aniboom
+from .options import ALL_PARSERS, parser_args, get_agent
 
 
-args = parser.parse_args()
+args = parser_args()
+
 PROXY = args.PROXY
 DOWNLOAD = args.DOWNLOAD
 QUALITY = args.QUALITY
@@ -47,45 +25,9 @@ OS_HEADERS_COMMAND = "http-header-fields"
 
 # load chosen extractor
 extractor = "anicli_ru.extractors.{}".format(ALL_PARSERS.get(args.SOURCE))
-
 API = import_extractor(extractor)
 if not args.UPGRADE and not args.FORCE:
     print("Chosen source:", API.Anime.BASE_URL)
-
-
-def print_sources():
-    for k, v in ALL_PARSERS.items():
-        print(f"[{k}] {v}")
-    exit(0)
-
-
-def get_updates(repository: str = "https://github.com/vypivshiy/ani-cli-ru"):
-    """Updater function.
-    Download last update.
-
-    :param str repository: git repository from where to download the update"""
-
-    from anicli_ru import check_update, __version__
-    print("Check updates")
-    git_version = check_update()
-    if __version__ != git_version:
-        print(f"Detect new version (your - {__version__}, repos - {git_version})")
-    else:
-        print("Used available version", git_version)
-    if __version__ != git_version or args.FORCE:
-        answer = input("Update? (y/n)? ")
-        if answer.lower() != "y":
-            exit(1)
-        print("Update script start")
-        folder = repository.split("/")[-1]
-        print("Download from git repository")
-        system(f"git clone {repository}")
-        system(f"cd {folder}")
-        print("Start update")
-        system("sudo make")
-        system("cd ..")
-        system(f"rm -rf {folder}")
-        print("Done.")
 
 
 class Menu:
@@ -97,6 +39,13 @@ class Menu:
                           "q": ("[q]uit", self.exit),
                           }
         self.anime = API.Anime()
+        if args.USERAGENT:
+            self.anime.session.headers.update({"user-agent": args.USERAGENT})
+        elif args.RANDOM_AGENT:
+            agent = get_agent(args.RANDOM_AGENT_TYPE)
+            if agent:
+                self.anime.session.headers.update({"user-agent": agent})
+        print(self.anime.session.headers)
         self.__back_action = True
 
     def back_on(self):
@@ -249,11 +198,6 @@ class Menu:
 
 if __name__ == '__main__':
     try:
-        if args.UPGRADE:
-            get_updates()
-        elif args.PRINT_SOURCES:
-            print_sources()
-        else:
-            Menu.run()
+        Menu.run()
     except KeyboardInterrupt:
         print("KeyboardInterrupt, Exit...")
