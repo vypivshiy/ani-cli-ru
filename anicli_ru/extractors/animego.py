@@ -1,11 +1,16 @@
 from __future__ import annotations
 from html import unescape
 from typing import Union
-from anicli_ru.base import ResultList, BaseParserObject, BaseAnimeHTTP
+from anicli_ru.base import (ResultList,
+                            BaseOngoing,
+                            BaseEpisode,
+                            BasePlayer,
+                            BaseAnimeHTTP,
+                            BaseAnimeResult)
 import re
 
 
-class AnimeResult(BaseParserObject):
+class AnimeResult(BaseAnimeResult):
     """
     url str: anime url
 
@@ -28,7 +33,7 @@ class AnimeResult(BaseParserObject):
             return a.episodes(result=self)
 
 
-class Ongoing(BaseParserObject):
+class Ongoing(BaseOngoing):
     """
     title: str title name
 
@@ -110,7 +115,7 @@ class Ongoing(BaseParserObject):
         return f"{self.title} {self.num} {self.dub}"
 
 
-class Episode(BaseParserObject):
+class Episode(BaseEpisode):
     """
     num: int episode number
 
@@ -134,7 +139,7 @@ class Episode(BaseParserObject):
             return a.players(self)
 
 
-class Player(BaseParserObject):
+class Player(BasePlayer):
     """
     dub_id int: dubbing ing
 

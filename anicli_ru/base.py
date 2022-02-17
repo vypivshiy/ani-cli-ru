@@ -1,66 +1,33 @@
 from __future__ import annotations
-from requests import Session, Response
 from collections import UserList
-from html.parser import unescape
-from urllib.parse import urlparse
-from .utils import kodik_decoder
 import re
-from unittest import TestCase
+from html import unescape
 
-# aniboom regular expressions (work after unescape method response html page)
-RE_ANIBOOM = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
+from requests import Session, Response
 
-# kodik/anivod regular expressions
-RE_KODIK_URL = re.compile(r"https://\w+\.\w{2,6}/seria/\d+/\w+/\d{3,4}p")
-RE_KODIK_URL_DATA = re.compile(r'iframe.src = "//(.*?)"')
-RE_KODIK_VIDEO_TYPE = re.compile(r"go/(\w+)/\d+")
-RE_KODIK_VIDEO_ID = re.compile(r"go/\w+/(\d+)")
-RE_KODIK_VIDEO_HASH = re.compile(r"go/\w+/\d+/(.*?)/\d+p\?")
-
-
-class ResultList(UserList):
-    """Modified list object"""
-
-    def print_enumerate(self, *args):
-        """print elements with getattr names arg. Default invoke __str__ method"""
-        if len(self) > 0:
-            for i, obj in enumerate(self, 1):
-                if args:
-                    print(f"[{i}]", *(getattr(obj, arg) for arg in args))
-                else:
-                    print(f"[{i}]", obj)
-        else:
-            print("Results not founded!")
-
-
-class BaseParserObject:
-    """base object parser for text respons"""
-    REGEX: dict  # {"attr_name": re.compile(<regular expression>)}
-    # for ide help add attr ex
-    # url: str
-    # id: int
-
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            if isinstance(v, str):
-                v = int(v) if v.isdigit() else unescape(str(v))
-            setattr(self, k, v)
-
-    @classmethod
-    def parse(cls, html: str) -> ResultList:
-        """class object factory"""
-        l_objects = ResultList()
-        # generate dict like {attr_name: list(values)}
-        results = {k: re.findall(v, html) for k, v in cls.REGEX.items()}
-        for values in zip(*results.values()):
-            attrs = zip(results.keys(), values)
-            # generate objects like {attr_name: attr_value}
-            l_objects.append(cls(**dict(attrs)))
-        return l_objects
+from .utils.player_tools import kodik_decoder, kodik_parse_payload, is_kodik, get_kodik_url, get_aniboom_url
 
 
 class BaseAnimeHTTP:
-    """Base Anime http class"""
+    """Базовый класс-singleton для отправки запросов на сайт, откуда парсить все значения.
+
+    В этом классе должны определенны следующие методы:
+
+    def search(self, q: str): - поиск по строке
+
+    def ongoing(self, *args, **kwargs): - поиск онгоингов
+
+    def episodes(self, *args, **kwargs) -> ResultList[BaseEpisode]: - поиск эпизодов
+
+    def players(self, *args, **kwargs): - поисск ссылок на доступные плееры
+
+    В этом классе должны опеределны следующие аттрибуты:
+
+    BASE_URL: - Основная ссылка, куда будут идти запросы
+
+    USER_AGENT: - Юзерагент, с которым будут идти запросы. Значение **XMLHttpRequest** должно быть обязательно
+
+    """
     BASE_URL = "your_base_source_link"
     # mobile user-agent can sometimes gives a chance to bypass the anime title ban
     # XMLHttpRequest value required!
@@ -92,7 +59,9 @@ class BaseAnimeHTTP:
         self.session.close()
 
     def request(self, method, url, **kwargs) -> Response:
-        return self.session.request(method, url, **kwargs)
+        # context manager solve ResourceWarning (trace this in inittests)
+        with self.session as s:
+            return s.request(method, url, **kwargs)
 
     def request_get(self, url, **kwargs) -> Response:
         return self.request("GET", url, **kwargs)
@@ -100,32 +69,25 @@ class BaseAnimeHTTP:
     def request_post(self, url, **kwargs) -> Response:
         return self.request("POST", url, **kwargs)
 
-    def search(self, q: str):
+    def search(self, q: str) -> UserList[BaseAnimeResult]:
         raise NotImplementedError
 
-    def ongoing(self, *args, **kwargs):
+    def ongoing(self, *args, **kwargs) -> UserList[BaseOngoing]:
         raise NotImplementedError
 
-    def episodes(self, *args, **kwargs):
+    def episodes(self, *args, **kwargs) -> ResultList[BaseEpisode]:
         raise NotImplementedError
 
-    def players(self, *args, **kwargs):
+    def players(self, *args, **kwargs) -> ResultList[BasePlayer]:
         raise NotImplementedError
-
-    @staticmethod
-    def _get_kodik_payload(resp: str, referer: str) -> tuple[dict, str]:
-        # prepare values for next POST request
-        url_data, = re.findall(RE_KODIK_URL_DATA, resp)
-        type_, = re.findall(RE_KODIK_VIDEO_TYPE, url_data)
-        id_, = re.findall(RE_KODIK_VIDEO_ID, url_data)
-        hash_, = re.findall(RE_KODIK_VIDEO_HASH, url_data)
-        data = {value.split("=")[0]: value.split("=")[1] for value in url_data.split("?", 1)[1].split("&")}
-        data.update({"type": type_, "hash": hash_, "id": id_, "info": {}, "bad_user": True,
-                     "ref": referer.rstrip("/")})
-        return data, url_data
 
     def get_kodik_url(self, player_url: str, quality: int = 720, *, referer: str = "") -> str:
-        """Get hls url in kodik/anivod player"""
+        """Get hls url in kodik/anivod player
+
+        :param str player_url: - raw url in kodik balancer
+        :param int quality: - video quality. Default 720
+        :param str referer: - referer, where give this url
+        """
         quality_available = (720, 480, 360, 240, 144)
         if quality not in quality_available:
             quality = 720
@@ -133,14 +95,13 @@ class BaseAnimeHTTP:
 
         resp = self.request_get(player_url, headers=self.USER_AGENT.copy().update({"referer": referer}))
 
-        data, url_data = self._get_kodik_payload(resp.text, referer)
+        data, url_data = kodik_parse_payload(resp.text, referer)
         # kodik server regular expr detection
-        if not RE_KODIK_URL.match(player_url):
+        if not is_kodik(player_url):
             raise TypeError(
-                f"Unknown player balancer. get_kodik_url method support kodik and anivod players\nvideo url: {player_url}")
+                f"Unknown player balancer. get_kodik_url method support kodik balancer\nvideo url: {player_url}")
 
-        url_, = RE_KODIK_URL.findall(player_url)
-        url = "https://" + urlparse(url_).netloc + "/gvi"
+        url = get_kodik_url(player_url)
         resp = self.request("POST", url, data=data,
                             headers=self.USER_AGENT.copy().update({"referer": f"https://{url_data}",
                                                                    "orgign": url.replace("/gvi", ""),
@@ -148,6 +109,7 @@ class BaseAnimeHTTP:
                                                                        "application/json, text/javascript, */*; q=0.01"
                                                                    })).json()["links"]
         video_url = resp["480"][0]["src"]
+        # kodik balancer returns max quality 480 to json, but it has (720, 480, 360, 240, 144) qualities
         video_url = kodik_decoder(video_url).replace("480.mp4", f"{quality}.mp4")
         return video_url
 
@@ -162,8 +124,7 @@ class BaseAnimeHTTP:
                     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 "
                     "Safari/537.36"})
 
-        r = unescape(r.text)
-        return re.findall(RE_ANIBOOM, r)[0].replace("\\", "")
+        return get_aniboom_url(r.text)
 
     def get_video(self, player_url: str, quality: int = 720, *, referer: str = ""):
         """Return direct video url
@@ -176,12 +137,54 @@ class BaseAnimeHTTP:
         elif "aniboom" in player_url:
             url = self.get_aniboom_url(player_url)
             return url
-        elif RE_KODIK_URL.match(player_url):
+        elif is_kodik(player_url):
             url = self.get_kodik_url(player_url, quality, referer=referer)
             return url
         else:
             # catch any players for add in script
             print("Warning!", player_url, "is not supported!")
+
+
+class ResultList(UserList):
+    """Modified list object"""
+
+    def print_enumerate(self, *args):
+        """print elements with getattr names arg. Default invoke __str__ method"""
+        if len(self) > 0:
+            for i, obj in enumerate(self, 1):
+                if args:
+                    print(f"[{i}]", *(getattr(obj, arg) for arg in args))
+                else:
+                    print(f"[{i}]", obj)
+        else:
+            print("Results not founded!")
+
+
+class BaseParserObject:
+    """base object parser for text respons"""
+    REGEX: dict  # {"attr_name": re.compile(<regular expression>)}
+    # for ide help add attr ex
+    # url: str
+    # id: int
+    # ...
+
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            if isinstance(v, str):
+                v = int(v) if v.isdigit() else unescape(str(v))
+            setattr(self, k, v)
+
+    @classmethod
+    def parse(cls, html: str) -> ResultList:
+        """class object factory"""
+        l_objects = ResultList()
+        # generate dict like {attr_name: list(values)}
+        results = {k: re.findall(v, html) for k, v in cls.REGEX.items()}
+        for values in zip(*results.values()):
+            attrs = zip(results.keys(), values)
+            # generate objects like {attr_name: attr_value}
+            l_objects.append(cls(**dict(attrs)))
+        return l_objects
 
 
 class BasePlayer(BaseParserObject):
@@ -192,42 +195,19 @@ class BasePlayer(BaseParserObject):
 
 
 class BaseEpisode(BaseParserObject):
-    def player(self):
+    def player(self) -> UserList[BasePlayer]:
         raise NotImplementedError
 
 
 class BaseOngoing(BaseParserObject):
-    def episodes(self):
+    def episodes(self) -> UserList[BaseEpisode]:
         raise NotImplementedError
 
 
-class BaseResult(BaseParserObject):
-    def episodes(self):
+class BaseAnimeResult(BaseParserObject):
+    """"""
+    def episodes(self) -> UserList[BaseEpisode]:
         raise NotImplementedError
-
-
-class BaseTestParser(TestCase):
-    anime: BaseAnimeHTTP
-
-    def test_regex_result(self, url: str):
-        rez = self.anime.search("lain")
-
-    def test_regex_ongoing(self, url: str):
-        rez = self.anime.search("lain")
-
-    def test_regex_episode(self, url: str):
-        rez = self.anime.search("lain")
-
-    def test_regex_player(self, url: str):
-        rez = self.anime.search("lain")
-
-    def test_get_ongoing(self):
-        rez = self.anime.ongoing()
-        self.assertGreater(len(rez), 1)
-
-    def test_get_video(self):
-        raise NotImplementedError
-
 
 
 # old aliases

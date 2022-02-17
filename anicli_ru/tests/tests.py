@@ -1,3 +1,8 @@
+"""Устаревший модуль тестирования.
+В последних обновлениях заложена реализация расширяемости количества парсеров, поэтому этот модуль в скором времени
+будет удалён
+"""
+
 import unittest
 import requests
 
@@ -107,3 +112,5 @@ class TestAnime2(unittest.TestCase):
         self.assertEqual(len(res), 1)  # get XL Media dub
         players = res[0].player()
         self.assertEqual(len(players), 13)  # get 13 episodes
+
+

@@ -1,10 +1,12 @@
-"""Шаблон для добавления своих парсеров под сторонние сайты"""
+"""Шаблон для добавления своих парсеров под сторонние сайты
+
+"""
 from typing import Union, List
-from anicli_ru.base import BaseAnimeHTTP, ResultList, BaseResult, BasePlayer, BaseOngoing, BaseEpisode
+from anicli_ru.base import BaseAnimeHTTP, ResultList, BaseAnimeResult, BasePlayer, BaseOngoing, BaseEpisode, BaseTestParser
 import re
 
 
-class AnimeResult(BaseResult):
+class AnimeResult(BaseAnimeResult):
     REGEX = {"url": re.compile("foo (.*?)"),
              "title": re.compile("bar (.*?)")}
 
@@ -79,3 +81,11 @@ class Anime(BaseAnimeHTTP):
         Здесь необходимо отправить запрос, на котором присутствуют ссылки на видео"""
 
 
+class TestParser(BaseTestParser):
+    """Минимальные тесты работоспособности парсера"""
+    def setUp(self) -> None:
+        self.anime = Anime()
+        self.result = AnimeResult()
+        self.episode = Episode()
+        self.ongoing = Ongoing()
+        self.player = Player()

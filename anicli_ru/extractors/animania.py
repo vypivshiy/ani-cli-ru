@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Union, List
-from anicli_ru.base import BaseAnimeHTTP, ResultList, BaseParserObject, BaseTestParser
+from anicli_ru.base import BaseAnimeHTTP, ResultList, BaseParserObject
 from html.parser import unescape
 import re
 
@@ -127,10 +127,10 @@ class Episode(BaseParserObject):
 
     @classmethod
     def parse(cls, html: str) -> ResultList:
-        videos_chunks = re.findall(cls.REGEX["video_chunks"], html)
+        videos_chunks = cls.REGEX["video_chunks"].findall(html)
         l_obj = ResultList()
-        dubs = re.findall(cls.REGEX["dubs"], html)
-        videos = [re.findall(cls.REGEX["videos"], chunk[0]) for chunk in videos_chunks]
+        dubs = cls.REGEX["dubs"].findall(html)
+        videos = [cls.REGEX["videos"].findall(chunk[0]) for chunk in videos_chunks]
         for dub_id, dub_name, count, video in zip([int(n[0]) for n in dubs],  # dub id
                                                   [n[1] for n in dubs],  # dub name
                                                   [len(n) for n in videos],  # count videos
@@ -167,4 +167,3 @@ class Anime(BaseAnimeHTTP):
     def players(self):
         # get players from episode object
         raise NotImplementedError
-
