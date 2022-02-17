@@ -1,6 +1,6 @@
 """simple useragent generator"""
 
-from random import choice
+from random import choice, randint
 
 CHROME_VERSIONS = (
     '98.0.4758.108', '98.0.4758.107', '98.0.4758.106', '97.0.4692.108', '98.0.4758.105', '98.0.4758.104',
@@ -25,7 +25,7 @@ CHROME_VERSIONS = (
     '96.0.4664.114', '96.0.4664.113', '96.0.4664.112'
 )
 
-MOBILE_NAMES = (
+MOBILE_STRINGS = (
     "(Linux; Android 6.0; Nexus 5)",
     "(Linux; Android 7.0; Redmi Note 7 Pro)",
     "(Linux; Android 8.1.0; Redmi Note 8 Pro)",
@@ -45,7 +45,7 @@ class Agent:
 
     @classmethod
     def mobile(cls):
-        device = choice(DESKTOP_STRINGS)
+        device = choice(MOBILE_STRINGS)
         chrome = choice(CHROME_VERSIONS)
         return \
             "Mozilla/5.0 {} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{} Mobile Safari/537.36".format(device,
@@ -58,3 +58,7 @@ class Agent:
         return \
             "Mozilla/5.0 {} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{} Safari/537.36".format(device,
                                                                                                    chrome)
+
+    @classmethod
+    def random(cls):
+        return cls.mobile() if randint(0, 100) <= 50 else cls.desktop()
