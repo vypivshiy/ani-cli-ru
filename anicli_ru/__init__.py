@@ -1,5 +1,5 @@
 from anicli_ru.loader import all_extractors, import_extractor
-__version__ = "3.0.3"
+__version__ = "4.0.0"
 
 
 def check_update():
