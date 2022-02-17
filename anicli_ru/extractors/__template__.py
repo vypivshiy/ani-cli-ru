@@ -2,7 +2,7 @@
 
 """
 from typing import Union, List
-from anicli_ru.base import BaseAnimeHTTP, ResultList, BaseAnimeResult, BasePlayer, BaseOngoing, BaseEpisode, BaseTestParser
+from anicli_ru.base import BaseAnimeHTTP, ResultList, BaseAnimeResult, BasePlayer, BaseOngoing, BaseEpisode
 import re
 
 
@@ -79,13 +79,3 @@ class Anime(BaseAnimeHTTP):
     def players(self, episode: Episode) -> ResultList[Player]:
         """Вывод доступных ссылок на видео.
         Здесь необходимо отправить запрос, на котором присутствуют ссылки на видео"""
-
-
-class TestParser(BaseTestParser):
-    """Минимальные тесты работоспособности парсера"""
-    def setUp(self) -> None:
-        self.anime = Anime()
-        self.result = AnimeResult()
-        self.episode = Episode()
-        self.ongoing = Ongoing()
-        self.player = Player()
