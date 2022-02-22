@@ -3,13 +3,13 @@ from os import system
 from typing import Optional
 
 from anicli_ru import all_extractors
-from anicli_ru import __version__
+from anicli_ru.__version__ import __version__
 from anicli_ru.utils import Agent
 
 ALL_PARSERS = {k: v for k, v in enumerate(all_extractors())}
 
 
-def parser_args() -> argparse.Namespace:
+def setup_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=f"anicli-ru {__version__}\n"
                                                  f"See detail info: https://github.com/vypivshiy/ani-cli-ru",
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -67,17 +67,24 @@ def parser_args() -> argparse.Namespace:
                                type=str,
                                default="",
                                help="Set user-agent string")
+    request_group.add_argument("--timeout",
+                               dest="TIMEOUT",
+                               type=float,
+                               default=30,
+                               help="Request timeout value. Default 30 seconds")
     request_group.add_argument("-p", "--proxy",
                                dest="PROXY",
                                type=str,
                                default="",
-                               help="Add proxy for search requests (not for download video)")
+                               help="Add proxy for search requests (not for download video). "
+                                    "Didn't have auto detect proxy type. Write argument like "
+                                    "proxy_type://ip:port@login:pass")
     updater_group = parser.add_argument_group("Update script", "Check and update script from pypi")
     updater_group.add_argument("-U", "--upgrade",
                                dest="UPGRADE",
-                               default=False,
-                               action="store_true",
-                               help="Check and Update script from pypi")
+                               default="",
+                               choices={"git", "pip", ""},
+                               help="Check and update script. git - from git repo, pip - from pypi")
     updater_group.add_argument("-F", "--force",
                                dest="FORCE",
                                default=False,
@@ -110,9 +117,9 @@ def get_updates(pypi_package_name: str = "anicli-ru", force: bool = False) -> No
     """Updater function.
     Download last update for pypi.
 
-    :param pypi_package_name:
-    :param force:
-    :param str repository: git repository from where to download update"""
+    :param str pypi_package_name: pypi package name
+    :param bool force: force update. Default False
+    """
 
     from anicli_ru import check_update, __version__
     print("Check updates")
@@ -125,7 +132,7 @@ def get_updates(pypi_package_name: str = "anicli-ru", force: bool = False) -> No
         answer = input("Update? (y/n)? ")
         if answer.lower() != "y":
             exit(1)
-        print("Update from pypi")
+        print("Start update from pypi")
         system(f"python3 -m pip install {pypi_package_name} -U")
         print("Done.")
     exit(0)
