@@ -150,6 +150,13 @@ class Episode(BaseParserObject):
 
 class Anime(BaseAnimeHTTP):
     BASE_URL = "https://animania.online/index.php"
+    _TESTS = {
+        "search": ["experiments lain", 1],
+        "ongoing": True,
+        "search_blocked": False,
+        "video": True,
+        "search_not_found": ["_thisTitleIsNotExist123456"],
+    }
 
     def search(self, q: str) -> ResultList[AnimeResult]:
         r = self.request_get(self.BASE_URL, params=dict(do="search", subaction="search", story=q))

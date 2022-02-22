@@ -29,19 +29,26 @@ class BaseAnimeHTTP:
 
     """
     BASE_URL = "your_base_source_link"
-    # mobile user-agent can sometimes gives a chance to bypass the anime title ban
     # XMLHttpRequest value required!
     USER_AGENT = {
         "user-agent":
             "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
             "x-requested-with": "XMLHttpRequest"}
     _instance = None
+    TIMEOUT: float = 30
+    # optional dict for get parser config tests
+    _TESTS = {
+        "search": ["experiments lain", 13],  # standard search test
+        "ongoing": True,  # test search ongoings, True - yes, False - no
+        "video": True,  # test get raw video, True - yes, False - no
+        "search_blocked": False,  # ignore failed get episode and retry get episodes for non blocked title
+        "search_not_found": ["_thisTitleIsNotExist123456"],  # this title has not exist
+    }
 
     def __new__(cls, *args, **kwargs):
         # singleton for correct store session
         if not cls._instance:
-            cls._instance = super(BaseAnimeHTTP, cls).__new__(
-                cls, *args, **kwargs)
+            cls._instance = super(BaseAnimeHTTP, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
     def __init__(self, session: Session = None):
@@ -59,15 +66,17 @@ class BaseAnimeHTTP:
         self.session.close()
 
     def request(self, method, url, **kwargs) -> Response:
-        # context manager solve ResourceWarning (trace this in inittests)
+        # context manager solve ResourceWarning (trace this in tests)
         with self.session as s:
-            return s.request(method, url, **kwargs)
+            return s.request(method, url, timeout=self.TIMEOUT, **kwargs)
 
     def request_get(self, url, **kwargs) -> Response:
         return self.request("GET", url, **kwargs)
 
     def request_post(self, url, **kwargs) -> Response:
         return self.request("POST", url, **kwargs)
+
+    # need manually write requests
 
     def search(self, q: str) -> UserList[BaseAnimeResult]:
         raise NotImplementedError
@@ -88,10 +97,8 @@ class BaseAnimeHTTP:
         :param int quality: - video quality. Default 720
         :param str referer: - referer, where give this url
         """
-        quality_available = (720, 480, 360, 240, 144)
-        if quality not in quality_available:
+        if quality not in (720, 480, 360):
             quality = 720
-        quality = str(quality)
 
         resp = self.request_get(player_url, headers=self.USER_AGENT.copy().update({"referer": referer}))
 
@@ -109,20 +116,22 @@ class BaseAnimeHTTP:
                                                                        "application/json, text/javascript, */*; q=0.01"
                                                                    })).json()["links"]
         video_url = resp["480"][0]["src"]
-        # kodik balancer returns max quality 480 to json, but it has (720, 480, 360, 240, 144) qualities
+        # kodik balancer returns max quality 480, but it has (720, 480, 360) values
         video_url = kodik_decoder(video_url).replace("480.mp4", f"{quality}.mp4")
         return video_url
 
     def get_aniboom_url(self, player_url: str) -> str:
         """get aniboom video"""
         # fix 28 11 2021 request
+        if not self.BASE_URL.endswith("/"):
+            b_u = self.BASE_URL + "/"
+        else:
+            b_u = self.BASE_URL
         r = self.request_get(
             player_url,
             headers={
-                "referer": "https://animego.org/",
-                "user-agent":
-                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 "
-                    "Safari/537.36"})
+                "referer": b_u,
+                "user-agent": self.session.headers["user-agent"]})
 
         return get_aniboom_url(r.text)
 

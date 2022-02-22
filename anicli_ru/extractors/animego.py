@@ -211,6 +211,13 @@ class Anime(BaseAnimeHTTP):
                       "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, "
                       "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
                   "x-requested-with": "XMLHttpRequest"}
+    _TESTS = {
+        "search": ["experiments lain", 13],
+        "ongoing": True,
+        "search_blocked": False,
+        "video": True,
+        "search_not_found": ["_thisTitleIsNotExist123456"],
+    }
 
     def search(self, q: str) -> ResultList[AnimeResult]:
         """Get search results
