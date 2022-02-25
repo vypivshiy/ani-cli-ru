@@ -82,9 +82,9 @@ def setup_arguments() -> argparse.Namespace:
     updater_group = parser.add_argument_group("Update script", "Check and update script from pypi")
     updater_group.add_argument("-U", "--upgrade",
                                dest="UPGRADE",
-                               default="",
-                               choices={"git", "pip", ""},
-                               help="Check and update script. git - from git repo, pip - from pypi")
+                               default=False,
+                               action="store_true",
+                               help="Upgrade script from pypi")
     updater_group.add_argument("-F", "--force",
                                dest="FORCE",
                                default=False,
@@ -120,14 +120,15 @@ def get_updates(pypi_package_name: str = "anicli-ru", force: bool = False) -> No
     :param str pypi_package_name: pypi package name
     :param bool force: force update. Default False
     """
-
-    from anicli_ru import check_update, __version__
+    import requests
     print("Check updates")
-    pypi_version = check_update(pypi_package_name)
+    r = requests.get(f"https://pypi.org/pypi/{pypi_package_name}/json/",
+                     headers={"user-agent": f"anicli-ru {__version__} Updater"}).json()
+    pypi_version = list(r["releases"].keys())[-1]
     if __version__ != pypi_version:
         print(f"Detect new version (your - {__version__}, pypi - {pypi_version})")
     else:
-        print("Used available version", pypi_version)
+        print("Used last version")
     if __version__ != pypi_version or force:
         answer = input("Update? (y/n)? ")
         if answer.lower() != "y":
