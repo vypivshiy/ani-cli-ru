@@ -214,12 +214,5 @@ class BaseOngoing(BaseParserObject):
 
 
 class BaseAnimeResult(BaseParserObject):
-    """"""
     def episodes(self) -> UserList[BaseEpisode]:
         raise NotImplementedError
-
-
-# old aliases
-ListObj = ResultList
-BaseObj = BaseParserObject
-BaseAnime = BaseAnimeHTTP
