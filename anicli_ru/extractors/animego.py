@@ -1,23 +1,43 @@
 from __future__ import annotations
 from html import unescape
 from typing import Union
-from anicli_ru.base import (ResultList,
-                            BaseOngoing,
-                            BaseEpisode,
-                            BasePlayer,
-                            BaseAnimeHTTP,
-                            BaseAnimeResult)
+from anicli_ru.base import *
 import re
 
 
-class AnimeResult(BaseAnimeResult):
-    """
-    url str: anime url
+class Anime(BaseAnimeHTTP):
+    BASE_URL = "https://animego.org/"
+    _TESTS = {
+        "search": ["experiments lain", 13],
+        "ongoing": True,
+        "search_blocked": False,
+        "video": True,
+        "search_not_found": ["_thisTitleIsNotExist123456"],
+    }
 
-    title str: title name
-    """
+    def search(self, q: str) -> ResultList[AnimeResult]:
+        resp = self.request_get(self.BASE_URL + "search/anime", params={"q": q}).text
+        return ResultList(AnimeResult.parse(resp))
+
+    def ongoing(self) -> ResultList[Ongoing]:
+        resp = self.request_get(self.BASE_URL).text
+        return Ongoing.parse(resp)
+
+    def episodes(self, result: Union[AnimeResult, Ongoing]) -> ResultList[Episode]:
+        resp = self.request_get(self.BASE_URL + f"anime/{result.id}/player?_allow=true").json()["content"]
+        return Episode.parse(resp)
+
+    def players(self, episode: Episode) -> ResultList[Player]:
+        resp = self.request_get(self.BASE_URL + "anime/series", params={"dubbing": 2, "provider": 24,
+                                                                        "episode": episode.num,
+                                                                        "id": episode.id}).json()["content"]
+        return Player.parse(resp)
+
+
+class AnimeResult(BaseAnimeResult):
     REGEX = {"url": re.compile(r'<a href="(https://animego\.org/anime/.*)" title=".*?">'),
              "title": re.compile('<a href="https://animego\.org/anime/.*" title="(.*?)">')}
+    ANIME_HTTP = Anime()
     url: str
     title: str
 
@@ -28,21 +48,9 @@ class AnimeResult(BaseAnimeResult):
     def __str__(self):
         return f"{self.title}"
 
-    def episodes(self):
-        with Anime() as a:
-            return a.episodes(result=self)
-
 
 class Ongoing(BaseOngoing):
-    """
-    title: str title name
-
-    num: str episode number
-
-    dub: str dubbing name
-
-    url: str url
-    """
+    ANIME_HTTP = Anime()
     REGEX = {
         "raw_url": re.compile(r'onclick="location\.href=\'(.*?)\'"'),
         "title": re.compile(r'600">(.*?)</span></span></div><div class="ml-3 text-right">'),
@@ -93,10 +101,6 @@ class Ongoing(BaseOngoing):
     def id(self) -> str:
         return self.url.split("-")[-1]
 
-    def episodes(self):
-        with Anime() as a:
-            return a.episodes(result=self)
-
     def __eq__(self, other):
         """return True if title name and episode num equals"""
         return self.num == other.num and self.title == other.title and other.dub not in self.dub
@@ -116,16 +120,10 @@ class Ongoing(BaseOngoing):
 
 
 class Episode(BaseEpisode):
-    """
-    num: int episode number
-
-    name: str episode name
-
-    id: int episode video id
-    """
+    ANIME_HTTP = Anime()
     REGEX = {"num": re.compile(r'data-episode="(\d+)"'),
              "id": re.compile(r'data-id="(\d+)"'),
-             "name": re.compile(r'data-episode-title="(.*)"'),
+             "name": re.compile(r'data-episode-title="(.*)"')
              }
     num: int
     name: str
@@ -140,13 +138,7 @@ class Episode(BaseEpisode):
 
 
 class Player(BasePlayer):
-    """
-    dub_id int: dubbing ing
-
-    dub_name str: dubbing name
-
-    player str: video player url
-    """
+    ANIME_HTTP = Anime()
     REGEX = {
         "dub_name":
             re.compile(
@@ -183,79 +175,6 @@ class Player(BasePlayer):
     def _player_prettify(player: str):
         return "https:" + unescape(player)
 
-    def get_video(self, quality: int = 720, referer: str = "https://animego.org/"):
-        with Anime() as a:
-            return a.get_video(self.url, quality, referer=referer)
-
     def __str__(self):
         u = self._player.replace("//", "").split(".", 1)[0]
         return f"{self.dub_name} ({u})"
-
-
-class Anime(BaseAnimeHTTP):
-    """Anime class parser
-
-    :example:
-
-    ```python
-    a = Anime()
-    results = a.search("school")
-    results.print_enumerate()
-    episodes = results[0].episodes()
-    ```
-    """
-    BASE_URL = "https://animego.org"
-
-    # mobile user-agent can sometimes gives a chance to bypass the anime title ban
-    USER_AGENT = {"user-agent":
-                      "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, "
-                      "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
-                  "x-requested-with": "XMLHttpRequest"}
-    _TESTS = {
-        "search": ["experiments lain", 13],
-        "ongoing": True,
-        "search_blocked": False,
-        "video": True,
-        "search_not_found": ["_thisTitleIsNotExist123456"],
-    }
-
-    def search(self, q: str) -> ResultList[AnimeResult]:
-        """Get search results
-
-        :param str q: search query
-        :return: anime results list
-        :rtype: ResultList
-        """
-        resp = self.request_get(self.BASE_URL + "/search/anime", params={"q": q}).text
-        return ResultList(AnimeResult.parse(resp))
-
-    def ongoing(self) -> ResultList[Ongoing]:
-        """Get ongoings
-
-        :return: ongoings results list
-        :rtype: ResultList
-        """
-        resp = self.request_get(self.BASE_URL).text
-        return Ongoing.parse(resp)
-
-    def episodes(self, result: Union[AnimeResult, Ongoing]) -> ResultList[Episode]:
-        """Get available episodes
-
-        :param result: Ongoing or AnimeSearch object
-        :return: list available episodes
-        :rtype: ResultList
-        """
-        resp = self.request_get(self.BASE_URL + f"/anime/{result.id}/player?_allow=true").json()["content"]
-        return Episode.parse(resp)
-
-    def players(self, episode: Episode) -> ResultList[Player]:
-        """Return video players urls
-
-        :param Episode episode: Episode object
-        :return: list available players
-        :rtype: ListObj[Player]
-        """
-        resp = self.request_get(self.BASE_URL + "/anime/series", params={"dubbing": 2, "provider": 24,
-                                                                         "episode": episode.num,
-                                                                         "id": episode.id}).json()["content"]
-        return Player.parse(resp)

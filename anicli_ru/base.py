@@ -2,33 +2,44 @@ from __future__ import annotations
 from collections import UserList
 import re
 from html import unescape
+from typing import Optional, Dict, AnyStr, Pattern
 
 from requests import Session, Response
 
 from .utils.player_tools import kodik_decoder, kodik_parse_payload, is_kodik, get_kodik_url, get_aniboom_url
 
+__all__ = ("BaseAnimeHTTP",
+           "BaseParserObject",
+           "BaseAnimeResult",
+           "BasePlayer",
+           "BaseEpisode",
+           "BaseOngoing",
+           "ResultList")
+
 
 class BaseAnimeHTTP:
-    """Базовый класс-singleton для отправки запросов на сайт, откуда парсить все значения.
+    """Базовый класс-singleton для отправки запросов на сайт, откуда получать html документы.
 
-    В этом классе должны определенны следующие методы:
+    В этом классе должны обязательно определенны следующие методы и атрибуты:
+
+    BASE_URL: - Основная ссылка, куда будут идти запросы
 
     def search(self, q: str): - поиск по строке
 
     def ongoing(self, *args, **kwargs): - поиск онгоингов
 
-    def episodes(self, *args, **kwargs) -> ResultList[BaseEpisode]: - поиск эпизодов
+    def episodes(self, *args, **kwargs): - поиск эпизодов
 
-    def players(self, *args, **kwargs): - поисск ссылок на доступные плееры
+    def players(self, *args, **kwargs): - поиск ссылок на доступные плееры
 
-    В этом классе должны опеределны следующие аттрибуты:
+    Опционально:
 
-    BASE_URL: - Основная ссылка, куда будут идти запросы
+        USER_AGENT: - Юзерагент, с которым будут идти запросы
 
-    USER_AGENT: - Юзерагент, с которым будут идти запросы. Значение **XMLHttpRequest** должно быть обязательно
+        _TESTS: - словарь конфигурации теста модуля
 
     """
-    BASE_URL = "your_base_source_link"
+    BASE_URL = "https://example.com/"
     # XMLHttpRequest value required!
     USER_AGENT = {
         "user-agent":
@@ -46,7 +57,7 @@ class BaseAnimeHTTP:
     }
 
     def __new__(cls, *args, **kwargs):
-        # singleton for correct store session
+        # create singleton for correct store session
         if not cls._instance:
             cls._instance = super(BaseAnimeHTTP, cls).__new__(cls, *args, **kwargs)
         return cls._instance
@@ -66,36 +77,79 @@ class BaseAnimeHTTP:
         self.session.close()
 
     def request(self, method, url, **kwargs) -> Response:
+        """Session.request
+
+        :param str method: method type
+        :param str url: url target
+        :param kwargs: optional requests.Session kwargs
+        :return: requests.Response object
+        """
         # context manager solve ResourceWarning (trace this in tests)
         with self.session as s:
             return s.request(method, url, timeout=self.TIMEOUT, **kwargs)
 
     def request_get(self, url, **kwargs) -> Response:
+        """send session.get
+
+        :param str url: url target
+        :param kwargs: optional requests.Session kwargs
+        :return: requests.Response object
+        """
         return self.request("GET", url, **kwargs)
 
     def request_post(self, url, **kwargs) -> Response:
+        """send session.post
+
+        :param url: url target
+        :param kwargs: optional requests.Session kwargs
+        :return: requests.Response object
+        """
         return self.request("POST", url, **kwargs)
 
     # need manually write requests
 
-    def search(self, q: str) -> UserList[BaseAnimeResult]:
+    def search(self, q: str) -> ResultList[BaseAnimeResult]:
+        """Search anime title by string pattern
+
+        :param str q: string search
+        :return:
+        """
         raise NotImplementedError
 
-    def ongoing(self, *args, **kwargs) -> UserList[BaseOngoing]:
+    def ongoing(self, *args, **kwargs) -> ResultList[BaseOngoing]:
+        """
+
+        :param args:
+        :param kwargs:
+        :return:
+        """
         raise NotImplementedError
 
     def episodes(self, *args, **kwargs) -> ResultList[BaseEpisode]:
+        """
+
+        :param args:
+        :param kwargs:
+        :return:
+        """
         raise NotImplementedError
 
     def players(self, *args, **kwargs) -> ResultList[BasePlayer]:
+        """
+
+        :param args:
+        :param kwargs:
+        :return:
+        """
         raise NotImplementedError
 
     def get_kodik_url(self, player_url: str, quality: int = 720, *, referer: str = "") -> str:
-        """Get hls url in kodik/anivod player
+        """Get hls url from kodik balancer
 
         :param str player_url: - raw url in kodik balancer
         :param int quality: - video quality. Default 720
         :param str referer: - referer, where give this url
+        :return:
         """
         if quality not in (720, 480, 360):
             quality = 720
@@ -121,7 +175,11 @@ class BaseAnimeHTTP:
         return video_url
 
     def get_aniboom_url(self, player_url: str) -> str:
-        """get aniboom video"""
+        """get hls url from aniboom balancer
+
+        :param player_url:
+        :return:
+        """
         # fix 28 11 2021 request
         if not self.BASE_URL.endswith("/"):
             b_u = self.BASE_URL + "/"
@@ -155,9 +213,9 @@ class BaseAnimeHTTP:
 
 
 class ResultList(UserList):
-    """Modified list object"""
+    """Modified list object. Used for one line enumerate print elements"""
 
-    def print_enumerate(self, *args):
+    def print_enumerate(self, *args) -> None:
         """print elements with getattr names arg. Default invoke __str__ method"""
         if len(self) > 0:
             for i, obj in enumerate(self, 1):
@@ -166,16 +224,12 @@ class ResultList(UserList):
                 else:
                     print(f"[{i}]", obj)
         else:
-            print("Results not founded!")
+            print("Results not found!")
 
 
 class BaseParserObject:
-    """base object parser for text respons"""
-    REGEX: dict  # {"attr_name": re.compile(<regular expression>)}
-    # for ide help add attr ex
-    # url: str
-    # id: int
-    # ...
+    """base object parser from text response"""
+    REGEX: Dict[AnyStr: Pattern[AnyStr], ...]  # {"attr_name": re.compile(<regular expression>)}
 
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
@@ -197,22 +251,42 @@ class BaseParserObject:
 
 
 class BasePlayer(BaseParserObject):
+    ANIME_HTTP: BaseAnimeHTTP
     url: str
+    dub_name: str
+    _player: str
 
-    def get_video(self, quality: int = 720, referer: str = "https://example.com/"):
-        raise NotImplementedError
+    def get_video(self, quality: int = 720, referer: Optional[str] = None):
+        if not referer:
+            referer = self.ANIME_HTTP.BASE_URL if self.ANIME_HTTP.BASE_URL.endswith("/") \
+                else self.ANIME_HTTP.BASE_URL+"/"
+        with self.ANIME_HTTP as a:
+            return a.get_video(player_url=self.url, quality=quality, referer=referer)
 
 
 class BaseEpisode(BaseParserObject):
-    def player(self) -> UserList[BasePlayer]:
-        raise NotImplementedError
+    ANIME_HTTP: BaseAnimeHTTP
+
+    def player(self) -> ResultList[BasePlayer]:
+        with self.ANIME_HTTP as a:
+            return a.players(self)
 
 
 class BaseOngoing(BaseParserObject):
-    def episodes(self) -> UserList[BaseEpisode]:
-        raise NotImplementedError
+    ANIME_HTTP: BaseAnimeHTTP
+    url: str
+    title: str
+
+    def episodes(self) -> ResultList[BaseEpisode]:
+        with self.ANIME_HTTP as a:
+            return a.episodes(self)
 
 
 class BaseAnimeResult(BaseParserObject):
-    def episodes(self) -> UserList[BaseEpisode]:
-        raise NotImplementedError
+    ANIME_HTTP: BaseAnimeHTTP
+    url: str
+    title: str
+
+    def episodes(self) -> ResultList[BaseEpisode]:
+        with self.ANIME_HTTP as a:
+            return a.episodes(self)
