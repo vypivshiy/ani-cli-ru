@@ -24,11 +24,16 @@ OS_HEADERS_COMMAND = "http-header-fields"
 # load chosen extractor
 extractor = "anicli_ru.extractors.{}".format(ALL_PARSERS.get(args.SOURCE))
 API = import_extractor(extractor)
+
 if not args.UPGRADE and not args.FORCE:
     print("Chosen source:", API.Anime.BASE_URL)
 
 
 class Menu:
+    INSTANT = args.INSTANT
+    DOWNLOAD = args.DOWNLOAD
+    TIMEOUT = args.TIMEOUT
+
     def __init__(self):
         self.__ACTIONS = {"b": ("[b]ack next step", self.back_on),
                           "c": ("[c]lear console", self.cls),
@@ -44,7 +49,7 @@ class Menu:
             agent = get_agent(args.RANDOM_AGENT_TYPE)
             if agent:
                 self.anime.session.headers.update({"user-agent": agent})
-        self.anime.TIMEOUT = args.TIMEOUT
+        self.anime.TIMEOUT = self.TIMEOUT
         self.__back_action = True
 
     def back_on(self):
@@ -74,23 +79,9 @@ class Menu:
                 if self.command_is_digit(command):
                     self.choose_episode(ongoings[int(command) - 1])
             else:
-                print("Cannot grub ongoings, try running this script with the -s argument or use VPN or proxy")
+                print("Cannot grub ongoings, try running this script with the -s argument or use VPN/proxy")
                 return
         self.back_off()
-
-    def _run_video(self, player: API.Player):
-        url = self.anime.get_video(player.url, args.QUALITY)
-        if is_aniboom(url):
-            if args.DOWNLOAD:
-                self._download(
-                    f'ffmpeg -y -headers "Referer: https://aniboom.one" -i "{url}" "{"".join(sample(ascii_letters, 12))}.mp4"')
-            else:
-                command_ = {OS_HEADERS_COMMAND: "Referer: https://aniboom.one"}
-                run_player(url, **command_)
-        elif args.DOWNLOAD:
-            self._download(f'ffmpeg -y -i "{url}" "{"".join(sample(ascii_letters, 12))}.mp4"')
-        else:
-            run_player(url)
 
     def choose_dub(self, results: API.ResultList[API.Player]):
         while self.is_back:
@@ -101,9 +92,8 @@ class Menu:
                 command = int(command)
                 if command <= len(results):
                     print("Start playing")
-                    if args.INSTANT:
-                        for player in results[command - 1:]:
-                            self._run_video(player)
+                    if self.INSTANT:
+                        self._run_instant(start=command, players=results)
                     else:
                         self._run_video(results[command - 1])
         self.back_off()
@@ -117,19 +107,43 @@ class Menu:
                 command = input(f"c_e [1-{len(episodes)}] > ")
                 if self.command_is_digit(command):
                     command = int(command)
-                    if command <= len(episodes):
-                        results = episodes[command - 1].player()
-                        if len(results) > 0:
-                            self.choose_dub(results)
-                        else:
-                            print("No available dubs")
-                            return
+                    if self.anime.INSTANT_KEY_REPARSE:
+                        self.episode_instant(episodes, command)
+                    else:
+                        if command <= len(episodes):
+                            results = episodes[command - 1].player()
+                            if len(results) > 0:
+                                self.choose_dub(results)
+                            else:
+                                print("No available dubs")
+                                return
             self.back_off()
         else:
             print(
                 "Episodes not found :(\nThis anime-title maybe blocked in your country, try using a vpn/proxy or change "
                 "source with -s argument and repeat operation")
         return
+
+    def episode_instant(self, episodes: API.ResultList[API.Episode], start: int):
+        # КОСТЫЛЬ!!! issue 6: correct run instant play
+        players = episodes[start-1].player()
+        while self.is_back:
+            players.print_enumerate()
+            print("Choose dub:", 1, "-", len(players))
+            command = input(f"c_d [1-{len(players)}] > ")
+            if self.command_is_digit(command):
+                command = int(command)
+                if command <= len(players):
+                    # get player for compare by name (__str__ method)
+                    player_name = str(players[command-1])
+                    for episode in episodes[start-1:]:
+                        for player in episode.player():
+                            if str(player) == player_name:
+                                print(f"Run '{episode}'")
+                                self._run_video(player)
+                                break
+                    break
+        self.back_off()
 
     def choose_anime(self, results: API.ResultList[API.AnimeResult]):
         while self.is_back:
@@ -161,6 +175,27 @@ class Menu:
             if not self.command_wrapper(command):
                 self.find(command)
 
+    def _run_instant(self, start: int, players: API.ResultList[API.Player]):
+        for player in players[start - 1:]:
+            self._run_video(player)
+
+    def _run_video(self, player: API.Player):
+        url = self.anime.get_video(player.url, args.QUALITY)
+        if self.DOWNLOAD:
+            self._run_download(url)
+        else:
+            if is_aniboom(url):
+                run_player(url, **{OS_HEADERS_COMMAND: "Referer: https://aniboom.one"})
+            else:
+                run_player(url)
+
+    def _run_download(self, player_url: str):
+        if is_aniboom(player_url):
+            self._download(
+                f'ffmpeg -y -headers "Referer: https://aniboom.one" -i "{player_url}" "{"".join(sample(ascii_letters, 12))}.mp4"')
+        else:
+            self._download(f'ffmpeg -y -i "{player_url}" "{"".join(sample(ascii_letters, 12))}.mp4"')
+
     @staticmethod
     def cls():
         system("cls") if sys_name == 'nt' else system("clear")
@@ -185,7 +220,8 @@ class Menu:
 
     @staticmethod
     def exit():
-        exit(0)
+        print("Invoke exit command")
+        exit(1)
 
     def help(self):
         for k, v in self.__ACTIONS.items():
