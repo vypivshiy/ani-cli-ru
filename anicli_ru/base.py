@@ -53,8 +53,12 @@ class BaseAnimeHTTP:
         "ongoing": True,  # test search ongoings, True - yes, False - no
         "video": True,  # test get raw video, True - yes, False - no
         "search_blocked": False,  # ignore failed get episode and retry get episodes for non blocked title
-        "search_not_found": ["_thisTitleIsNotExist123456"],  # this title has not exist
+        "search_not_found": "_thisTitleIsNotExist123456",  # this title has not exist
+        "instant": "experiments lain"
     }
+    # костыль для настройки поведения ключа INSTANT (see issue #6):
+    # если сначала идёт выбор озвучки, а потом плеера, выставите значение True (как в модуле animego)
+    INSTANT_KEY_REPARSE = False
 
     def __new__(cls, *args, **kwargs):
         # create singleton for correct store session
@@ -106,7 +110,7 @@ class BaseAnimeHTTP:
         """
         return self.request("POST", url, **kwargs)
 
-    # need manually write requests
+    # need manually write requests in parsers
 
     def search(self, q: str) -> ResultList[BaseAnimeResult]:
         """Search anime title by string pattern
@@ -127,6 +131,15 @@ class BaseAnimeHTTP:
 
     def episodes(self, *args, **kwargs) -> ResultList[BaseEpisode]:
         """
+
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        raise NotImplementedError
+
+    def episode_reparse(self, *args, **kwargs):
+        """Need write this method if INSTANT_KEY_REPARSE == True
 
         :param args:
         :param kwargs:
@@ -252,9 +265,16 @@ class BaseParserObject:
 
 class BasePlayer(BaseParserObject):
     ANIME_HTTP: BaseAnimeHTTP
-    url: str
     dub_name: str
     _player: str
+
+    @property
+    def url(self) -> str:
+        return self.player_prettify(self._player)
+
+    @staticmethod
+    def player_prettify(player: str):
+        return "https:" + unescape(player)
 
     def get_video(self, quality: int = 720, referer: Optional[str] = None):
         if not referer:

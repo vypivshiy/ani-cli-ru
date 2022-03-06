@@ -1,5 +1,4 @@
 from __future__ import annotations
-from html import unescape
 from typing import Union
 from anicli_ru.base import *
 import re
@@ -12,8 +11,10 @@ class Anime(BaseAnimeHTTP):
         "ongoing": True,
         "search_blocked": False,
         "video": True,
-        "search_not_found": ["_thisTitleIsNotExist123456"],
+        "search_not_found": "_thisTitleIsNotExist123456",
+        "instant": "experiments lain"
     }
+    INSTANT_KEY_REPARSE = True
 
     def search(self, q: str) -> ResultList[AnimeResult]:
         resp = self.request_get(self.BASE_URL + "search/anime", params={"q": q}).text
@@ -132,10 +133,6 @@ class Episode(BaseEpisode):
     def __str__(self):
         return f"{self.name}"
 
-    def player(self):
-        with Anime() as a:
-            return a.players(self)
-
 
 class Player(BasePlayer):
     ANIME_HTTP = Anime()
@@ -148,6 +145,7 @@ class Player(BasePlayer):
                 r'data-player="(.*?)"\s+data-provider="\d+"\s+data-provide-dubbing="(\d+)"'),
         "dub_id": re.compile(r"")
     }
+    _all_raw_player_urls: list
     dub_name: str
     _player: str
     dub_id: int
@@ -169,11 +167,7 @@ class Player(BasePlayer):
 
     @property
     def url(self) -> str:
-        return self._player_prettify(self._player)
-
-    @staticmethod
-    def _player_prettify(player: str):
-        return "https:" + unescape(player)
+        return self.player_prettify(self._player)
 
     def __str__(self):
         u = self._player.replace("//", "").split(".", 1)[0]

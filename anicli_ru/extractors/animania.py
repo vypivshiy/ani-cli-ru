@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Union, List
 from anicli_ru.base import *
-from html.parser import unescape
 import re
 
 
@@ -12,7 +11,8 @@ class Anime(BaseAnimeHTTP):
         "ongoing": True,
         "search_blocked": False,
         "video": True,
-        "search_not_found": ["_thisTitleIsNotExist123456"],
+        "search_not_found": "_thisTitleIsNotExist123456",
+        "instant": "experiments lain"
     }
 
     def search(self, q: str) -> ResultList[AnimeResult]:
@@ -88,14 +88,6 @@ class Player(BasePlayer):
     @classmethod
     def parse(cls, html: str) -> ResultList:
         raise NotImplementedError("Get <Player> Object from Episode. Ex: Episode().player()")
-
-    @property
-    def url(self) -> str:
-        return self._player_prettify(self._player)
-
-    @staticmethod
-    def _player_prettify(player: str):
-        return "https:" + unescape(player)
 
     def __str__(self):
         u = self._player.replace("//", "").split(".", 1)[0]
