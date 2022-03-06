@@ -86,6 +86,7 @@ def test_result_not_found(anime: BaseAnimeHTTP):
 @pytest.mark.parametrize("anime", ANIME_HTTP_ALL)
 def test_get_ongoing_player(anime: BaseAnimeHTTP):
     """Тест на получение объекта эпизода с онгоинга.
+
     По умолчанию берёт первый и пробует получить ссылку на видео."""
     print(f" {anime.__module__}")
     if anime._TESTS.get("ongoing"):
@@ -100,3 +101,24 @@ def test_get_ongoing_player(anime: BaseAnimeHTTP):
                 pytest.fail(f"Cannot get episodes from {ongoing}. Maybe it block in your country?")
     else:
         pytest.skip(f"Ongoings not allowed in {anime.__module__}")
+
+
+@pytest.mark.parametrize("anime", ANIME_HTTP_ALL)
+def test_instant_run(anime: BaseAnimeHTTP):
+    """Test instant run videos. Compare by string"""
+    print(f" {anime.__module__}")
+    query = anime._TESTS.get("instant")
+    result = anime.search(query)[0]
+    if anime.INSTANT_KEY_REPARSE:
+        names = []
+        player_name = str(result.episodes()[0].player()[0])
+        for episode in result.episodes()[:3]:
+            for player in episode.player():
+                if str(player) == player_name:
+                    names.append(str(player))
+                    break
+        assert len(names) == 3
+    else:
+        pytest.skip("No need to test, INSTANT_KEY_REPARSE == False")
+
+
