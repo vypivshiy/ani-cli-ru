@@ -107,7 +107,7 @@ class Menu:
                 command = input(f"c_e [1-{len(episodes)}] > ")
                 if self.command_is_digit(command):
                     command = int(command)
-                    if self.anime.INSTANT_KEY_REPARSE:
+                    if self.anime.INSTANT_KEY_REPARSE and self.INSTANT:
                         self.episode_instant(episodes, command)
                     else:
                         if command <= len(episodes):
