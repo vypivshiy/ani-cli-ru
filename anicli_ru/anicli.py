@@ -9,10 +9,10 @@ from os import system
 from os import name as sys_name
 from typing import Union
 
-from . import import_extractor
+from .options import ALL_PARSERS, setup_arguments, get_agent
+from .loader import import_extractor
 from .utils.player_starter import run_player
 from .utils.player_tools import is_aniboom
-from .options import ALL_PARSERS, setup_arguments, get_agent
 
 
 args = setup_arguments()
@@ -185,7 +185,9 @@ class Menu:
             self._run_download(url)
         else:
             if is_aniboom(url):
-                run_player(url, **{OS_HEADERS_COMMAND: "Referer: https://aniboom.one"})
+                # Экспериментально выявлено одним из пользователем,
+                # что заголовок Accept-Language увеличивает скорость загрузки в MPV плеере
+                run_player(url, **{OS_HEADERS_COMMAND: "Referer: https://aniboom.one,Accept-Language: ru-RU"})
             else:
                 run_player(url)
 
