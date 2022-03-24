@@ -1,3 +1,3 @@
-"""anicliru version file"""
+"""anicli-ru version file"""
 
-__version__ = "4.0.4"
+__version__ = "4.0.5"
