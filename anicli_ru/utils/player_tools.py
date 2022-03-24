@@ -7,8 +7,9 @@ import re
 from urllib.parse import urlparse
 from html.parser import unescape
 
-# aniboom regular expressions (work after unescape method response html page)
+# aniboom regular expressions (works after unescape method response html page)
 RE_ANIBOOM = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
+RE_ANIBOOM_MPD = re.compile(r'"{\\"src\\":\\"(.*\.mpd)\\"')
 
 # kodik/anivod regular expressions
 RE_KODIK_URL = re.compile(r"https://\w+\.\w{2,6}/seria/\d+/\w+/\d{3,4}p")
@@ -57,9 +58,11 @@ def get_kodik_url(raw_player_url: str):
     return "https://" + urlparse(url_).netloc + "/gvi"
 
 
-def get_aniboom_url(raw_aniboom_response: str):
+def get_aniboom_url(raw_aniboom_response: str, *, mpd=True):
     r = unescape(raw_aniboom_response)
-    return re.findall(RE_ANIBOOM, r)[0].replace("\\", "")
+    if mpd:
+        return RE_ANIBOOM_MPD.findall(r)[0].replace("\\", "")
+    return RE_ANIBOOM.findall(r)[0].replace("\\", "")
 
 
 def is_kodik(url: str):
