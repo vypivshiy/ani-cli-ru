@@ -2,7 +2,7 @@ import argparse
 from os import system
 from typing import Optional
 
-from anicli_ru import all_extractors
+from anicli_ru.loader import all_extractors
 from anicli_ru.__version__ import __version__
 from anicli_ru.utils import Agent
 
@@ -90,7 +90,6 @@ def setup_arguments() -> argparse.Namespace:
                                default=False,
                                action="store_true",
                                help="Force update script")
-
     args = parser.parse_args()
     check_args(args)
     return args
