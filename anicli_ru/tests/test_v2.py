@@ -29,7 +29,7 @@ ANIME_HTTP_ALL = [p.Anime() for p in IMPORTED_MODULES]
 
 
 def is_video(url):
-    return ".m3u8" in url or ".mp4" in url or "sibnet" in url
+    return ".m3u8" in url or ".mp4" in url or "sibnet" in url or ".mpd" in url
 
 
 @pytest.mark.parametrize("anime", ANIME_HTTP_ALL)
@@ -119,6 +119,6 @@ def test_instant_run(anime: BaseAnimeHTTP):
                     break
         assert len(names) == 3
     else:
-        pytest.skip("No need to test, INSTANT_KEY_REPARSE == False")
+        pytest.skip("INSTANT_KEY_REPARSE == False")
 
 
