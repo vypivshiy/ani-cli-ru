@@ -178,7 +178,7 @@ class Menu:
             self._run_video(player)
 
     def _run_video(self, player: API.Player):
-        url = self.anime.get_video(player.url, args.QUALITY)
+        url = player.get_video(player.url, args.QUALITY)
         if self.DOWNLOAD:
             self._run_download(url)
         else:
