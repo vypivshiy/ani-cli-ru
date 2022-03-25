@@ -14,12 +14,10 @@ from .loader import import_extractor
 from .utils.player_starter import run_player
 from .utils.player_tools import is_aniboom
 
-
 args = setup_arguments()
 
 PLAYER = "mpv"
 OS_HEADERS_COMMAND = "http-header-fields"
-
 
 # load chosen extractor
 extractor = "anicli_ru.extractors.{}".format(ALL_PARSERS.get(args.SOURCE))
@@ -126,7 +124,7 @@ class Menu:
 
     def episode_instant(self, episodes: API.ResultList[API.Episode], start: int):
         # КОСТЫЛЬ!!! issue 6: correct run instant play
-        players = episodes[start-1].player()
+        players = episodes[start - 1].player()
         while self.is_back:
             players.print_enumerate()
             print("Choose dub:", 1, "-", len(players))
@@ -135,8 +133,8 @@ class Menu:
                 command = int(command)
                 if command <= len(players):
                     # get player for compare by name (__str__ method)
-                    player_name = str(players[command-1])
-                    for episode in episodes[start-1:]:
+                    player_name = str(players[command - 1])
+                    for episode in episodes[start - 1:]:
                         for player in episode.player():
                             if str(player) == player_name:
                                 print(f"Run '{episode}'")
@@ -187,7 +185,9 @@ class Menu:
             if is_aniboom(url):
                 # Экспериментально выявлено одним из пользователем,
                 # что заголовок Accept-Language увеличивает скорость загрузки в MPV плеере
-                run_player(url, **{OS_HEADERS_COMMAND: "Referer: https://aniboom.one,Accept-Language: ru-RU"})
+                run_player(url, **{OS_HEADERS_COMMAND:
+                                       f"Referer: https://aniboom.one,Accept-Language: ru-RU, "
+                                       f"User-Agent:{self.anime.USER_AGENT['user-agent']}"})
             else:
                 run_player(url)
 
