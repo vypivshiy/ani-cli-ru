@@ -178,13 +178,13 @@ class Menu:
             self._run_video(player)
 
     def _run_video(self, player: API.Player):
-        url = player.get_video(player.url, args.QUALITY)
+        url = player.get_video(quality=args.QUALITY)
         if self.DOWNLOAD:
             self._run_download(url)
         else:
             if is_aniboom(url):
-                # Экспериментально выявлено одним из пользователем,
-                # что заголовок Accept-Language увеличивает скорость загрузки в MPV плеере
+                # Экспериментально выявлено одним из пользователей,
+                # что заголовок Accept-Language увеличивает скорость загрузки в MPV плеере в данном балансере
                 run_player(url, **{OS_HEADERS_COMMAND:
                                        f"Referer: https://aniboom.one,Accept-Language: ru-RU, "
                                        f"User-Agent:{self.anime.USER_AGENT['user-agent']}"})
