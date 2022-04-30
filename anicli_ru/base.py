@@ -185,7 +185,19 @@ class BaseAnimeHTTP:
         video_url = resp["480"][0]["src"]
         # kodik balancer returns max quality 480, but it has (720, 480, 360) values
         video_url = kodik_decoder(video_url).replace("480.mp4", f"{quality}.mp4")
-        return video_url
+
+        # issue 8, video_url maybe return 404 code
+        if self.request_get(video_url).status_code == 404:
+            choose_quality = f"{quality}.mp4"
+            for q in (720, 480, 360):
+                video_url = video_url.replace(choose_quality, f"{q}.mp4")
+                if self.request_get(video_url).status_code == 200:
+                    return video_url
+                choose_quality = f"{q}.mp4"
+            raise RuntimeError("Video is not found", video_url)
+
+        else:
+            return video_url
 
     def get_aniboom_url(self, player_url: str) -> str:
         """get hls url from aniboom balancer
