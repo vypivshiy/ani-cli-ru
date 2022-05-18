@@ -1,7 +1,6 @@
 """simple useragent generator"""
 
-from random import choice, randint, sample
-from string import ascii_letters
+from random import choice
 
 CHROME_VERSIONS = (
     '98.0.4758.108', '98.0.4758.107', '98.0.4758.106', '97.0.4692.108', '98.0.4758.105', '98.0.4758.104',
@@ -37,17 +36,16 @@ class Agent:
     def mobile(cls):
         device = choice(MOBILE_STRINGS)
         chrome = choice(CHROME_VERSIONS)
-        return \
-            "Mozilla/5.0 {} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{} Mobile Safari/537.36".format(device,
-                                                                                                          chrome)
+        return f"Mozilla/5.0 {device} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome} Mobile Safari/537.36"
 
     @classmethod
     def desktop(cls):
+        """
+        return chromium desktop useragent
+        """
         device = choice(DESKTOP_STRINGS)
         chrome = choice(CHROME_VERSIONS)
-        return \
-            "Mozilla/5.0 {} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{} Safari/537.36".format(device,
-                                                                                                   chrome)
+        return f"Mozilla/5.0 {device} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome} Safari/537.36"
 
     @classmethod
     def random(cls):
