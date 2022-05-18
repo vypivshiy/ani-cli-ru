@@ -70,7 +70,7 @@ class Anime(BaseAnimeHTTP):
         raise NotImplementedError("Get video from Player object")
 
 
-class BaseJSONParser(BaseParserObject):
+class BaseJSONParser(BaseParser):
     """json parser"""
     REGEX = None
     KEYS: Sequence
