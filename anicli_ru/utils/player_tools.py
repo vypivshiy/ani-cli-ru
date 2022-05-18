@@ -1,11 +1,20 @@
 """
 This module contains functions for works video hosting
+
+
+UPD: DEPRECATED
 """
+
 
 from base64 import b64decode
 import re
 from urllib.parse import urlparse
-from html.parser import unescape
+try:
+    from html.parser import unescape
+except ImportError:
+    from html import unescape
+
+import warnings
 
 # aniboom regular expressions (works after unescape method response html page)
 RE_ANIBOOM = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
@@ -24,12 +33,13 @@ def kodik_decoder(url_encoded: str) -> str:
 
     :param str url_encoded: encoded url
     :return: decoded video url"""
+    warnings.warn("This function remove later, use utils.Kodik.decode method", category=DeprecationWarning)
     url_encoded = url_encoded[::-1]
     if not url_encoded.endswith("=="):
         url_encoded += "=="
-    link = b64decode(url_encoded).decode()
+    link: str = b64decode(url_encoded).decode()
     if not link.startswith("https"):
-        link = "https:" + link
+        link = f"https:{link}"
     return link
 
 
@@ -43,6 +53,7 @@ def kodik_parse_payload(resp: str, referer: str) -> tuple[dict, str]:
     :rtype tuple:
     """
     # prepare values for next POST request
+    warnings.warn("This function remove later, use utils.Kodik.parse_payload method", category=DeprecationWarning)
     url_data, = re.findall(RE_KODIK_URL_DATA, resp)
     type_, = re.findall(RE_KODIK_VIDEO_TYPE, url_data)
     id_, = re.findall(RE_KODIK_VIDEO_ID, url_data)
@@ -54,11 +65,14 @@ def kodik_parse_payload(resp: str, referer: str) -> tuple[dict, str]:
 
 
 def get_kodik_url(raw_player_url: str):
+    warnings.warn("This function remove later, use utils.Kodik.get_url method", category=DeprecationWarning)
     url_, = RE_KODIK_URL.findall(raw_player_url)
-    return "https://" + urlparse(url_).netloc + "/gvi"
+    return f"https://{urlparse(url_).netloc}/gvi"
 
 
 def get_aniboom_url(raw_aniboom_response: str, *, mpd=True):
+    warnings.warn("This function remove later, use utils.Aniboom.get_url method", category=DeprecationWarning)
+
     r = unescape(raw_aniboom_response)
     if mpd:
         return RE_ANIBOOM_MPD.findall(r)[0].replace("\\", "")
@@ -67,9 +81,11 @@ def get_aniboom_url(raw_aniboom_response: str, *, mpd=True):
 
 def is_kodik(url: str):
     """return True if player url is kodik"""
+    warnings.warn("This function remove later, use utils.Kodik.is_kodik method", category=DeprecationWarning)
     return bool(RE_KODIK_URL.match(url))
 
 
 def is_aniboom(url: str) -> bool:
     """return True if player url is aniboom"""
+    warnings.warn("This function remove later, use utils.Aniboom.is_aniboom method", category=DeprecationWarning)
     return "aniboom" in url
