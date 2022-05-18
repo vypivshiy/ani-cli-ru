@@ -62,5 +62,3 @@ class Kodik:
     def is_kodik(url: str) -> bool:
         """return True if url player is kodik"""
         return bool(Kodik.RE_URL.match(url))
-
-    def __bool__(self):
