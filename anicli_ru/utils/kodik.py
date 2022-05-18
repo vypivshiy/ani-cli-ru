@@ -1,11 +1,15 @@
 """Kodik module utils"""
 from base64 import b64decode
 import re
+from typing import Optional, Dict
 from urllib.parse import urlparse
+
 try:
     from html.parser import unescape
 except ImportError:
     from html import unescape
+
+from requests import Session
 
 
 class Kodik:
@@ -16,8 +20,46 @@ class Kodik:
     RE_VIDEO_ID = re.compile(r"go/\w+/(\d+)")
     RE_VIDEO_HASH = re.compile(r"go/\w+/\d+/(.*?)/\d+p\?")
 
-    def __init__(self):
-        pass
+    def __init__(self, session: Session):
+        self.session = session
+        self.useragent = self.session.headers.get("user-agent")
+
+    def get_video_url(self, player_url: str, quality: int = 720, *, referer: str = "") -> str:
+        # kodik server regular expr detection
+        if not Kodik.is_kodik(player_url):
+            raise TypeError(
+                f"Unknown player balancer. get_video_url method support kodik balancer\nvideo url: {player_url}")
+
+        resp = self.session.get(player_url, headers={"user-agent": self.useragent, "referer": referer})
+        # parse payload and url for next request
+        data, url_data = self.parse_payload(resp.text, referer)
+        url = Kodik.get_api_url(player_url)
+
+        resp = self.session.post(url, data=data, headers={
+            "user-agent": self.useragent,
+            "referer": f"https://{url_data}",
+            "orgign": url.replace("/gvi", ""),
+            "accept": "application/json, text/javascript, */*; q=0.01"}).json()["links"]
+        # kodik balancer returns max quality 480, but it has (720, 480, 360) values
+        video_url = resp["480"][0]["src"]
+        return self._get_video_quality(video_url, quality)
+
+    def _get_video_quality(self, video_url: str, quality: int) -> str:
+        if quality not in (720, 480, 360):
+            quality = 720
+        video_url = self.decode(video_url).replace("480.mp4", f"{quality}.mp4")
+        # issue 8, video_url maybe return 404 code
+        if self.session.get(video_url).status_code != 404:
+            return video_url
+
+        choose_quality = f"{quality}.mp4"
+
+        for q in (720, 480, 360):
+            video_url = video_url.replace(choose_quality, f"{q}.mp4")
+            if self.session.get(video_url).status_code == 200:
+                return video_url
+            choose_quality = f"{q}.mp4"
+        raise RuntimeError("Video not found", video_url)
 
     @staticmethod
     def decode(url_encoded: str) -> str:
@@ -54,7 +96,7 @@ class Kodik:
         return data, url_data
 
     @staticmethod
-    def get_url(raw_player_url: str):
+    def get_api_url(raw_player_url: str):
         url_, = Kodik.RE_URL.findall(raw_player_url)
         return f"https://{urlparse(url_).netloc}/gvi"
 

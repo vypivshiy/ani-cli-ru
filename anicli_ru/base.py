@@ -1,15 +1,18 @@
 from __future__ import annotations
+
+import warnings
 from collections import UserList
 import re
 from html import unescape
-from typing import Optional, Dict, AnyStr, Pattern
+from typing import Optional, Dict, AnyStr, Pattern, Sequence, Union, TypeVar
 
 from requests import Session, Response
 
-from .utils.player_tools import kodik_decoder, kodik_parse_payload, is_kodik, get_kodik_url, get_aniboom_url
+from .utils import Aniboom, Kodik
 
 __all__ = ("BaseAnimeHTTP",
-           "BaseParserObject",
+           "BaseParser",
+           "BaseJsonParser",
            "BaseAnimeResult",
            "BasePlayer",
            "BaseEpisode",
@@ -34,7 +37,7 @@ class BaseAnimeHTTP:
 
     Опционально:
 
-        USER_AGENT: - Юзерагент, с которым будут идти запросы
+        USER_AGENT: - Юзерагент, с которого будут идти запросы
 
         _TESTS: - словарь конфигурации теста модуля
 
@@ -43,7 +46,8 @@ class BaseAnimeHTTP:
     # XMLHttpRequest value required!
     USER_AGENT = {
         "user-agent":
-            "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
+            "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
             "x-requested-with": "XMLHttpRequest"}
     _instance = None
     TIMEOUT: float = 30
@@ -54,10 +58,10 @@ class BaseAnimeHTTP:
         "video": True,  # test get raw video, True - yes, False - no
         "search_blocked": False,  # ignore failed get episode and retry get episodes for non blocked title
         "search_not_found": "_thisTitleIsNotExist123456",  # this title has not exist
-        "instant": "experiments lain"
+        "instant": "experiments lain"  # test instant key scroll series
     }
-    # костыль для настройки поведения ключа INSTANT (see issue #6):
-    # если сначала идёт выбор озвучки, а потом плеера, выставите значение True (как в модуле animego)
+    # костыль для настройки поведения ключа INSTANT issue #6:
+    # если сначала идёт выбор озвучки, а потом плеера, выставите значение True (see extractors/animego)
     INSTANT_KEY_REPARSE = False
 
     def __new__(cls, *args, **kwargs):
@@ -157,6 +161,10 @@ class BaseAnimeHTTP:
         raise NotImplementedError
 
     def get_kodik_url(self, player_url: str, quality: int = 720, *, referer: str = "") -> str:
+        warnings.warn("Use get_kodik_video method",category=DeprecationWarning)
+        return self.get_kodik_video(player_url, quality, referer=referer)
+
+    def get_kodik_video(self, player_url: str, quality: int = 720, *, referer: str = "") -> str:
         """Get hls url from kodik balancer
 
         :param str player_url: - raw url in kodik balancer
@@ -164,59 +172,21 @@ class BaseAnimeHTTP:
         :param str referer: - referer, where give this url
         :return:
         """
-        if quality not in (720, 480, 360):
-            quality = 720
-
-        resp = self.request_get(player_url, headers=self.USER_AGENT.copy().update({"referer": referer}))
-
-        data, url_data = kodik_parse_payload(resp.text, referer)
-        # kodik server regular expr detection
-        if not is_kodik(player_url):
-            raise TypeError(
-                f"Unknown player balancer. get_kodik_url method support kodik balancer\nvideo url: {player_url}")
-
-        url = get_kodik_url(player_url)
-        resp = self.request("POST", url, data=data,
-                            headers=self.USER_AGENT.copy().update({"referer": f"https://{url_data}",
-                                                                   "orgign": url.replace("/gvi", ""),
-                                                                   "accept":
-                                                                       "application/json, text/javascript, */*; q=0.01"
-                                                                   })).json()["links"]
-        video_url = resp["480"][0]["src"]
-        # kodik balancer returns max quality 480, but it has (720, 480, 360) values
-        video_url = kodik_decoder(video_url).replace("480.mp4", f"{quality}.mp4")
-
-        # issue 8, video_url maybe return 404 code
-        if self.request_get(video_url).status_code == 404:
-            choose_quality = f"{quality}.mp4"
-            for q in (720, 480, 360):
-                video_url = video_url.replace(choose_quality, f"{q}.mp4")
-                if self.request_get(video_url).status_code == 200:
-                    return video_url
-                choose_quality = f"{q}.mp4"
-            raise RuntimeError("Video is not found", video_url)
-
-        else:
-            return video_url
+        return Kodik(self.session).get_video_url(player_url, quality, referer=referer)
 
     def get_aniboom_url(self, player_url: str) -> str:
+        warnings.warn("Use get_aniboom_video method")
+        return self.get_aniboom_video(player_url)
+
+    def get_aniboom_video(self, player_url: str) -> str:
         """get hls url from aniboom balancer
 
         :param player_url:
         :return:
         """
         # fix 28 11 2021 request
-        if not self.BASE_URL.endswith("/"):
-            b_u = self.BASE_URL + "/"
-        else:
-            b_u = self.BASE_URL
-        r = self.request_get(
-            player_url,
-            headers={
-                "referer": b_u,
-                "user-agent": self.session.headers["user-agent"]})
-
-        return get_aniboom_url(r.text)
+        referer = self.BASE_URL if self.BASE_URL.endswith("/") else f"{self.BASE_URL}/"
+        return Aniboom(self.session).get_video_url(player_url, referer=referer)
 
     def get_video(self, player_url: str, quality: int = 720, *, referer: str = ""):
         """Return direct video url
@@ -226,11 +196,11 @@ class BaseAnimeHTTP:
         """
         if "sibnet" in player_url:
             return player_url
-        elif "aniboom" in player_url:
-            url = self.get_aniboom_url(player_url)
+        elif Aniboom.is_aniboom(player_url):
+            url = self.get_aniboom_video(player_url)
             return url
-        elif is_kodik(player_url):
-            url = self.get_kodik_url(player_url, quality, referer=referer)
+        elif Kodik.is_kodik(player_url):
+            url = self.get_kodik_video(player_url, quality, referer=referer)
             return url
         else:
             # catch any players for add in script
@@ -239,6 +209,10 @@ class BaseAnimeHTTP:
 
 class ResultList(UserList):
     """Modified list object. Used for one line enumerate print elements"""
+
+    def __init__(self):
+        super().__init__()
+        self.data: Sequence[BaseParser, BaseJsonParser] = []
 
     def print_enumerate(self, *args) -> None:
         """print elements with getattr names arg. Default invoke __str__ method"""
@@ -252,9 +226,9 @@ class ResultList(UserList):
             print("Results not found!")
 
 
-class BaseParserObject:
+class BaseParser:
     """base object parser from text response"""
-    REGEX: Dict[AnyStr: Pattern[AnyStr], ...]  # {"attr_name": re.compile(<regular expression>)}
+    REGEX: Dict[str, Pattern]  # {"attr_name": re.compile(<regular expression>)}
 
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
@@ -275,6 +249,32 @@ class BaseParserObject:
         return l_objects
 
 
+class BaseJsonParser:
+    """base parser object for JSON response (see extractors/anilibria)"""
+    REGEX = None
+    KEYS: Sequence
+
+    @classmethod
+    def parse(cls, response: Union[dict, list[dict]]) -> ResultList:
+        rez = ResultList()
+        if isinstance(response, list):
+            for data in response:
+                c = cls()
+                for k in data.keys():
+                    if k in cls.KEYS:
+                        setattr(c, k, data[k])
+                rez.append(c)
+        elif isinstance(response, dict):
+            c = cls()
+            for k in response.keys():
+                if k in cls.KEYS:
+                    setattr(c, k, response[k])
+            rez.append(c)
+        return rez
+
+BaseParserObject = BaseParser  # old alias
+
+
 class BasePlayer(BaseParserObject):
     ANIME_HTTP: BaseAnimeHTTP
     dub_name: str
@@ -286,12 +286,12 @@ class BasePlayer(BaseParserObject):
 
     @staticmethod
     def player_prettify(player: str):
-        return "https:" + unescape(player)
+        return f"https:{unescape(player)}"
 
     def get_video(self, quality: int = 720, referer: Optional[str] = None):
         if not referer:
-            referer = self.ANIME_HTTP.BASE_URL if self.ANIME_HTTP.BASE_URL.endswith("/") \
-                else self.ANIME_HTTP.BASE_URL+"/"
+            referer = self.ANIME_HTTP.BASE_URL if self.ANIME_HTTP.BASE_URL.endswith("/") else f"{self.ANIME_HTTP.BASE_URL}/"
+
         with self.ANIME_HTTP as a:
             return a.get_video(player_url=self.url, quality=quality, referer=referer)
 
