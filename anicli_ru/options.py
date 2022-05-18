@@ -6,7 +6,7 @@ from anicli_ru.loader import all_extractors
 from anicli_ru.__version__ import __version__
 from anicli_ru.utils import Agent
 
-ALL_PARSERS = {k: v for k, v in enumerate(all_extractors())}
+ALL_PARSERS = dict(enumerate(all_extractors()))
 
 
 def setup_arguments() -> argparse.Namespace:
@@ -80,24 +80,6 @@ def setup_arguments() -> argparse.Namespace:
                                     "Didn't have auto detect proxy type. Write argument like "
                                     "proxy_type://ip:port@login:pass")
 
-    server_group = parser.add_argument_group("Server", "Run self-hosted server options")
-    server_group.add_argument("--run-server",
-                              dest="RUN_SERVER",
-                              default=False,
-                              action="store_true",
-                              help="Run local server mode")
-    server_group.add_argument("--host",
-                              type=str,
-                              dest="HOST",
-                              default="127.0.0.1:10007",
-                              help="Server Local-ip address. Default 127.0.0.1:10007")
-    server_group.add_argument("-sdbg",
-                              "--server-debug",
-                              action="store_true",
-                              dest="SERVER_DEBUG",
-                              default=True,
-                              help="Flask-server debug. Default True")
-
     updater_group = parser.add_argument_group("Update script", "Check and update script from pypi")
     updater_group.add_argument("-U", "--upgrade",
                                dest="UPGRADE",
@@ -112,17 +94,6 @@ def setup_arguments() -> argparse.Namespace:
     args = parser.parse_args()
     check_args(args)
     return args
-
-
-def arg_run_server(host: str, debug: bool):
-    """run self hosted flask server"""
-    print("Coming soon...")
-    exit(1)
-    from anicli_ru.server import main
-
-    host, port = host.split(":")
-    main(host=host, port=int(port), debug=debug)
-    exit(1)
 
 
 def print_sources():
