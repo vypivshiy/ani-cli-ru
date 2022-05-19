@@ -1,4 +1,5 @@
 from os import system
+import warnings
 
 
 def run_player(url: str, player: str = "mpv", **commands) -> None:
@@ -10,8 +11,9 @@ def run_player(url: str, player: str = "mpv", **commands) -> None:
         key-param="value" convert to: --key-param=value or **{"my-key-param":"c"} = --my-key-param=c
     :return:
     """
+    warnings.warn("This function/method will be remove later", category=DeprecationWarning)
     if commands:
-        commands = " ".join((f'--{k}="{v}"' for k, v in commands.items()))
+        commands = " ".join((f'--{k}="{v}"' for k, v in commands.items()))  # type: ignore
         system(f"{player} {url} {commands}")
     else:
         system(f"{player} {url}")
