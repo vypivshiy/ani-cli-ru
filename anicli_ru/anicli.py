@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 """Основной CLI скрипт"""
 
+
 from __future__ import annotations
 
 from random import sample
@@ -20,7 +21,7 @@ PLAYER = "mpv"
 OS_HEADERS_COMMAND = "http-header-fields"
 
 # load chosen extractor
-extractor = "anicli_ru.extractors.{}".format(ALL_PARSERS.get(args.SOURCE))
+extractor = f"anicli_ru.extractors.{ALL_PARSERS.get(args.SOURCE)}"
 API = import_extractor(extractor)
 
 if not args.UPGRADE and not args.FORCE:
@@ -44,8 +45,7 @@ class Menu:
         if args.USERAGENT:
             self.anime.session.headers.update({"user-agent": args.USERAGENT})
         elif args.RANDOM_AGENT:
-            agent = get_agent(args.RANDOM_AGENT_TYPE)
-            if agent:
+            if agent := get_agent(args.RANDOM_AGENT_TYPE):
                 self.anime.session.headers.update({"user-agent": agent})
         self.anime.TIMEOUT = self.TIMEOUT
         self.__back_action = True
@@ -107,14 +107,13 @@ class Menu:
                     command = int(command)
                     if self.anime.INSTANT_KEY_REPARSE and self.INSTANT:
                         self.episode_instant(episodes, command)
-                    else:
-                        if command <= len(episodes):
-                            results = episodes[command - 1].player()
-                            if len(results) > 0:
-                                self.choose_dub(results)
-                            else:
-                                print("No available dubs")
-                                return
+                    elif command <= len(episodes):
+                        results = episodes[command - 1].player()
+                        if len(results) > 0:
+                            self.choose_dub(results)
+                        else:
+                            print("No available dubs")
+                            return
             self.back_off()
         else:
             print(
@@ -181,15 +180,15 @@ class Menu:
         url = player.get_video(quality=args.QUALITY)
         if self.DOWNLOAD:
             self._run_download(url)
+
+        elif is_aniboom(url):
+            # Экспериментально выявлено одним из пользователей,
+            # что заголовок Accept-Language увеличивает скорость загрузки в MPV плеере в данном балансере
+            run_player(url, **{OS_HEADERS_COMMAND:
+                                   f"Referer: https://aniboom.one,Accept-Language: ru-RU, "
+                                   f"User-Agent:{self.anime.USER_AGENT['user-agent']}"})
         else:
-            if is_aniboom(url):
-                # Экспериментально выявлено одним из пользователей,
-                # что заголовок Accept-Language увеличивает скорость загрузки в MPV плеере в данном балансере
-                run_player(url, **{OS_HEADERS_COMMAND:
-                                       f"Referer: https://aniboom.one,Accept-Language: ru-RU, "
-                                       f"User-Agent:{self.anime.USER_AGENT['user-agent']}"})
-            else:
-                run_player(url)
+            run_player(url)
 
     def _run_download(self, player_url: str):
         if is_aniboom(player_url):
