@@ -1,5 +1,5 @@
 """Модуль загрузки парсера из директории **extractors**"""
-from typing import List, cast, Protocol
+from typing import List, cast, Protocol, Type
 import importlib
 import os
 import sys
@@ -9,12 +9,12 @@ from anicli_ru.base import *
 
 
 class Extractor(Protocol):
-    Anime: BaseAnimeHTTP
-    Ongoing: BaseOngoing
-    Episode: BaseEpisode
-    Player: BasePlayer
-    AnimeResult: BaseAnimeResult
-    ResultList: ResultList
+    Anime: Type[BaseAnimeHTTP]
+    Ongoing: Type[BaseOngoing]
+    Episode: Type[BaseEpisode]
+    Player: Type[BasePlayer]
+    AnimeResult: Type[BaseAnimeResult]
+    ResultList: Type[ResultList]
 
 
 def all_extractors() -> List[str]:
