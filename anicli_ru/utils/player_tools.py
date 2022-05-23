@@ -33,7 +33,10 @@ def kodik_decoder(url_encoded: str) -> str:
 
     :param str url_encoded: encoded url
     :return: decoded video url"""
-    warnings.warn("This function remove later, use utils.Kodik.decode method", category=DeprecationWarning)
+    warnings.warn("Function kodik_decoder is deprecated; The function "
+                  "kodik_decoder is deprecated and will be removed later."
+                  "use utils.Kodik.decode method",
+                  category=DeprecationWarning)
     url_encoded = url_encoded[::-1]
     if not url_encoded.endswith("=="):
         url_encoded += "=="
@@ -53,7 +56,10 @@ def kodik_parse_payload(resp: str, referer: str) -> tuple[dict, str]:
     :rtype tuple:
     """
     # prepare values for next POST request
-    warnings.warn("This function remove later, use utils.Kodik.parse_payload method", category=DeprecationWarning)
+    warnings.warn("Function kodik_parse_payload is deprecated; The function "
+                  "kodik_parse_payload is deprecated and will be removed later."
+                  "use utils.Kodik.parse_payload method",
+                  category=DeprecationWarning)
     url_data, = re.findall(RE_KODIK_URL_DATA, resp)
     type_, = re.findall(RE_KODIK_VIDEO_TYPE, url_data)
     id_, = re.findall(RE_KODIK_VIDEO_ID, url_data)
@@ -65,14 +71,19 @@ def kodik_parse_payload(resp: str, referer: str) -> tuple[dict, str]:
 
 
 def get_kodik_url(raw_player_url: str):
-    warnings.warn("This function remove later, use utils.Kodik.get_url method", category=DeprecationWarning)
+    warnings.warn("Function get_kodik_url is deprecated; The function "
+                  "get_kodik_url is deprecated and will be removed later."
+                  "use utils.Kodik.parse_payload method",
+                  category=DeprecationWarning)
     url_, = RE_KODIK_URL.findall(raw_player_url)
     return f"https://{urlparse(url_).netloc}/gvi"
 
 
 def get_aniboom_url(raw_aniboom_response: str, *, mpd=True):
-    warnings.warn("This function remove later, use utils.Aniboom.get_url method", category=DeprecationWarning)
-
+    warnings.warn("Function get_aniboom_url is deprecated; The function "
+                  "get_aniboom_url is deprecated and will be removed later."
+                  "use utils.Aniboom.get_url method",
+                  category=DeprecationWarning)
     r = unescape(raw_aniboom_response)
     if mpd:
         return RE_ANIBOOM_MPD.findall(r)[0].replace("\\", "")
@@ -81,11 +92,17 @@ def get_aniboom_url(raw_aniboom_response: str, *, mpd=True):
 
 def is_kodik(url: str):
     """return True if player url is kodik"""
-    warnings.warn("This function remove later, use utils.Kodik.is_kodik method", category=DeprecationWarning)
+    warnings.warn("Function is_kodik is deprecated; The function "
+                  "is_kodik is deprecated and will be removed later."
+                  "use utils.Kodik.is_kodik method",
+                  category=DeprecationWarning)
     return bool(RE_KODIK_URL.match(url))
 
 
 def is_aniboom(url: str) -> bool:
     """return True if player url is aniboom"""
-    warnings.warn("This function remove later, use utils.Aniboom.is_aniboom method", category=DeprecationWarning)
+    warnings.warn("Function is_aniboom is deprecated; The function "
+                  "is_aniboom is deprecated and will be removed later."
+                  "use utils.Aniboom.is_aniboom method",
+                  category=DeprecationWarning)
     return "aniboom" in url
