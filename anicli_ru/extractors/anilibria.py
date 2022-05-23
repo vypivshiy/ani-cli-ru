@@ -70,31 +70,7 @@ class Anime(BaseAnimeHTTP):
         raise NotImplementedError("Get video from Player object")
 
 
-class BaseJSONParser(BaseParser):
-    """json parser"""
-    REGEX = None
-    KEYS: Sequence
-
-    @classmethod
-    def parse(cls, response: Union[dict, list[dict]]) -> ResultList:
-        rez = ResultList()
-        if isinstance(response, list):
-            for data in response:
-                c = cls()
-                for k in data.keys():
-                    if k in cls.KEYS:
-                        setattr(c, k, data[k])
-                rez.append(c)
-        elif isinstance(response, dict):
-            c = cls()
-            for k in response.keys():
-                if k in cls.KEYS:
-                    setattr(c, k, response[k])
-            rez.append(c)
-        return rez
-
-
-class Player(BaseJSONParser):
+class Player(BaseJsonParser):
     KEYS = ('key', 'url')
     key: str
     url: str
@@ -106,7 +82,7 @@ class Player(BaseJSONParser):
         return self.url
 
 
-class Episode(BaseJSONParser):
+class Episode(BaseJsonParser):
     KEYS = ('serie', 'created_timestamp', 'preview', 'skips', 'hls', 'host')
     host: str  # not used in real API response
     serie: int
@@ -131,7 +107,7 @@ class Episode(BaseJSONParser):
         return rez
 
 
-class AnimeResult(BaseJSONParser):
+class AnimeResult(BaseJsonParser):
     KEYS = ('id', 'code', 'names', 'status', 'announce', 'posters', 'updated', 'last_change', 'type',
             'genres', 'team', 'season', 'description', 'in_favorites', 'blocked', 'player', 'torrents')
     id: int
