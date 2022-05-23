@@ -1,7 +1,20 @@
 """Модуль загрузки парсера из директории **extractors**"""
-from typing import List
+from typing import List, cast, Protocol
+import importlib
 import os
 import sys
+
+
+from anicli_ru.base import *
+
+
+class Extractor(Protocol):
+    Anime: BaseAnimeHTTP
+    Ongoing: BaseOngoing
+    Episode: BaseEpisode
+    Player: BasePlayer
+    AnimeResult: BaseAnimeResult
+    ResultList: ResultList
 
 
 def all_extractors() -> List[str]:
@@ -12,7 +25,7 @@ def all_extractors() -> List[str]:
     return [_.replace(".py", "") for _ in os.listdir(dir_path) if not _.startswith("__") and _.endswith(".py")]
 
 
-def import_extractor(module_name: str):
+def import_extractor(module_name: str) -> Extractor:
     """
     :param module_name:
     :return: Imported module
@@ -21,5 +34,6 @@ def import_extractor(module_name: str):
     __import__(module_name)
 
     if module_name in sys.modules:
-        return sys.modules[module_name]
+        extractor = cast(Extractor, importlib.import_module(module_name))
+        return extractor
     raise ImportError("Failed import {} extractor".format(module_name))
