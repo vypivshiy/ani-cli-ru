@@ -2,18 +2,18 @@
 from typing import List, cast, Protocol, Type
 import importlib
 import os
-import sys
 
 
 from anicli_ru.base import *
 
 
 class Extractor(Protocol):
+    """Typehints dyn imported extractor"""
     Anime: Type[BaseAnimeHTTP]
-    Ongoing: Type[BaseOngoing]
-    Episode: Type[BaseEpisode]
-    Player: Type[BasePlayer]
     AnimeResult: Type[BaseAnimeResult]
+    Episode: Type[BaseEpisode]
+    Ongoing: Type[BaseOngoing]
+    Player: Type[BasePlayer]
     ResultList: Type[ResultList]
 
 
@@ -27,13 +27,19 @@ def all_extractors() -> List[str]:
 
 def import_extractor(module_name: str) -> Extractor:
     """
-    :param module_name:
-    :return: Imported module
+    :param module_name: extractor name
+    :return: Imported extractor module
     :raise ImportError:
     """
-    __import__(module_name)
-
-    if module_name in sys.modules:
-        extractor = cast(Extractor, importlib.import_module(module_name))
-        return extractor
-    raise ImportError("Failed import {} extractor".format(module_name))
+    try:
+        # typehint dynamically import API extractor
+        extractor = cast(Extractor, importlib.import_module(module_name, package=None))
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(f"Module {module_name} has not founded")
+    # check extractor scheme
+    for class_ in ("Anime", "AnimeResult", "Episode", "Ongoing", "Player", "ResultList"):
+        try:
+            getattr(extractor, class_)
+        except AttributeError:
+            raise AttributeError(f"Module {module_name} has no class {class_}. Did you import extractor?")
+    return extractor
