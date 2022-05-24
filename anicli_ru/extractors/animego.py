@@ -18,7 +18,7 @@ class Anime(BaseAnimeHTTP):
 
     def search(self, q: str) -> ResultList[AnimeResult]:
         resp = self.request_get(self.BASE_URL + "search/anime", params={"q": q}).text
-        return ResultList(AnimeResult.parse(resp))
+        return AnimeResult.parse(resp)
 
     def ongoing(self) -> ResultList[Ongoing]:
         resp = self.request_get(self.BASE_URL).text
