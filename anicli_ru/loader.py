@@ -1,5 +1,5 @@
-"""Модуль загрузки парсера из директории **extractors**"""
-from typing import List, cast, Protocol, Type
+"""Dynamic import extractor form **extractors** directory"""
+from typing import List, cast, Protocol, Type, Tuple
 import importlib
 import os
 
@@ -17,12 +17,17 @@ class Extractor(Protocol):
     ResultList: Type[ResultList]
 
 
-def all_extractors() -> List[str]:
+def all_extractors(*, absolute_directory: bool = False) -> Tuple[str, ...]:
     if __name__ != "__main__":
         dir_path = __file__.replace(__name__.split(".")[-1] + ".py", "") + "extractors"
     else:
         dir_path = "../../extractors"
-    return [_.replace(".py", "") for _ in os.listdir(dir_path) if not _.startswith("__") and _.endswith(".py")]
+    if absolute_directory:
+        return tuple(
+            ["anicli_ru.extractors." + _.replace(".py", "")
+             for _ in os.listdir(dir_path) if not _.startswith("__") and _.endswith(".py")])
+
+    return tuple([_.replace(".py", "") for _ in os.listdir(dir_path) if not _.startswith("__") and _.endswith(".py")])
 
 
 def import_extractor(module_name: str) -> Extractor:
