@@ -201,13 +201,13 @@ class BaseAnimeHTTP:
         """
         return Kodik(self.session).get_video_url(player_url, quality, referer=referer)
 
-    def get_aniboom_url(self, player_url: str) -> str:
+    def get_aniboom_url(self, player_url: str, quality: int = 1080) -> str:
         warnings.warn("The method get_aniboom_url is deprecated and will be removed later."
                       "use Anime.get_aniboom_video method",
                       category=DeprecationWarning)
-        return self.get_aniboom_video(player_url)
+        return self.get_aniboom_video(player_url, quality)
 
-    def get_aniboom_video(self, player_url: str) -> str:
+    def get_aniboom_video(self, player_url: str, quality: int = 1080) -> str:
         """get hls url from aniboom balancer
 
         :param player_url: raw url from aniboom balancer
@@ -215,7 +215,7 @@ class BaseAnimeHTTP:
         """
         # fix 28 11 2021 request
         referer = self.BASE_URL if self.BASE_URL.endswith("/") else f"{self.BASE_URL}/"
-        return Aniboom(self.session).get_video_url(player_url, referer=referer)
+        return Aniboom(self.session).get_video_url(player_url, referer=referer, quality=quality)
 
     def get_video(self, player_url: str, quality: int = 720, *, referer: str = "") -> str:
         """Get video from balancer. Check balancer, where from url
@@ -228,7 +228,7 @@ class BaseAnimeHTTP:
         if "sibnet" in player_url:
             return player_url
         elif Aniboom.is_aniboom(player_url):
-            url = self.get_aniboom_video(player_url)
+            url = self.get_aniboom_video(player_url, quality=quality)
             return url
         elif Kodik.is_kodik(player_url):
             url = self.get_kodik_video(player_url, quality, referer=referer)
