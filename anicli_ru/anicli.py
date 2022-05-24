@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 """Основной CLI скрипт"""
 
-
 from __future__ import annotations
 
 from random import sample
@@ -13,7 +12,7 @@ from typing import Union
 from .options import ALL_PARSERS, setup_arguments, get_agent
 from .loader import import_extractor
 from .utils.player_starter import run_player
-from .utils.player_tools import is_aniboom
+from .utils import Aniboom
 
 args = setup_arguments()
 
@@ -181,19 +180,20 @@ class Menu:
         if self.DOWNLOAD:
             self._run_download(url)
 
-        elif is_aniboom(url):
+        elif Aniboom.is_aniboom(url):
             # Экспериментально выявлено одним из пользователей,
             # что заголовок Accept-Language увеличивает скорость загрузки в MPV плеере в данном балансере
-            run_player(url, **{OS_HEADERS_COMMAND:
-                                   f"Referer: https://aniboom.one,Accept-Language: ru-RU, "
-                                   f"User-Agent:{self.anime.USER_AGENT['user-agent']}"})
+            run_player(url, **{OS_HEADERS_COMMAND: f"Referer: https://aniboom.one,Accept-Language: ru-RU, "
+                                                   f"User-Agent:{self.anime.USER_AGENT['user-agent']}"})
         else:
             run_player(url)
 
     def _run_download(self, player_url: str):
-        if is_aniboom(player_url):
+        if Aniboom.is_aniboom(player_url):
             self._download(
-                f'ffmpeg -y -headers "Referer: https://aniboom.one" -i "{player_url}" "{"".join(sample(ascii_letters, 12))}.mp4"')
+                f'ffmpeg -y -headers "Referer: https://aniboom.one,Accept-Language: ru-RU",'
+                f'User-Agent:{self.anime.USER_AGENT["user-agent"]}"'
+                f'-i "{player_url}" "{"".join(sample(ascii_letters, 12))}.mp4"')
         else:
             self._download(f'ffmpeg -y -i "{player_url}" "{"".join(sample(ascii_letters, 12))}.mp4"')
 
