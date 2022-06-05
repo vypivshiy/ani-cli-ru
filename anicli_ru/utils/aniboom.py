@@ -1,14 +1,19 @@
 from base64 import b64decode
 import re
 from urllib.parse import urlparse
+from typing import NamedTuple
 
 try:
     from html.parser import unescape
 except ImportError:
     from html import unescape
 
-
 from requests import Session
+
+
+class AniboomM3U8Data(NamedTuple):
+    quality: str
+    url_suffix: str
 
 
 class Aniboom:
@@ -16,6 +21,8 @@ class Aniboom:
     RE_M3U8 = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
     RE_MPD = re.compile(r'"{\\"src\\":\\"(.*\.mpd)\\"')
     QUALITY = (1080, 720, 480, 360)  # works only m3u8 format
+    RE_M3U8_DATA = re.compile(r'''#EXT\-X\-STREAM\-INF\:BANDWIDTH=\d+,RESOLUTION=(\d+x\d+),CODECS=".*?",AUDIO=".*?"
+(.*?\.m3u8)''')  # parse master.m3u8, return [(quality, url), ...] results
 
     def __init__(self, session: Session):
         self.session = session
@@ -60,9 +67,17 @@ class Aniboom:
         :param quality: video quality. Default 1080
         :return: video url with set quality
         """
-        m3u8_url = m3u8_url.replace(".m3u8", "")
-        # TODO, add status code control
-        return f"{m3u8_url}_{quality}p.m3u8"
+        # parse master.m3u8 response
+        r = Session().get(m3u8_url, headers={"Referer": "https://aniboom.one", "Accept-Language": "ru-RU",
+                                             "User-Agent":
+                                                 "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) "
+                                                 "AppleWebKit/537.36 (KHTML, like Gecko) "
+                                                 "Chrome/94.0.4606.114 Mobile Safari/537.36"}).text
+        # '640x360' - 360 '854x480' 480 '1280x720' - 720 '1920x1080' - 1080
+        results = [AniboomM3U8Data(qual, url) for qual, url in Aniboom.RE_M3U8_DATA.findall(r)]
+        return next((
+            m3u8_url.replace("master.m3u8", data.url_suffix) for data in results if data.quality.endswith(str(quality))
+        ), m3u8_url)
 
     @staticmethod
     def is_aniboom(url: str) -> bool:
