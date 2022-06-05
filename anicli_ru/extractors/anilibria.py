@@ -6,7 +6,9 @@ from anicli_ru.base import *
 class Anime(BaseAnimeHTTP):
     """API method write in snake_case style.
     For details see docs on https://github.com/anilibria/docs/blob/master/api_v2.md"""
+
     BASE_URL = "https://api.anilibria.tv/v2/"
+
     INSTANT_KEY_REPARSE = True
     _TESTS = {
         "search": ["Зомбиленд", 12],
@@ -53,6 +55,9 @@ class Anime(BaseAnimeHTTP):
         """
         params = self._kwargs_pop_params(kwargs, limit=limit)
         return self.api_request(api_method="getUpdates", data=params, **kwargs)
+
+    def episode_reparse(self, *args, **kwargs):
+        raise NotImplementedError
 
     def search(self, q: str) -> ResultList[BaseAnimeResult]:
         return AnimeResult.parse(self.search_titles(search=q))
@@ -135,7 +140,7 @@ class AnimeResult(BaseJsonParser):
         host = self.player["host"]
         for p in self.player["playlist"].values():
             p["host"] = host
-        playlist = [el for el in self.player["playlist"].values()]
+        playlist = list(self.player["playlist"].values())
         return Episode.parse(playlist)
 
 
