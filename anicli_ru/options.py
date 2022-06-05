@@ -22,8 +22,9 @@ def setup_arguments() -> argparse.Namespace:
                         dest="QUALITY",
                         type=int,
                         default=720,
-                        choices=[360, 480, 720],
-                        help="default video quality. Works only kodik. Default 720")
+                        choices=[360, 480, 720, 1080],
+                        help="Default video quality. Kodik balancer max 720 quality (usually 480), "
+                             "Aniboom max 1080, Sibnet 360")
     parser.add_argument("-i", "--instant",
                         dest="INSTANT",
                         default=False,
@@ -60,8 +61,8 @@ def setup_arguments() -> argparse.Namespace:
                                type=str,
                                choices=["m", "d", "r", "f"],
                                default="m",
-                               help="Set randomize agent type. 'm' - mobile, 'd' - desktop, 'r' - random, "f" "
-                                    f"- disable randomize. Default 'm'")
+                               help="Set randomize agent type. 'm' - mobile, 'd' - desktop, 'r' - random,"
+                                    " 'f' - disable randomize. Default 'm'")
     request_group.add_argument("--user-agent",
                                dest="USERAGENT",
                                type=str,
@@ -71,12 +72,12 @@ def setup_arguments() -> argparse.Namespace:
                                dest="TIMEOUT",
                                type=float,
                                default=30,
-                               help="Request timeout value. Default 30 seconds")
+                               help="Max request timeout value. Default 30 seconds")
     request_group.add_argument("-p", "--proxy",
                                dest="PROXY",
                                type=str,
                                default="",
-                               help="Add proxy for search requests (not for download video). "
+                               help="Add proxy for search requests (not for download video in video player). "
                                     "Didn't have auto detect proxy type. Write argument like "
                                     "proxy_type://ip:port@login:pass")
 
