@@ -1,8 +1,7 @@
 """Dynamic import extractor form **extractors** directory"""
-from typing import List, cast, Protocol, Type, Tuple
+from typing import cast, Protocol, Type, Tuple
 import importlib
 import os
-
 
 from anicli_ru.base import *
 
@@ -23,11 +22,10 @@ def all_extractors(*, absolute_directory: bool = False) -> Tuple[str, ...]:
     else:
         dir_path = "../../extractors"
     if absolute_directory:
-        return tuple(
-            ["anicli_ru.extractors." + _.replace(".py", "")
-             for _ in os.listdir(dir_path) if not _.startswith("__") and _.endswith(".py")])
+        return tuple("anicli_ru.extractors." + _.replace(".py", "") for _ in os.listdir(dir_path) if
+                     not _.startswith("__") and _.endswith(".py"))
 
-    return tuple([_.replace(".py", "") for _ in os.listdir(dir_path) if not _.startswith("__") and _.endswith(".py")])
+    return tuple(_.replace(".py", "") for _ in os.listdir(dir_path) if not _.startswith("__") and _.endswith(".py"))
 
 
 def import_extractor(module_name: str) -> Extractor:
@@ -39,12 +37,13 @@ def import_extractor(module_name: str) -> Extractor:
     try:
         # typehint dynamically import API extractor
         extractor = cast(Extractor, importlib.import_module(module_name, package=None))
-    except ModuleNotFoundError:
-        raise ModuleNotFoundError(f"Module {module_name} has not founded")
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(f"Module {module_name} has not founded") from e
     # check extractor scheme
     for class_ in ("Anime", "AnimeResult", "Episode", "Ongoing", "Player", "ResultList"):
         try:
             getattr(extractor, class_)
-        except AttributeError:
-            raise AttributeError(f"Module {module_name} has no class {class_}. Did you import extractor?")
+        except AttributeError as exc:
+            raise AttributeError(f"Module {module_name} has no class {class_}. Did you import extractor?") from exc
+
     return extractor
