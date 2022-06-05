@@ -9,6 +9,8 @@ from os import system
 from os import name as sys_name
 from typing import Union
 
+import requests.exceptions
+
 from .options import ALL_PARSERS, setup_arguments, get_agent
 from .loader import import_extractor
 from .utils.player_starter import run_player
@@ -239,6 +241,8 @@ def main():
     except KeyboardInterrupt:
         print("KeyboardInterrupt, Exit...")
         exit(1)
+    except requests.exceptions.ConnectionError as exc:
+        raise requests.exceptions.ConnectionError("Connection aborted (Reset by peer).") from exc
 
 
 if __name__ == '__main__':
