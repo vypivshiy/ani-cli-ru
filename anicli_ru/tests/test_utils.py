@@ -7,7 +7,8 @@ from anicli_ru.base import ResultList
 from anicli_ru.utils import Agent
 from anicli_ru import loader
 from anicli_ru.utils import Kodik, Aniboom
-from anicli_ru.tests.fixtures.fake_extractor import FakeParser, FakeJsonParser
+from anicli_ru.base import BaseAnimeHTTP
+from anicli_ru.tests.fixtures.fake_extractor import FakeParser, FakeJsonParser  # type: ignore
 
 
 @pytest.mark.parametrize("url", ["//foobarbaz.com/anime_for_debils_4k.mp4",
@@ -15,41 +16,18 @@ from anicli_ru.tests.fixtures.fake_extractor import FakeParser, FakeJsonParser
 def test_kodik_decode(url: str):
     url_encode = b64encode(url.encode()).decode()[::-1]
     if not url.startswith("https"):
-        assert Kodik.decode(url_encode) == "https:" + url
+        assert Kodik.decode(url_encode) == f"https:{url}"
     else:
         assert Kodik.decode(url_encode) == url
 
 
-def test_kodik_fake():
-    pass
+def test_animehttp_singleton():
+    anime_1, anime_2 = BaseAnimeHTTP(), BaseAnimeHTTP()
+    assert anime_1 == anime_2
 
 
-def test_kodik_quality():
-    pass
-
-
-def test_aniboom_fake():
-    pass
-
-
-def test_load_fake_extractor():
+def test_fake_load_extractor():
     loader.import_extractor("anicli_ru.tests.fixtures.fake_extractor")
-
-
-def test_fake_extractor_episode():
-    pass
-
-
-def test_fake_extractor_search():
-    pass
-
-
-def test_fake_extractor_ongoing():
-    pass
-
-
-def test_fake_extractor_player():
-    pass
 
 
 @pytest.mark.parametrize("html", ["foo=abc\nbar=456\nbaz=789",
@@ -69,7 +47,7 @@ def test_parser(html: str):
 @pytest.mark.parametrize("data", [{"foo": "abc", "bar": 456, "baz": 789},
                                   {"foo": "foo", "bar": 9000, "baz": 0,
                                    "a": "MAKING THE MOTHER OF ALL OMELETTES HERE JACK, CAN'T FRET OVER EVERY EGG!"},
-                                  {"a" : "But who's to judge the right from wrong.",
+                                  {"a": "But who's to judge the right from wrong.",
                                    "b": ["Just like me trying to make history.",
                                          "When our guard is down I think we'll both agree."],
                                    "c": {"foo": "That ViOLECE, breeds ViOLENCE.",
@@ -88,7 +66,7 @@ def test_parser_json(data: dict):
 
 @pytest.mark.parametrize("module", ["math", "urllib3", "json", "csv", "anicli_ru.tests.fixtures.fake_extractor_bad"])
 def test_wrong_load_extractor(module: str):
-    with pytest.raises(AttributeError, match=f'Module {module} has no class Anime'):
+    with pytest.raises(AttributeError):
         loader.import_extractor(module)
 
 
@@ -97,14 +75,13 @@ def test_wrong_load_extractor(module: str):
                                     "anicli_ru.extractors._asd12f3gsdfg23",
                                     "why what"])
 def test_not_exist_load_extractor(module: str):
-    with pytest.raises(ModuleNotFoundError, match=f"Module {module} has not founded"):
+    with pytest.raises(ModuleNotFoundError):
         loader.import_extractor(module)
 
 
 @pytest.mark.parametrize("extractor", list(loader.all_extractors(absolute_directory=True)))
 def test_load_extractor(extractor):
-    loader.import_extractor(extractor)
-    assert True
+    assert loader.import_extractor(extractor)
 
 
 @pytest.mark.parametrize("agent1,agent2", [(Agent.mobile(), Agent.mobile()),

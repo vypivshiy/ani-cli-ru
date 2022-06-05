@@ -10,19 +10,21 @@
 import warnings
 from sys import modules as sys_modules
 
+import pytest
+
 from anicli_ru import loader
 from anicli_ru.base import BaseAnimeHTTP
-import pytest
+from anicli_ru import loader
 
 
 IMPORTED_MODULES = []
 
 extractors = loader.all_extractors()
 for m in ["anicli_ru.extractors." + m for m in extractors]:
-    __import__(m)
     if m not in sys_modules:
         raise ImportError("Failed import {} extractor".format(m))
-    IMPORTED_MODULES.append(sys_modules[m])
+    mod = loader.import_extractor(m)
+    IMPORTED_MODULES.append(mod)
     print("LOAD", m)
 
 ANIME_HTTP_ALL = [p.Anime() for p in IMPORTED_MODULES]
