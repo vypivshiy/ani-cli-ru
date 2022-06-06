@@ -1,4 +1,4 @@
-from os import system
+import subprocess
 import warnings
 
 
@@ -13,8 +13,7 @@ def run_player(url: str, player: str = "mpv", **commands) -> None:
     """
     warnings.warn("This function/method will be remove later", category=DeprecationWarning)
     if commands:
-        commands = " ".join((f'--{k}="{v}"' for k, v in commands.items()))  # type: ignore
-        system(f"{player} {url} {commands}")
+        commands = " ".join((f'--{k}="{v}"' for k, v in commands.items()))
+        subprocess.run([player, url, commands])
     else:
-        system(f"{player} {url}")
-
+       subprocess.run([player, url])
