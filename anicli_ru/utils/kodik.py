@@ -102,8 +102,11 @@ class Kodik:
 
     @staticmethod
     def get_api_url(player_url: str):
-        if not player_url.startswith("https://"):
-            player_url = f"https://{player_url}"
+        if not player_url.startswith("//"):
+            player_url = f"//{player_url}"
+        if not player_url.startswith("https:"):
+            player_url = f"https:{player_url}"
+
         url_, = Kodik.RE_URL.findall(player_url)
         return f"https://{urlparse(url_).netloc}/gvi"
 
