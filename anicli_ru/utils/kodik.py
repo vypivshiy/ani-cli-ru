@@ -27,7 +27,7 @@ class Kodik:
 
     def get_video_url(self, player_url: str, quality: int = 720, *, referer: str = "") -> str:
         # kodik server regular expr detection
-        if not Kodik.is_kodik(player_url):
+        if not self.is_kodik(player_url):
             raise TypeError(
                 f"Unknown player balancer. get_video_url method support kodik balancer\nvideo url: {player_url}")
         resp = self._get_raw_payload(player_url, referer)
@@ -91,18 +91,20 @@ class Kodik:
         :rtype tuple:
         """
         # prepare values for next POST request
-        url_data, = re.findall(Kodik.RE_URL_DATA, resp)
-        type_, = re.findall(Kodik.RE_VIDEO_TYPE, url_data)
-        id_, = re.findall(Kodik.RE_VIDEO_ID, url_data)
-        hash_, = re.findall(Kodik.RE_VIDEO_HASH, url_data)
+        url_data, = Kodik.RE_URL_DATA.findall(resp)
+        type_, = Kodik.RE_VIDEO_TYPE.findall(url_data)
+        id_, = Kodik.RE_VIDEO_ID.findall(url_data)
+        hash_, = Kodik.RE_VIDEO_HASH.findall(url_data)
         data = {value.split("=")[0]: value.split("=")[1] for value in url_data.split("?", 1)[1].split("&")}
         data.update({"type": type_, "hash": hash_, "id": id_, "info": {}, "bad_user": True,
                      "ref": referer.rstrip("/")})
         return data, url_data
 
     @staticmethod
-    def get_api_url(raw_player_url: str):
-        url_, = Kodik.RE_URL.findall(raw_player_url)
+    def get_api_url(player_url: str):
+        if not player_url.startswith("https://"):
+            player_url = f"https://{player_url}"
+        url_, = Kodik.RE_URL.findall(player_url)
         return f"https://{urlparse(url_).netloc}/gvi"
 
     @staticmethod
