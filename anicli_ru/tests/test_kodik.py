@@ -20,8 +20,6 @@ def test_decode(url: str):
 def test_parse_payload():
     k = Kodik(Session())
     data, url = k.parse_payload(KODIK_RAW_RESPONSE, "foobar.com")
-    api_url = k.get_api_url(KODIK_RAW_RESPONSE)
-    print(api_url)
     assert url.startswith("fakeplayer.com/go/seria/12345")
     assert data.get("d") == "animeeee.kek"
     assert data.get("d_sign") == "hash0000000"
@@ -32,7 +30,8 @@ def test_parse_payload():
 
 
 @pytest.mark.parametrize("player_url", ["https://fakekodik.fake/seria/0/0h1as2h01234567/720p?foobar=baz",
-                                        "fakekodik.fake/seria/1/0h1as2h7654321/720p"])
+                                        "//not_real_kodik.ru/seria/1/0h1as2h7654321/720p",
+                                        "aniloh.fake/seria/1/0h1as2h7654321/720p"])
 def test_get_api_url(player_url):
     url = Kodik(Session()).get_api_url(player_url)
     assert url.startswith("https") and url.endswith("/gvi")

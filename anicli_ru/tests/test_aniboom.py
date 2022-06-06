@@ -11,8 +11,8 @@ from anicli_ru.utils import Aniboom
 def test_url_parser():
     mpd, = Aniboom.RE_MPD.findall(unescape(ANIBOOM_RAW_RESPONSE))
     m3u8, = Aniboom.RE_M3U8.findall(unescape(ANIBOOM_RAW_RESPONSE))
-    assert mpd.replace("\\", "") == 'https://kekistan.cdn-fakeaniboom.com/jo/abcdefg123/master.m3u8'
-    assert m3u8.replace("\\", "") == 'https://kekistan.cdn-fakeaniboom.com/jo/abcdef123/111hash.mpd'
+    assert m3u8.replace("\\", "") == 'https://kekistan.cdn-fakeaniboom.com/jo/abcdefg123/master.m3u8'
+    assert mpd.replace("\\", "") == 'https://kekistan.cdn-fakeaniboom.com/jo/abcdef123/111hash.mpd'
 
 
 def test_m3u8_parser():
