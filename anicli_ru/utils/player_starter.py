@@ -1,4 +1,4 @@
-from os import system
+import subprocess
 
 
 def run_player(url: str, player: str = "mpv", **commands) -> None:
@@ -12,7 +12,6 @@ def run_player(url: str, player: str = "mpv", **commands) -> None:
     """
     if commands:
         commands = " ".join((f'--{k}="{v}"' for k, v in commands.items()))
-        system(f"{player} {url} {commands}")
+        subprocess.run([player, url, commands])
     else:
-        system(f"{player} {url}")
-
+       subprocess.run([player, url])
