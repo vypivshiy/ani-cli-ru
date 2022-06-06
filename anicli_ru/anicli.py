@@ -9,7 +9,6 @@ from os import system
 from os import name as sys_name
 from typing import Union
 
-import requests.exceptions
 
 from .options import ALL_PARSERS, setup_arguments, get_agent
 from .loader import import_extractor
@@ -234,15 +233,23 @@ class Menu:
     def run(cls):
         cls().main()
 
+    @classmethod
+    def validate(cls) -> None:
+        try:
+            cls().anime.session.get(cls().anime.BASE_URL)
+        except OSError as e:
+            raise ConnectionError("Connection aborted (Reset by peer). Use Another extractor. "
+                                  "To see all available extractors id usage: anicli-ru --print-sources") from e
+
 
 def main():
+    # check status code:
+    Menu.validate()
     try:
         Menu.run()
     except KeyboardInterrupt:
         print("KeyboardInterrupt, Exit...")
         exit(1)
-    except requests.exceptions.ConnectionError as exc:
-        raise requests.exceptions.ConnectionError("Connection aborted (Reset by peer).") from exc
 
 
 if __name__ == '__main__':
