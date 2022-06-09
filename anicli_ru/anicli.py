@@ -3,16 +3,15 @@
 
 from __future__ import annotations
 
+import subprocess
+from os import name as sys_name
+from os import system
 from random import sample
 from string import ascii_letters
-from os import system
-from os import name as sys_name
 from typing import Union
 
-
-from .options import ALL_PARSERS, setup_arguments, get_agent
 from .loader import import_extractor
-from .utils.player_starter import run_player
+from .options import ALL_PARSERS, setup_arguments, get_agent
 from .utils import Aniboom
 
 args = setup_arguments()
@@ -240,6 +239,16 @@ class Menu:
         except OSError as e:
             raise ConnectionError("Connection aborted (Reset by peer). Use Another extractor. "
                                   "To see all available extractors id usage: anicli-ru --print-sources") from e
+
+
+def run_player(url: str, player: str = None, **commands) -> None:
+    if not player:
+        player = PLAYER
+    if commands:
+        commands = " ".join((f'--{k}="{v}"' for k, v in commands.items()))
+        subprocess.run([player, url, commands])
+    else:
+       subprocess.run([player, url])
 
 
 def main():
