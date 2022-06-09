@@ -85,4 +85,9 @@ print(players[0].get_video())  # получить прямую ссылку на
 ---
 # Contributing
 
-Скрипт в стадии рефакторинга и улучшения, будет добавлена инструкция позже
+[DEV GUIDE](DEV.md)
+# TODO
+* ~~dev guide~~
+* CI/CD github actions: add autotest utils (without test parser), pylance, etc
+* mypy fix typing
+
