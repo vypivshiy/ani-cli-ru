@@ -1,7 +1,7 @@
 """Dynamic import extractor form **extractors** directory"""
-from typing import cast, Protocol, Type, Tuple
+from typing import cast, Protocol, Type, Tuple, Union
 import importlib
-import os
+from os import PathLike, listdir
 
 from anicli_ru.base import *
 
@@ -22,13 +22,13 @@ def all_extractors(*, absolute_directory: bool = False) -> Tuple[str, ...]:
     else:
         dir_path = "../../extractors"
     if absolute_directory:
-        return tuple("anicli_ru.extractors." + _.replace(".py", "") for _ in os.listdir(dir_path) if
+        return tuple("anicli_ru.extractors." + _.replace(".py", "") for _ in listdir(dir_path) if
                      not _.startswith("__") and _.endswith(".py"))
 
-    return tuple(_.replace(".py", "") for _ in os.listdir(dir_path) if not _.startswith("__") and _.endswith(".py"))
+    return tuple(_.replace(".py", "") for _ in listdir(dir_path) if not _.startswith("__") and _.endswith(".py"))
 
 
-def import_extractor(module_name: str) -> Extractor:
+def import_extractor(module_name: Union[PathLike, str]) -> Extractor:
     """
     :param module_name: extractor name
     :return: Imported extractor module
@@ -36,7 +36,7 @@ def import_extractor(module_name: str) -> Extractor:
     """
     try:
         # typehint dynamically import API extractor
-        extractor = cast(Extractor, importlib.import_module(module_name, package=None))
+        extractor = cast(Extractor, importlib.import_module(module_name, package=None))  # type: ignore
     except ModuleNotFoundError as e:
         raise ModuleNotFoundError(f"Module {module_name} has not founded") from e
     # check extractor scheme
