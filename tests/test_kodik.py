@@ -3,7 +3,7 @@ from base64 import b64encode
 import pytest
 from requests import Session
 
-from anicli_ru.tests.fixtures.mock import KODIK_RAW_RESPONSE
+from tests.fixtures.mock import KODIK_RAW_RESPONSE
 from anicli_ru.utils import Kodik
 
 
