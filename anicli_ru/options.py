@@ -21,7 +21,7 @@ def setup_arguments() -> argparse.Namespace:
     parser.add_argument("-q", "--quality",
                         dest="QUALITY",
                         type=int,
-                        default=720,
+                        default=1080,
                         choices=[360, 480, 720, 1080],
                         help="Default video quality. Kodik balancer max 720 quality (usually 480), "
                              "Aniboom max 1080, Sibnet 360")
