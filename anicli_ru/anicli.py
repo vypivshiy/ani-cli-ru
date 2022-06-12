@@ -8,7 +8,7 @@ from os import name as sys_name
 from os import system
 from random import sample
 from string import ascii_letters
-from typing import Union
+from typing import Union, Optional
 
 from .loader import import_extractor
 from .options import ALL_PARSERS, setup_arguments, get_agent
@@ -183,8 +183,7 @@ class Menu:
         elif Aniboom.is_aniboom(url):
             # Экспериментально выявлено одним из пользователей,
             # что заголовок Accept-Language увеличивает скорость загрузки в MPV плеере в данном балансере
-            run_player(url, **{OS_HEADERS_COMMAND: f"Referer: https://aniboom.one,Accept-Language: ru-RU, "
-                                                   f"User-Agent:{self.anime.USER_AGENT['user-agent']}"})
+            run_player(url, commands= (f"-{OS_HEADERS_COMMAND}", "Referer: https://aniboom.one,Accept-Language: ru-RU, User-Agent:{self.anime.USER_AGENT['user-agent']}"))
         else:
             run_player(url)
 
@@ -241,14 +240,13 @@ class Menu:
                                   "To see all available extractors id usage: anicli-ru --print-sources") from e
 
 
-def run_player(url: str, player: str = None, **commands) -> None:
+def run_player(url: str, player: str = None, commands: tuple[Optional[str], ...] = ()) -> None:
     if not player:
         player = PLAYER
     if commands:
-        commands = " ".join((f'--{k}="{v}"' for k, v in commands.items()))
-        subprocess.run([player, url, commands])
+        subprocess.run([player, url, *commands])  # type: ignore
     else:
-       subprocess.run([player, url])
+        subprocess.run([player, url])
 
 
 def main():
