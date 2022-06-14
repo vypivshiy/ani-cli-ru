@@ -28,20 +28,22 @@ class Aniboom:
         self.session = session
         self.headers = self.session.headers.get("user-agent")
 
-    def get_video_url(self, player_url: str, *, quality: int = 1080, referer: str) -> str:
+    def get_video_url(self, player_url: str, *, quality: int = 1080, mpd: bool = False, referer: str) -> str:
         """
 
         :param player_url:
+        :param quality:
+        :param mpd:
         :param referer:
         :return:
         """
         r = self.session.get(player_url, headers={"referer": referer,
                                                   "user-agent": self.session.headers["user-agent"]})
 
-        return self.get_aniboom_url(r.text, quality=quality)
+        return self.get_aniboom_url(r.text, quality=quality, mpd=mpd)
 
     @staticmethod
-    def get_aniboom_url(raw_aniboom_response: str, *, quality: int = 1080, mpd=False) -> str:
+    def get_aniboom_url(raw_aniboom_response: str, *, quality: int = 1080, mpd: bool = False) -> str:
         """
 
         :param quality: video quality. Available values: 480, 720, 1080
@@ -53,7 +55,7 @@ class Aniboom:
         try:
             if mpd:
                 return Aniboom.RE_MPD.findall(r)[0].replace("\\", "")
-        finally:
+        except IndexError:
             if quality not in Aniboom.QUALITY or quality == 1080:
                 return Aniboom.RE_M3U8.findall(r)[0].replace("\\", "")
             else:
