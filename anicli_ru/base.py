@@ -73,7 +73,7 @@ class BaseAnimeHTTP:
         "user-agent":
             "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) "
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
-            "x-requested-with": "XMLHttpRequest"}
+        "x-requested-with": "XMLHttpRequest"}
     _instance = None
     TIMEOUT: float = 30
     # dict for get parser config tests
@@ -88,6 +88,12 @@ class BaseAnimeHTTP:
     # костыль для настройки поведения ключа INSTANT issue #6:
     # если сначала идёт выбор озвучки, а потом плеера, выставите значение True (see extractors/animego)
     INSTANT_KEY_REPARSE = False
+
+    DDOS_CHECKS_RE = (
+        re.compile(r"<title>DDOS-GUARD</title>"),  # ddos-guard.net
+        re.compile(r"<title>Just a moment\.\.\.</title>")  # cloudflare
+    )
+    __DDOS_CHECKED_FLAG = False
 
     def __new__(cls, *args, **kwargs):
         # create singleton for correct store session
@@ -109,6 +115,10 @@ class BaseAnimeHTTP:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.session.close()
 
+    @classmethod
+    def check_ddos_protect(cls, resp: str) -> bool:
+        return any(match.search(resp) for match in cls.DDOS_CHECKS_RE)
+
     def request(self, method: str, url: str, **kwargs) -> Response:
         """Session.request method
 
@@ -119,7 +129,15 @@ class BaseAnimeHTTP:
         """
         # context manager solve ResourceWarning (trace this in tests)
         with self.session as s:
-            return s.request(method, url, timeout=self.TIMEOUT, **kwargs)
+            resp = s.request(method, url, timeout=self.TIMEOUT, **kwargs)
+
+        if self.check_ddos_protect(resp.text):
+            warnings.warn("Source have ddos protect", category=RuntimeWarning)
+
+        if resp.status_code != 200:
+            warnings.warn(f"Request returned {resp.status_code} code, possibly a problem with the source",
+                          category=RuntimeWarning)
+        return resp
 
     def request_get(self, url: str, **kwargs) -> Response:
         """Session.get method
@@ -243,7 +261,7 @@ class ResultList(UserList):
 
     def __init__(self):
         super().__init__()
-        self.data: Sequence[BaseParser, BaseJsonParser] = []
+        self.data: Sequence[BaseParser, BaseJsonParser, ...] = []
 
     def print_enumerate(self, *args) -> None:
         """print elements with getattr names arg. Default invoke __str__ method"""
@@ -362,7 +380,8 @@ class BasePlayer(BaseParserObject):
         :return: video url
         """
         if not referer:
-            referer = self.ANIME_HTTP.BASE_URL if self.ANIME_HTTP.BASE_URL.endswith("/") else f"{self.ANIME_HTTP.BASE_URL}/"
+            referer = self.ANIME_HTTP.BASE_URL if self.ANIME_HTTP.BASE_URL.endswith(
+                "/") else f"{self.ANIME_HTTP.BASE_URL}/"
 
         with self.ANIME_HTTP as a:
             return a.get_video(player_url=self.url, quality=quality, referer=referer)
