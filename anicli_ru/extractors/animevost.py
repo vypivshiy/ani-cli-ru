@@ -1,11 +1,11 @@
 from __future__ import annotations
-from typing import Sequence, Any, Union
+from typing import Union
+import json
 
 from anicli_ru.base import *
-from operator import itemgetter, attrgetter
+
 
 class Anime(BaseAnimeHTTP):
-
     BASE_URL = "https://api.animevost.org/v1/"
 
     INSTANT_KEY_REPARSE = True
@@ -82,12 +82,12 @@ class Episode(BaseJsonParser):
     name: str
     hd: str
 
+    @staticmethod
     def sorting_series(series, sort_series):
-        import json
         name = series.name
         replace = sort_series.replace("\'", "\"")
-        json = json.loads(replace)
-        sort = list(json.keys())
+        jsn = json.loads(replace)
+        sort = list(jsn.keys())
         return sort.index(name)
 
     def __str__(self):
@@ -111,7 +111,6 @@ class Episode(BaseJsonParser):
                 rez.append(c)
             rez.sort(key=lambda name: cls.sorting_series(name, series))
         return rez
-
 
     def player(self) -> ResultList[Player]:
         rez = ResultList()
@@ -146,6 +145,7 @@ class AnimeResult(BaseJsonParser):
     def episodes(self):
         with self.ANIME_HTTP as a:
             return a.episodes(self)
+
 
 class Ongoing(AnimeResult):
     # response equal AnimeResult object
