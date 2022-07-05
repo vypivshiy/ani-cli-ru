@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import subprocess
+from typing import Sequence
 from os import name as sys_name
 from os import system
 from random import sample
@@ -70,7 +71,7 @@ class Menu:
         while self.is_back:
             ongoings = self.anime.ongoing()
             if len(ongoings) > 0:
-                ongoings.print_enumerate()
+                self._print_enumerate(ongoings)
                 print("Choose anime:", 1, "-", len(ongoings))
                 command = input(f"c_o [1-{len(ongoings)}] > ")
                 if self.command_is_digit(command):
@@ -82,7 +83,7 @@ class Menu:
 
     def choose_dub(self, results: API.ResultList[API.Player]):
         while self.is_back:
-            results.print_enumerate()
+            self._print_enumerate(results)
             print("Choose dub:", 1, "-", len(results))
             command = input(f"c_d [1-{len(results)}] > ")
             if self.command_is_digit(command):
@@ -99,7 +100,7 @@ class Menu:
         episodes = result.episodes()
         if len(episodes) > 0:
             while self.is_back:
-                episodes.print_enumerate()
+                self._print_enumerate(episodes)
                 print(f"Choose episode: 1-{len(episodes)}")
                 command = input(f"c_e [1-{len(episodes)}] > ")
                 if self.command_is_digit(command):
@@ -124,7 +125,7 @@ class Menu:
         # КОСТЫЛЬ!!! issue 6: correct run instant play
         players = episodes[start - 1].player()
         while self.is_back:
-            players.print_enumerate()
+            self._print_enumerate(players)
             print("Choose dub:", 1, "-", len(players))
             command = input(f"c_d [1-{len(players)}] > ")
             if self.command_is_digit(command):
@@ -143,7 +144,7 @@ class Menu:
 
     def choose_anime(self, results: API.ResultList[API.AnimeResult]):
         while self.is_back:
-            results.print_enumerate()
+            self._print_enumerate(results)
             print("Choose anime:", 1, "-", len(results))
             command = input(f"c_a [1-{len(results)}] > ")
             if self.command_is_digit(command):
@@ -203,6 +204,18 @@ class Menu:
     @staticmethod
     def _download(command: str):
         system(command)
+
+    @staticmethod
+    def _print_enumerate(itr: Sequence, *args):
+        """print elements with getattr names arg. Default invoke __str__ method"""
+        if len(itr) > 0:
+            for i, obj in enumerate(itr, 1):
+                if args:
+                    print(f"[{i}]", *(getattr(obj, arg) for arg in args))
+                else:
+                    print(f"[{i}]", obj)
+        else:
+            print("Results not found!")
 
     def proxy(self):
         print("Check proxy")
