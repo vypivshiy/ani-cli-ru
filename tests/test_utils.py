@@ -1,6 +1,6 @@
 import pytest
 
-from anicli_ru.tests.fixtures.fake_extractor import FakeParser, FakeJsonParser  # type: ignore
+from tests.fixtures.fake_extractor import FakeParser, FakeJsonParser  # type: ignore
 from anicli_ru.utils import Agent
 
 

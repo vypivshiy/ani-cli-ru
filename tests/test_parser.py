@@ -3,7 +3,7 @@ import re
 import pytest
 
 from anicli_ru.base import BaseAnimeHTTP, ResultList
-from anicli_ru.tests.fixtures.fake_extractor import FakeParser, FakeJsonParser
+from tests.fixtures.fake_extractor import FakeParser, FakeJsonParser
 
 
 def test_animehttp_singleton():

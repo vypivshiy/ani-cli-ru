@@ -4,7 +4,7 @@ except ImportError:
     from html import unescape
 
 
-from anicli_ru.tests.fixtures.mock import ANIBOOM_RAW_RESPONSE, ANIBOOM_M3U8_DATA
+from tests.fixtures.mock import ANIBOOM_RAW_RESPONSE, ANIBOOM_M3U8_DATA
 from anicli_ru.utils import Aniboom
 
 
