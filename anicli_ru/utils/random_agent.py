@@ -31,22 +31,40 @@ DESKTOP_STRINGS = (
 
 
 class Agent:
+    """Simple UserAgent string generator noname chromium based browser for desktop or mobile
 
+    Basic Usage::
+
+      >>> from anicli_ru.utils.random_agent import Agent
+      >>> agent = Agent.desktop()
+      Mozilla/5.0 (X11; Linux x86_64) ...
+
+      >>> agent = Agent.mobile()
+      Mozilla/5.0 (Linux; Android 6.0; Nexus 5) ...
+    """
     @classmethod
-    def mobile(cls):
+    def mobile(cls) -> str:
+        """Generate chromium based useragent for mobile
+
+        :return: useragent string
+        """
         device = choice(MOBILE_STRINGS)
         chrome = choice(CHROME_VERSIONS)
         return f"Mozilla/5.0 {device} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome} Mobile Safari/537.36"
 
     @classmethod
-    def desktop(cls):
-        """
-        return chromium desktop useragent
-        """
+    def desktop(cls) -> str:
+        """Generate chromium based useragent for desktop
+
+        :return: useragent string"""
         device = choice(DESKTOP_STRINGS)
         chrome = choice(CHROME_VERSIONS)
         return f"Mozilla/5.0 {device} AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome} Safari/537.36"
 
     @classmethod
-    def random(cls):
-        return choice((cls.mobile(), cls.desktop()))
+    def random(cls) -> str:
+        """Generate desktop or mobile useragent
+
+        :return: useragent string
+        """
+        return choice((cls.mobile, cls.desktop))()
