@@ -111,24 +111,7 @@ class Kodik:
         :param str referer: referer headers. default set auto
         :return: direct video url
         """
-        # kodik server regular expr detection
-        if not self.is_kodik(player_url):
-            raise TypeError(
-                f"Unknown player balancer. get_video_url method support kodik balancer\nvideo url: {player_url}")
-        resp = self._get_raw_payload(player_url, referer)
-        # parse payload and url for next request
-        data, url_data = self._parse_payload(resp, referer)
-        url = self._get_api_url(player_url)
-
-        resp = self.session.post(url, data=data, headers={
-            "user-agent": self.useragent,
-            "referer": f"https://{url_data}",
-            "origin": url.replace("/gvi", ""),
-            "accept": "application/json, text/javascript, */*; q=0.01"}).json()["links"]
-
-        # kodik balancer returns max quality 480, but it has (720, 480, 360) values
-        video_url = resp["480"][0]["src"]
-        return self._get_video_quality(video_url, quality)
+        return self.parse(player_url, quality=quality, referer=referer, session=self.session)
 
     def _get_raw_payload(self, player_url: str, referer: str) -> str:
         return self.session.get(player_url, headers={"user-agent": self.useragent, "referer": referer}).text
