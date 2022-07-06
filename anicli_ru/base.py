@@ -185,12 +185,6 @@ class BaseAnimeHTTP:
         """
         raise NotImplementedError
 
-    def get_kodik_url(self, player_url: str, quality: int = 720, *, referer: str = "") -> str:
-        warnings.warn("The function get_kodik_url is deprecated and will be removed later."
-                      "use Anime.get_kodik_video method",
-                      category=DeprecationWarning)
-        return self.get_kodik_video(player_url, quality, referer=referer)
-
     def get_kodik_video(self, player_url: str, quality: int = 720, *, referer: str = "") -> str:
         """Get hls url from kodik balancer
 
@@ -199,13 +193,7 @@ class BaseAnimeHTTP:
         :param str referer: - referer, where give this url. Default get automatically
         :return: direct video url
         """
-        return Kodik(self.session).get_video_url(player_url, quality, referer=referer)
-
-    def get_aniboom_url(self, player_url: str, quality: int = 1080) -> str:
-        warnings.warn("The method get_aniboom_url is deprecated and will be removed later."
-                      "use Anime.get_aniboom_video method",
-                      category=DeprecationWarning)
-        return self.get_aniboom_video(player_url, quality)
+        return Kodik(self.session)(player_url, quality, referer=referer)
 
     def get_aniboom_video(self, player_url: str, quality: int = 1080) -> str:
         """get hls url from aniboom balancer
