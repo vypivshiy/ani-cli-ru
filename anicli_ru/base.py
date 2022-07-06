@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import warnings
-from collections import UserList
 import re
 from html import unescape
 from typing import Optional, Dict, Pattern, Sequence, Union, List, TypedDict, Tuple
 
-from requests import Session, Response
+from requests import Response
 
+from ._http import client
 from .utils import Aniboom, Kodik
 
 __all__ = ("BaseAnimeHTTP",
@@ -95,13 +95,10 @@ class BaseAnimeHTTP:
             cls._instance = super(BaseAnimeHTTP, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
-    def __init__(self, session: Session = None):
-        if session:
-            self.session = session
-            self.session.headers.update({"x-requested-with": "XMLHttpRequest"})
-        else:
-            self.session = Session()
-            self.session.headers.update(self.USER_AGENT)
+    def __init__(self):
+        self.session = client
+        self.session.timeout = self.TIMEOUT
+        self.session.headers.update(self.USER_AGENT)
 
     def __enter__(self):
         return self
@@ -118,6 +115,7 @@ class BaseAnimeHTTP:
         :return: requests.Response object
         """
         # context manager solve ResourceWarning (trace this in tests)
+        warnings.warn("Usage self.session.request method in parsers", category=SyntaxWarning, stacklevel=2)
         with self.session as s:
             return s.request(method, url, timeout=self.TIMEOUT, **kwargs)
 
@@ -128,6 +126,7 @@ class BaseAnimeHTTP:
         :param kwargs: optional requests.Session kwargs
         :return: requests.Response object
         """
+        warnings.warn("Usage self.session.get method in parsers", category=SyntaxWarning, stacklevel=2)
         return self.request("GET", url, **kwargs)
 
     def request_post(self, url: str, **kwargs) -> Response:
@@ -137,11 +136,12 @@ class BaseAnimeHTTP:
         :param kwargs: optional requests.Session kwargs
         :return: requests.Response object
         """
+        warnings.warn("Usage self.session.post method in parsers", category=SyntaxWarning, stacklevel=2)
         return self.request("POST", url, **kwargs)
 
-    # need manually write requests in parsers
+    # need manually write requests in parsers with self.session object
 
-    def search(self, q: str) -> ResultList[BaseAnimeResult]:  # type: ignore
+    def search(self, q: str) -> ResultList[BaseAnimeResult]:
         """Search anime title by string pattern
 
         :param str q: string search
@@ -149,7 +149,7 @@ class BaseAnimeHTTP:
         """
         raise NotImplementedError
 
-    def ongoing(self, *args, **kwargs) -> ResultList[BaseOngoing]:  # type: ignore
+    def ongoing(self, *args, **kwargs) -> ResultList[BaseOngoing]:
         """Search ongoings
 
         :param args:
@@ -237,8 +237,9 @@ class BaseAnimeHTTP:
             # catch any players for add in script
             raise TypeError(f"The link {player_url} is not defined by the available balancers.")
 
+
 # old alias
-ResultList = List[Union["BaseParser", "BaseJsonParser"]]
+ResultList = List
 
 
 class BaseParser:
@@ -267,7 +268,7 @@ class BaseParser:
         :param str html: html document
         :return: ResultList with objects
         """
-        l_objects = ResultList()
+        l_objects = []
         # generate dict like {attr_name: list(values)}
         results = {k: re.findall(v, html) for k, v in cls.REGEX.items()}
         for values in zip(*results.values()):
@@ -291,7 +292,7 @@ class BaseJsonParser:
         :param response: json response
         :return: ResultList with objects
         """
-        rez = ResultList()
+        rez = []
         if isinstance(response, list):
             for data in response:
                 c = cls()
@@ -369,7 +370,7 @@ class BaseOngoing(BaseParserObject):
     url: str
     title: str
 
-    def episodes(self) -> ResultList[BaseEpisode]:  # type: ignore
+    def episodes(self) -> ResultList[BaseEpisode]:
         """Get list with Episode objects
 
         :return: ResultList with Episode objects
@@ -383,7 +384,7 @@ class BaseAnimeResult(BaseParserObject):
     url: str
     title: str
 
-    def episodes(self) -> ResultList[BaseEpisode]:  # type: ignore
+    def episodes(self) -> ResultList[BaseEpisode]:
         """Get list with Episode objects
 
         :return: ResultList with Episode objects
