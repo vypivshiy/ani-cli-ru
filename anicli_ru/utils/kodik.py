@@ -95,12 +95,11 @@ class Kodik:
             session = client
             session.headers.update({"referer": referer})
         if not raw_response:
-            raw_response = session.get(kodik_player_url).text
+            raw_response = cls(session)._get_raw_payload(kodik_player_url, referer)
 
         data, new_referer = cls._parse_payload(raw_response, referer)
         api_url = cls._get_api_url(kodik_player_url)
         video_url = cls(session)._get_kodik_video_links(api_url, new_referer, data)["360"][0]["src"]  # type: ignore
-
         return cls(session)._get_video_quality(video_url, quality)
 
     def __call__(self, player_url: str, quality: int = 720, *, referer: str = "") -> str:
@@ -183,11 +182,15 @@ class Kodik:
                                  headers={"origin": f"https://{new_referer}", "referer": api_url.replace("/gvi", ""),
                                           "accept": "application/json, text/javascript, */*; q=0.01"}).json()["links"]
 
+    def _is_not_404_code(self, url) -> bool:
+        return self.session.get(url).status_code != 404
+
     def _get_video_quality(self, video_url: str, quality: int) -> str:
         quality = 720 if quality not in self.QUALITY else quality
-        video_url = self.decode(video_url).replace("480.mp4", f"{quality}.mp4")
+        video_url = self.decode(video_url)
+        video_url = video_url.replace("360.mp4", f"{quality}.mp4")
         # issue 8, video_url maybe return 404 code
-        if self.session.get(video_url).status_code != 404:
+        if self._is_not_404_code(video_url):
             return video_url
 
         choose_quality = f"{quality}.mp4"
