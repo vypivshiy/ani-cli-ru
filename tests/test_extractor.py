@@ -3,11 +3,15 @@ import pytest
 from anicli_ru import loader
 
 
+FAKE_EXTRACTOR = "tests.fixtures.fake_extractor"
+FAKE_WRONG_EXTRACTOR = "tests.fixtures.fake_extractor_bad"
+
+
 def test_fake_load_extractor():
-    loader.import_extractor("anicli_ru.tests.fixtures.fake_extractor")
+    loader.import_extractor("tests.fixtures.fake_extractor")
 
 
-@pytest.mark.parametrize("module", ["math", "urllib3", "json", "csv", "anicli_ru.tests.fixtures.fake_extractor_bad"])
+@pytest.mark.parametrize("module", ["math", "urllib", "json", "csv", FAKE_WRONG_EXTRACTOR])
 def test_wrong_load_extractor(module: str):
     with pytest.raises(AttributeError):
         loader.import_extractor(module)

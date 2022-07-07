@@ -1,7 +1,5 @@
-from base64 import b64encode
-
 import pytest
-from requests import Session
+
 
 from anicli_ru.utils import Kodik
 
