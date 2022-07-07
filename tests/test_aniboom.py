@@ -55,3 +55,7 @@ def test_parse_m3u8(mock_aniboom):
 def test_parse_m3u8_quality(mock_aniboom, quality, result):
     assert Aniboom.parse("aniboom-fake", quality=quality).endswith(result)
 
+
+def test_wrong_url_input():
+    with pytest.raises(TypeError):
+        Aniboom.parse("https://google.com")
