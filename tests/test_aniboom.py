@@ -50,7 +50,8 @@ def test_parse_m3u8(mock_aniboom):
 @pytest.mark.parametrize("quality, result", [(1080, ('media_6.m3u8', 'master.m3u8')),
                                              (720, 'media_4.m3u8'),
                                              (480, 'media_2.m3u8'),
-                                             (360, 'media_0.m3u8')])
+                                             (360, 'media_0.m3u8'),
+                                             (123, ('media_6.m3u8', 'master.m3u8'))])
 def test_parse_m3u8_quality(mock_aniboom, quality, result):
     assert Aniboom.parse("aniboom-fake", quality=quality).endswith(result)
 
