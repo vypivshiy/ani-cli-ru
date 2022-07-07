@@ -1,6 +1,6 @@
 import warnings
 import re
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, Tuple
 
 try:
     from html.parser import unescape
@@ -25,6 +25,11 @@ class Aniboom:
     RE_M3U8_DATA = re.compile(r'''#EXT\-X\-STREAM\-INF\:BANDWIDTH=\d+,RESOLUTION=(\d+x\d+),CODECS=".*?",AUDIO=".*?"
 (.*?\.m3u8)''')  # parse master.m3u8, return [(quality, url), ...] results
 
+    REFERER = "https://aniboom.one"
+    USERAGENT = "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, " \
+                "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36 "
+    ACCEPT_LANG = "ru-RU"
+
     def __init__(self, session: Optional[Session] = None):
         self.session = session or client
         self.headers = self.session.headers.get("user-agent")
@@ -32,6 +37,7 @@ class Aniboom:
     def get_video_url(self, player_url: str, *, quality: int = 1080, referer: str) -> str:
         """
 
+        :param quality:
         :param player_url:
         :param referer:
         :return:
@@ -52,7 +58,16 @@ class Aniboom:
         return Aniboom._parse_aniboom_response(raw_aniboom_response, quality=quality, mpd=mpd)
 
     @staticmethod
-    def _set_quality(m3u8_url: str, quality: int = 1080) -> str:
+    def _parse_m3u8(m3u8_url: str, *, session: Optional[Session] = None) -> Tuple[AniboomM3U8Data, ...]:
+        session = session or client
+        m3u8_response = session.get(m3u8_url, headers={
+            "Referer": Aniboom.REFERER, "Accept-Language": Aniboom.ACCEPT_LANG,
+            "User-Agent": Aniboom.USERAGENT}).text
+
+        return tuple(AniboomM3U8Data(qual, url) for qual, url in Aniboom.RE_M3U8_DATA.findall(m3u8_response))
+
+    @classmethod
+    def _set_quality(cls, m3u8_url: str, quality: int = 1080) -> str:
         """set video quality. Works only with m3u8 format
 
         :param m3u8_url: m3u8 url format
@@ -60,14 +75,7 @@ class Aniboom:
         :return: video url with set quality
         """
         # parse master.m3u8 response
-        r = client.get(m3u8_url, headers={"Referer": "https://aniboom.one", "Accept-Language": "ru-RU",
-                                          "User-Agent":
-                                              "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) "
-                                              "AppleWebKit/537.36 (KHTML, like Gecko) "
-                                              "Chrome/94.0.4606.114 Mobile Safari/537.36"}).text
-
-        # '640x360' - 360 '854x480' 480 '1280x720' - 720 '1920x1080' - 1080
-        results = [AniboomM3U8Data(qual, url) for qual, url in Aniboom.RE_M3U8_DATA.findall(r)]
+        results = cls._parse_m3u8(m3u8_url)
         return next((
             m3u8_url.replace("master.m3u8", data.url_suffix) for data in results if data.quality.endswith(str(quality))
         ), m3u8_url)
@@ -78,20 +86,16 @@ class Aniboom:
         return "aniboom" in url
 
     def _get_aniboom_html_response(self, player_url: str, referer: str) -> str:
-        # need set lowercase
-
+        # need set lowercase keys
         r = self.session.get(player_url, headers={"referer": referer,
                                                   "user-agent": self.session.headers["user-agent"]})
-
         return unescape(r.text)
 
     @classmethod
     def _parse_aniboom_response(cls, raw_aniboom_response: str, *, quality: int = 1080, mpd: bool = False) -> str:
         raw_aniboom_response = unescape(raw_aniboom_response)
-
-        if mpd and len(cls.RE_MPD.findall(raw_aniboom_response)) != 0:
-            return cls.RE_MPD.findall(raw_aniboom_response)[0].replace("\\", "")
-
+        if mpd and (url := cls.RE_MPD.findall(raw_aniboom_response)):
+            return url[0].replace("\\", "")
         if quality not in cls.QUALITY or quality == 1080:
             return cls.RE_M3U8.findall(raw_aniboom_response)[0].replace("\\", "")
         else:
@@ -103,13 +107,14 @@ class Aniboom:
               mpd: bool = False,
               referer: Optional[str] = None,
               session: Optional[Session] = None) -> str:
+
         if not cls.is_aniboom(aniboom_player_url):
             raise TypeError(f"{aniboom_player_url} is not aniboom")
 
         if not session:
             session = client
         if not referer:
-            referer = "aniboom.one"
+            referer = cls.REFERER
         resp = cls(session)._get_aniboom_html_response(aniboom_player_url, referer)
         return cls._parse_aniboom_response(resp, quality=quality, mpd=mpd)
 
@@ -118,5 +123,6 @@ class Aniboom:
                  quality: int = 1080,
                  mpd: bool = False,
                  referer: Optional[str] = None,
-                 session: Optional[Session] = None):
+                 session: Optional[Session] = None) -> str:
+
         return self.parse(aniboom_player_url, quality=quality, mpd=mpd, referer=referer, session=session)
