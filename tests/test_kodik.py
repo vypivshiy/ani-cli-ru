@@ -62,3 +62,8 @@ def test_parse_video(mock_kodik, player_url, quality, result):
                            "https://foobarbaz.com/anime_for_debils_4k.mp4")])
 def test_decode(url_encoded, result):
     assert Kodik.decode(url_encoded) == result
+
+
+def test_wrong_url_input():
+    with pytest.raises(TypeError):
+        Kodik.parse("https://google.com")
