@@ -3,7 +3,7 @@ import warnings
 
 from requests import Session, Response
 
-DDOS_SERVICES = ("cloudflare", "ddos-guard")
+from anicli_ru._defaults import DDOS_SERVICES
 
 __all__ = ('client',)
 
