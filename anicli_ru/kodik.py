@@ -1,41 +1,32 @@
 """Kodik module utils"""
 import warnings
 from base64 import b64decode
-import re
-from typing import Optional, Dict
+from typing import Optional
 from urllib.parse import urlparse
-
-try:
-    from html.parser import unescape
-except ImportError:
-    from html import unescape
 
 from requests import Session
 
+from anicli_ru._defaults import KodikPatterns
 from anicli_ru._http import client
 from anicli_ru.utils import Agent
+
+
+CONSTANTS = KodikPatterns
 
 
 class Kodik:
     """Class for parse video from kodik balancer
 
         Example::
-            >>> from anicli_ru.utils import Kodik
+            >>> from anicli_ru import Kodik
             >>> video = Kodik.parse("https://kodik.info/seria/123/hashfoobar123/720p", referer="kodik.info")
 
         Or with init this class::
-            >>> from anicli_ru.utils import Kodik
+            >>> from anicli_ru import Kodik
             >>> k = Kodik()
             >>> k.parse("https://kodik.info/seria/123/hashfoobar123/720p")
             >>> k("https://kodik.info/seria/123/hashfoobar123/720p")
     """
-    # kodik/anivod etc regular expressions
-    RE_URL = re.compile(r"https://\w+\.\w{2,6}/seria/\d+/\w+/\d{3,4}p")
-    RE_URL_DATA = re.compile(r'iframe.src = "//(.*?)"')
-    RE_VIDEO_TYPE = re.compile(r"go/(\w+)/\d+")
-    RE_VIDEO_ID = re.compile(r"go/\w+/(\d+)")
-    RE_VIDEO_HASH = re.compile(r"go/\w+/\d+/(.*?)/\d+p\?")
-    QUALITY = (720, 480, 360)
 
     def __init__(self, session: Optional[Session] = None):
         if session:
@@ -66,7 +57,7 @@ class Kodik:
     @staticmethod
     def is_kodik(url: str) -> bool:
         """return True if url player is kodik"""
-        return bool(Kodik.RE_URL.match(url))
+        return bool(CONSTANTS.KODIK_URL_VALIDATE.match(url))
 
     @classmethod
     def parse(cls,
@@ -90,14 +81,14 @@ class Kodik:
             raise TypeError(
                 f"Unknown player balancer. get_video_url method support kodik balancer\nvideo url: {kodik_player_url}")
         if not referer:
-            referer = "kodik.info"
+            referer = CONSTANTS.REFERER
         if not session:
             session = client
             session.headers.update({"referer": referer})
         if not raw_response:
             raw_response = cls(session)._get_raw_payload(kodik_player_url, referer)
 
-        data, new_referer = cls._parse_payload(raw_response, referer)
+        data, new_referer = cls._parse_payload(raw_response)
         api_url = cls._get_api_url(kodik_player_url)
         video_url = cls(session)._get_kodik_video_links(api_url, new_referer, data)["360"][0]["src"]  # type: ignore
         return cls(session)._get_video_quality(video_url, quality)
@@ -116,54 +107,19 @@ class Kodik:
         return self.session.get(player_url, headers={"user-agent": self.useragent, "referer": referer}).text
 
     @staticmethod
-    def _parse_payload(resp: str, referer: str) -> tuple[dict, str]:
-        # sourcery skip: dict-assign-update-to-union
+    def _parse_payload(resp: str) -> dict:
         """parse data for next api request
 
         url example:
         https://kodik.info/seria/123/hashfoobar123/720p?translations=false&min_age=16
 
-        Example payload signature in html document:
-            ...
-
-            var domain = "example.com";
-
-            var d_sign = "hash123foo";
-
-            var pd = "kodik.info";
-
-            var pd_sign = "hash456bar";
-
-            var ref = "https://example.com/";
-
-            var ref_sign = "hash789baz";
-
-            var user_ip = "127.0.0.1";
-
-            var advertScript = null;
-
-            var mediaGenre = "anime";
-
-            var translationId = 610;
-
-            ...
-
-
         :param str resp: - html text response
-        :param str referer: - referer, where give this url
 
         :return: - tuple with data and url
         :rtype tuple:
         """
         # prepare values for next POST request
-        url_data, = Kodik.RE_URL_DATA.findall(resp)
-        type_, = Kodik.RE_VIDEO_TYPE.findall(url_data)
-        id_, = Kodik.RE_VIDEO_ID.findall(url_data)
-        hash_, = Kodik.RE_VIDEO_HASH.findall(url_data)
-        data = {value.split("=")[0]: value.split("=")[1] for value in url_data.split("?", 1)[1].split("&")}
-        data.update({"type": type_, "hash": hash_, "id": id_, "info": {}, "bad_user": True,
-                     "ref": referer.rstrip("/")})
-        return data, url_data
+        return CONSTANTS.to_dict(text=resp)
 
     @staticmethod
     def _get_api_url(player_url: str):
@@ -172,21 +128,22 @@ class Kodik:
         if not player_url.startswith("https:"):
             player_url = f"https:{player_url}"
 
-        url_, = Kodik.RE_URL.findall(player_url)
+        url_, = CONSTANTS.KODIK_URL_VALIDATE.findall(player_url)
         return f"https://{urlparse(url_).netloc}/gvi"
 
     def _get_kodik_video_links(self, api_url: str,
                                new_referer: str,
                                data: dict) -> dict[dict, list[dict]]:
-        return self.session.post(api_url, data=data,
+        resp = self.session.post(api_url, data=data,
                                  headers={"origin": f"https://{new_referer}", "referer": api_url.replace("/gvi", ""),
-                                          "accept": "application/json, text/javascript, */*; q=0.01"}).json()["links"]
+                                          "accept": "application/json, text/javascript, */*; q=0.01"})
+        return resp.json()["links"]
 
     def _is_not_404_code(self, url) -> bool:
         return self.session.get(url).status_code != 404
 
     def _get_video_quality(self, video_url: str, quality: int) -> str:
-        quality = 720 if quality not in self.QUALITY else quality
+        quality = 720 if quality not in CONSTANTS.QUALITY else quality
         video_url = self.decode(video_url)
         video_url = video_url.replace("360.mp4", f"{quality}.mp4")
         # issue 8, video_url maybe return 404 code
@@ -195,7 +152,7 @@ class Kodik:
 
         choose_quality = f"{quality}.mp4"
 
-        for q in self.QUALITY:
+        for q in CONSTANTS.QUALITY:
             video_url = video_url.replace(choose_quality, f"{q}.mp4")
             if self.session.get(video_url).status_code == 200:
                 return video_url
