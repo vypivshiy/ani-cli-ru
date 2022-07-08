@@ -13,7 +13,7 @@ from typing import Union, Optional
 
 from .loader import import_extractor
 from .options import ALL_PARSERS, setup_arguments, get_agent
-from .utils import Aniboom
+from anicli_ru import Aniboom
 
 args = setup_arguments()
 

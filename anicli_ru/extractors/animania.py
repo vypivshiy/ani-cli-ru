@@ -120,7 +120,7 @@ class Episode(BaseEpisode):
         return f"{self.dub_name} count: {self.count}"
 
     def player(self) -> ResultList[Player]:
-        _players = ResultList()
+        _players = []
         for i, videos in enumerate(self.videos, 1):
             p: Player = Player()
             p.dub_id, p.dub_name, p._player, p.num = self.dub_id, self.dub_name, videos, i
@@ -130,15 +130,12 @@ class Episode(BaseEpisode):
     @classmethod
     def parse(cls, html: str) -> ResultList:
         videos_chunks = cls.REGEX["video_chunks"].findall(html)
-        l_obj = ResultList()
         dubs = cls.REGEX["dubs"].findall(html)
         videos = [cls.REGEX["videos"].findall(chunk[0]) for chunk in videos_chunks]
-        for dub_id, dub_name, count, video in zip([int(n[0]) for n in dubs],  # dub id
-                                                  [n[1] for n in dubs],  # dub name
-                                                  [len(n) for n in videos],  # count videos
-                                                  videos):  # videos urls
-            l_obj.append(cls(**{"dub_id": dub_id, "dub_name": dub_name, "count": count, "videos": video}))
-        return l_obj
+        return [cls(**{"dub_id": dub_id, "dub_name": dub_name, "count": count, "videos": video})
+                for dub_id, dub_name, count, video in zip([int(n[0]) for n in dubs],
+                                                          [n[1] for n in dubs],
+                                                          [len(n) for n in videos], videos)]  # dub id  # dub name  # count videos
 
     def __eq__(self, other):
         return self.count == other.count

@@ -8,7 +8,7 @@ from typing import Optional, Dict, Pattern, Sequence, Union, List, TypedDict, Tu
 from requests import Response
 
 from ._http import client
-from .utils import Aniboom, Kodik
+from anicli_ru import Kodik, Aniboom
 
 __all__ = ("BaseAnimeHTTP",
            "BaseParser",

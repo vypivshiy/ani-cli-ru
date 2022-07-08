@@ -1,35 +1,17 @@
+from typing import Optional, Tuple
+from html import unescape
 import warnings
-import re
-from typing import NamedTuple, Optional, Tuple
-
-try:
-    from html.parser import unescape
-except ImportError:
-    from html import unescape
 
 from requests import Session
 
 from anicli_ru._http import client
+from anicli_ru._defaults import AniboomPatterns, AniboomM3U8Data
 
 
-class AniboomM3U8Data(NamedTuple):
-    quality: str
-    url_suffix: str
+CONSTANTS = AniboomPatterns
 
 
 class Aniboom:
-    # aniboom regular expressions (works after unescape method response html page)
-    RE_M3U8 = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
-    RE_MPD = re.compile(r'"{\\"src\\":\\"(.*\.mpd)\\"')
-    QUALITY = (1080, 720, 480, 360)  # works only m3u8 format
-    RE_M3U8_DATA = re.compile(r'''#EXT\-X\-STREAM\-INF\:BANDWIDTH=\d+,RESOLUTION=(\d+x\d+),CODECS=".*?",AUDIO=".*?"
-(.*?\.m3u8)''')  # parse master.m3u8, return [(quality, url), ...] results
-
-    REFERER = "https://aniboom.one"
-    USERAGENT = "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, " \
-                "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36 "
-    ACCEPT_LANG = "ru-RU"
-
     def __init__(self, session: Optional[Session] = None):
         self.session = session or client
         self.headers = self.session.headers.get("user-agent")
@@ -61,10 +43,10 @@ class Aniboom:
     def _parse_m3u8(m3u8_url: str, *, session: Optional[Session] = None) -> Tuple[AniboomM3U8Data, ...]:
         session = session or client
         m3u8_response = session.get(m3u8_url, headers={
-            "Referer": Aniboom.REFERER, "Accept-Language": Aniboom.ACCEPT_LANG,
-            "User-Agent": Aniboom.USERAGENT}).text
+            "Referer": CONSTANTS.REFERER, "Accept-Language": CONSTANTS.ACCEPT_LANG,
+            "User-Agent": CONSTANTS.USERAGENT}).text
 
-        return tuple(AniboomM3U8Data(qual, url) for qual, url in Aniboom.RE_M3U8_DATA.findall(m3u8_response))
+        return tuple(AniboomM3U8Data(qual, url) for qual, url in CONSTANTS.RE_M3U8_DATA.findall(m3u8_response))
 
     @classmethod
     def _set_quality(cls, m3u8_url: str, quality: int = 1080) -> str:
@@ -94,12 +76,12 @@ class Aniboom:
     @classmethod
     def _parse_aniboom_response(cls, raw_aniboom_response: str, *, quality: int = 1080, mpd: bool = False) -> str:
         raw_aniboom_response = unescape(raw_aniboom_response)
-        if mpd and (url := cls.RE_MPD.findall(raw_aniboom_response)):
+        if mpd and (url := CONSTANTS.RE_MPD.findall(raw_aniboom_response)):
             return url[0].replace("\\", "")
-        if quality not in cls.QUALITY or quality == 1080:
-            return cls.RE_M3U8.findall(raw_aniboom_response)[0].replace("\\", "")
+        if quality not in CONSTANTS.QUALITY or quality == 1080:
+            return CONSTANTS.RE_M3U8.findall(raw_aniboom_response)[0].replace("\\", "")
         else:
-            return cls._set_quality(cls.RE_M3U8.findall(raw_aniboom_response)[0].replace("\\", ""), quality)
+            return cls._set_quality(CONSTANTS.RE_M3U8.findall(raw_aniboom_response)[0].replace("\\", ""), quality)
 
     @classmethod
     def parse(cls, aniboom_player_url: str, *,
@@ -114,7 +96,7 @@ class Aniboom:
         if not session:
             session = client
         if not referer:
-            referer = cls.REFERER
+            referer = CONSTANTS.REFERER
         resp = cls(session)._get_aniboom_html_response(aniboom_player_url, referer)
         return cls._parse_aniboom_response(resp, quality=quality, mpd=mpd)
 
