@@ -3,8 +3,9 @@ from typing import Tuple
 
 import pytest
 
-from anicli_ru.utils import Aniboom
-from anicli_ru.utils.aniboom import AniboomM3U8Data
+from anicli_ru import Aniboom
+from anicli_ru._defaults import AniboomPatterns
+from anicli_ru.aniboom import AniboomM3U8Data
 
 
 ANIBOOM_RAW_RESPONSE = """
@@ -32,7 +33,7 @@ def mock_aniboom(monkeypatch):
         return unescape(ANIBOOM_RAW_RESPONSE)
 
     def return_m3u8_video_data(*args, **kwargs) -> Tuple[AniboomM3U8Data, ...]:
-        return tuple(AniboomM3U8Data(qual, url) for qual, url in Aniboom.RE_M3U8_DATA.findall(ANIBOOM_M3U8_DATA))
+        return tuple(AniboomM3U8Data(qual, url) for qual, url in AniboomPatterns.RE_M3U8_DATA.findall(ANIBOOM_M3U8_DATA))
 
     monkeypatch.setattr(Aniboom, "_get_aniboom_html_response", return_aniboom_player_response)
     monkeypatch.setattr(Aniboom, "_parse_m3u8", return_m3u8_video_data)
