@@ -1,10 +1,10 @@
 import pytest
 
 
-from anicli_ru.utils import Kodik
+from anicli_ru import Kodik
 
 
-KODIK_RAW_RESPONSE = """<script>
+RAW_RESPONSE = """<script>
 var iframe = document.createElement("iframe");
 iframe.src = "//fakeplayer.com/go/seria/12345/h123a739s719hfoo/720p?d=animeeee.kek&d_sign=hash0000000&pd=fakeplayer.com&pd_sign=hash111&ref=https%3A%2F%2Fanimeeee.kek%2F&ref_sign=hash111&min_age=99";
 iframe.id = "player-iframe";
@@ -16,6 +16,22 @@ iframe.allow = "autoplay *; fullscreen *";
 ...
 """
 
+RAW_RESPONSE_2 = """
+<script type="text/javascript">
+    var type = "seria";
+    var videoId = "1025610";
+    var urlParams = '{"d":"animania.online","d_sign":"ca792d0d1d4ed74f058c9015c4426ab0788a86621ecd0648ad6e16767c0a5a9d","pd":"aniqit.com","pd_sign":"716d0963074fd798baeda496497e185ae65a539e726a0db11ffd49e615aab73b","ref":"https%3A%2F%2Fanimania.online%2F","ref_sign":"db7623b0cc3afbab46a4372a5ef0df29309830e375742c5c847ca05b0b2862c3","translations":false}';
+    var autoResume = false;
+    var fullscreenLockOrientation = true
+
+    var translationId = 923;
+    var translationTitle = "None";
+    videoInfo.type = 'seria'; 
+   videoInfo.hash = '197c7c39d193c8385546dfe647314988'; 
+   videoInfo.id = '1025610'; 
+  
+  </script>
+"""
 
 KODIK_API_JSON = {"advert_script": "", "default": 360, "domain": "animeeee.kek", "ip": "192.168.0.1",
                 "links": {"360": [{"src": '=QDct5CM2MzX0NXZ09yL', "type": "application/x-mpegURL"}],
@@ -24,10 +40,15 @@ KODIK_API_JSON = {"advert_script": "", "default": 360, "domain": "animeeee.kek",
                 }
 
 
+@pytest.fixture(params=[RAW_RESPONSE, RAW_RESPONSE_2])
+def kodik_response(request):
+    return request.param
+
+
 @pytest.fixture()
-def mock_kodik(monkeypatch):
+def mock_kodik(monkeypatch, kodik_response):
     def return_raw_kodik_response(*args, **kwargs):
-        return KODIK_RAW_RESPONSE
+        return kodik_response
 
     def return_api_kodik_response(*args, **kwargs):
         return KODIK_API_JSON["links"]
