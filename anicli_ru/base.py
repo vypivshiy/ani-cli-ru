@@ -203,7 +203,7 @@ class BaseAnimeHTTP:
         """
         # fix 28 11 2021 request
         referer = self.BASE_URL if self.BASE_URL.endswith("/") else f"{self.BASE_URL}/"
-        return Aniboom(self.session).get_video_url(player_url, referer=referer, quality=quality)
+        return Aniboom().get_video_url(player_url, referer=referer, quality=quality)
 
     def get_video(self, player_url: str, quality: int = 720, *, referer: str = "") -> str:
         """Get video from balancer. Check balancer, where from url
