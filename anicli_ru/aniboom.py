@@ -5,19 +5,14 @@ import warnings
 from requests import Session
 
 from anicli_ru._http import client
-from anicli_ru.defaults import AniboomDefaults
-
-class AniboomM3U8Data(NamedTuple):
-    pass
-
-CONSTANTS = AniboomDefaults
+from anicli_ru.defaults import AniboomDefaults, AniboomM3U8Data
 
 
 class Aniboom:
-    def __init__(self, session: Optional[Session] = None):
-        self.session = session or client
+    def __init__(self):
+        self.session = client
         self.headers = self.session.headers.get("user-agent")
-
+        
     def get_video_url(self, player_url: str, *, quality: int = 1080, referer: str) -> str:
         """
 
@@ -43,12 +38,10 @@ class Aniboom:
 
     @staticmethod
     def _parse_m3u8(m3u8_url: str, *, session: Optional[Session] = None) -> Tuple[AniboomM3U8Data, ...]:
-        session = session or client
-        m3u8_response = session.get(m3u8_url, headers={
-            "Referer": CONSTANTS.REFERER, "Accept-Language": CONSTANTS.ACCEPT_LANG,
-            "User-Agent": CONSTANTS.USERAGENT}).text
+        m3u8_response = client.get(m3u8_url, headers={
+            "Referer": AniboomDefaults.REFERER, "Accept-Language": AniboomDefaults.ACCEPT_LANG}).text
 
-        return tuple(AniboomM3U8Data(qual, url) for qual, url in CONSTANTS.RE_M3U8_DATA.findall(m3u8_response))
+        return tuple(AniboomM3U8Data(qual, url) for qual, url in AniboomDefaults.RE_M3U8_DATA.findall(m3u8_response))
 
     @classmethod
     def _set_quality(cls, m3u8_url: str, quality: int = 1080) -> str:
@@ -78,35 +71,30 @@ class Aniboom:
     @classmethod
     def _parse_aniboom_response(cls, raw_aniboom_response: str, *, quality: int = 1080, mpd: bool = False) -> str:
         raw_aniboom_response = unescape(raw_aniboom_response)
-        if mpd and (url := CONSTANTS.RE_MPD.findall(raw_aniboom_response)):
+        if mpd and (url := AniboomDefaults.RE_MPD.findall(raw_aniboom_response)):
             return url[0].replace("\\", "")
-        if quality not in CONSTANTS.QUALITY or quality == 1080:
-            return CONSTANTS.RE_M3U8.findall(raw_aniboom_response)[0].replace("\\", "")
+        if quality not in AniboomDefaults.QUALITY or quality == 1080:
+            return AniboomDefaults.RE_M3U8.findall(raw_aniboom_response)[0].replace("\\", "")
         else:
-            return cls._set_quality(CONSTANTS.RE_M3U8.findall(raw_aniboom_response)[0].replace("\\", ""), quality)
+            return cls._set_quality(AniboomDefaults.RE_M3U8.findall(raw_aniboom_response)[0].replace("\\", ""), quality)
 
     @classmethod
     def parse(cls, aniboom_player_url: str, *,
               quality: int = 1080,
               mpd: bool = False,
-              referer: Optional[str] = None,
-              session: Optional[Session] = None) -> str:
+              referer: Optional[str] = None) -> str:
 
         if not cls.is_aniboom(aniboom_player_url):
             raise TypeError(f"{aniboom_player_url} is not aniboom")
-
-        if not session:
-            session = client
         if not referer:
-            referer = CONSTANTS.REFERER
-        resp = cls(session)._get_aniboom_html_response(aniboom_player_url, referer)
+            referer = AniboomDefaults.REFERER
+        resp = cls()._get_aniboom_html_response(aniboom_player_url, referer)
         return cls._parse_aniboom_response(resp, quality=quality, mpd=mpd)
 
     def __call__(self,
                  aniboom_player_url: str, *,
                  quality: int = 1080,
                  mpd: bool = False,
-                 referer: Optional[str] = None,
-                 session: Optional[Session] = None) -> str:
+                 referer: Optional[str] = None) -> str:
 
-        return self.parse(aniboom_player_url, quality=quality, mpd=mpd, referer=referer, session=session)
+        return self.parse(aniboom_player_url, quality=quality, mpd=mpd, referer=referer)
