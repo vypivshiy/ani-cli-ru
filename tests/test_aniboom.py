@@ -4,8 +4,7 @@ from typing import Tuple
 import pytest
 
 from anicli_ru import Aniboom
-from anicli_ru.defaults import AniboomPatterns
-from anicli_ru.aniboom import AniboomM3U8Data
+from anicli_ru.defaults import AniboomDefaults, AniboomM3U8Data
 
 
 ANIBOOM_RAW_RESPONSE = """
@@ -33,7 +32,7 @@ def mock_aniboom(monkeypatch):
         return unescape(ANIBOOM_RAW_RESPONSE)
 
     def return_m3u8_video_data(*args, **kwargs) -> Tuple[AniboomM3U8Data, ...]:
-        return tuple(AniboomM3U8Data(qual, url) for qual, url in AniboomPatterns.RE_M3U8_DATA.findall(ANIBOOM_M3U8_DATA))
+        return tuple(AniboomM3U8Data(qual, url) for qual, url in AniboomDefaults.RE_M3U8_DATA.findall(ANIBOOM_M3U8_DATA))
 
     monkeypatch.setattr(Aniboom, "_get_aniboom_html_response", return_aniboom_player_response)
     monkeypatch.setattr(Aniboom, "_parse_m3u8", return_m3u8_video_data)
@@ -54,7 +53,9 @@ def test_parse_m3u8(mock_aniboom):
                                              (360, 'media_0.m3u8'),
                                              (123, ('media_6.m3u8', 'master.m3u8'))])
 def test_parse_m3u8_quality(mock_aniboom, quality, result):
-    assert Aniboom.parse("aniboom-fake", quality=quality).endswith(result)
+    r = Aniboom.parse("aniboom-fake", quality=quality)
+    print(r)
+    assert r.endswith(result)
 
 
 def test_wrong_url_input():
