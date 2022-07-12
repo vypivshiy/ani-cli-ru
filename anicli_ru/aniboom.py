@@ -1,8 +1,6 @@
-from typing import Optional, Tuple, NamedTuple
+from typing import Optional, Tuple
 from html import unescape
 import warnings
-
-from requests import Session
 
 from anicli_ru._http import client
 from anicli_ru.defaults import AniboomDefaults, AniboomM3U8Data
@@ -37,7 +35,7 @@ class Aniboom:
         return Aniboom._parse_aniboom_response(raw_aniboom_response, quality=quality, mpd=mpd)
 
     @staticmethod
-    def _parse_m3u8(m3u8_url: str, *, session: Optional[Session] = None) -> Tuple[AniboomM3U8Data, ...]:
+    def _parse_m3u8(m3u8_url: str) -> Tuple[AniboomM3U8Data, ...]:
         m3u8_response = client.get(m3u8_url, headers={
             "Referer": AniboomDefaults.REFERER, "Accept-Language": AniboomDefaults.ACCEPT_LANG}).text
 
