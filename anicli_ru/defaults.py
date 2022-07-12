@@ -70,7 +70,7 @@ class AniboomDefaults:
     RE_MPD = re.compile(r'"{\\"src\\":\\"(.*\.mpd)\\"')
     # parse master.m3u8, return [(quality, url), ...] results
     RE_M3U8_DATA = re.compile(
-        r'''#EXT\-X\-STREAM\-INF\:BANDWIDTH=\d+,RESOLUTION=(\d+x\d+),CODECS=".*?",AUDIO=".*?" {4}(.*?\.m3u8)''')
+        r'''#EXT-X-STREAM-INF:BANDWIDTH=\d+,RESOLUTION=(\d+x\d+),CODECS=".*?",AUDIO=".*?"\s(.*?\.m3u8)''')
     QUALITY = (1080, 720, 480, 360)  # works only m3u8 format
     REFERER = "https://aniboom.one/"
     ACCEPT_LANG = "ru-RU"
