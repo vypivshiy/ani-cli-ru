@@ -1,8 +1,10 @@
 """Default constants for this project"""
 import re
 
-# default user-agent for all project
+# antiddos services strings detect
+DDOS_SERVICES = ("cloudflare", "ddos-guard")
 
+# default user-agent for all project
 USER_AGENT = "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, " \
                 "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36 "
 
