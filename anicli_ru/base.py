@@ -7,7 +7,7 @@ from typing import Optional, Dict, Pattern, Sequence, Union, List, TypedDict, Tu
 
 from requests import Response
 
-from ._http import client
+from anicli_ru._http import client
 from anicli_ru import Kodik, Aniboom
 
 __all__ = ("BaseAnimeHTTP",
@@ -193,7 +193,7 @@ class BaseAnimeHTTP:
         :param str referer: - referer, where give this url. Default get automatically
         :return: direct video url
         """
-        return Kodik(self.session)(player_url, quality, referer=referer)
+        return Kodik()(player_url, quality, referer=referer)
 
     def get_aniboom_video(self, player_url: str, quality: int = 1080) -> str:
         """get hls url from aniboom balancer

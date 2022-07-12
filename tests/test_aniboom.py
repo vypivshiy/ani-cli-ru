@@ -4,7 +4,7 @@ from typing import Tuple
 import pytest
 
 from anicli_ru import Aniboom
-from anicli_ru._defaults import AniboomPatterns
+from anicli_ru.defaults import AniboomPatterns
 from anicli_ru.aniboom import AniboomM3U8Data
 
 

@@ -70,7 +70,7 @@ class Ongoing(BaseOngoing):
 
     @classmethod
     def parse(cls, html: str) -> ResultList:
-        ongoings = ResultList()
+        ongoings = []
         # generate dict like {attr_name: list(values)}
         results = {k: re.findall(v, html) for k, v in cls.REGEX.items()}
 
@@ -81,7 +81,7 @@ class Ongoing(BaseOngoing):
 
         # shitty sort duplicates (by title and episode num) algorithm
         # but ongoings list contains less than 100 elements guaranty
-        sorted_ongoings = ResultList()
+        sorted_ongoings = []
         for ongoing in ongoings:
             if ongoing in sorted_ongoings:
                 for sorted_ong in sorted_ongoings:
@@ -152,7 +152,7 @@ class Player(BasePlayer):
 
     @classmethod
     def parse(cls, html: str) -> ResultList:
-        l_objects = ResultList()
+        l_objects = []
         # generate dict like {attr_name: list(values)}
         dub_names = re.findall(cls.REGEX["dub_name"], html)  # dub_id, dub_name
         players = re.findall(cls.REGEX["player"], html)  # player_url, dub_id

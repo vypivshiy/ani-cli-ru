@@ -1,14 +1,16 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, NamedTuple
 from html import unescape
 import warnings
 
 from requests import Session
 
 from anicli_ru._http import client
-from anicli_ru._defaults import AniboomPatterns, AniboomM3U8Data
+from anicli_ru.defaults import AniboomDefaults
 
+class AniboomM3U8Data(NamedTuple):
+    pass
 
-CONSTANTS = AniboomPatterns
+CONSTANTS = AniboomDefaults
 
 
 class Aniboom:

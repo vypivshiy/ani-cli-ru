@@ -71,3 +71,23 @@ class AniboomDefaults:
     REFERER = "https://aniboom.one/"
     USERAGENT = USER_AGENT
     ACCEPT_LANG = "ru-RU"
+
+
+
+# # Aniboom
+# class AniboomPatterns(BasePatternModel):
+#     RE_M3U8 = re.compile(r'"hls":"{\\"src\\":\\"(.*\.m3u8)\\"')
+#     RE_MPD = re.compile(r'"{\\"src\\":\\"(.*\.mpd)\\"')
+#     # parse master.m3u8, return [(quality, url), ...] results
+#     RE_M3U8_DATA = re.compile(r'''#EXT\-X\-STREAM\-INF\:BANDWIDTH=\d+,RESOLUTION=(\d+x\d+),CODECS=".*?",AUDIO=".*?" {4}(.*?\.m3u8)''')
+#     QUALITY = (1080, 720, 480, 360)  # works only m3u8 format
+#     REFERER = "https://aniboom.one"
+#     USERAGENT = "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, " \
+#                 "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36 "
+#     ACCEPT_LANG = "ru-RU"
+#
+#
+# # Aniboom M3U8 object
+# class AniboomM3U8Data(NamedTuple):
+#     quality: str
+#     url_suffix: str
