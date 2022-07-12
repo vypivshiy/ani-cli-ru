@@ -3,9 +3,9 @@ import warnings
 
 from requests import Session, Response
 
-from anicli_ru._defaults import DDOS_SERVICES
+from anicli_ru.defaults import DDOS_SERVICES, BASE_HEADERS_DICT
 
-__all__ = ('client',)
+__all__ = ('client', 'SessionM')
 
 
 class SessionM(Session):
@@ -24,14 +24,13 @@ class SessionM(Session):
 def check_ddos_protect_hook(resp: Response, **kwargs):
     if resp.headers.get("Server") in DDOS_SERVICES \
             and resp.headers["Connection"] == 'close' \
-            and resp.status_code == 403:
+            or resp.status_code == 403:
 
-        warnings.warn(f"{resp.url} have ddos protect, return 403 code and close this session.",
+        warnings.warn(f"{resp.url} have ddos protect and return 403 code.",
                       category=RuntimeWarning,
                       stacklevel=2)
 
 
 client = SessionM()
-client.headers.update({"user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                                     "Chrome/98.0.4758.107 Safari/537.36"})
+client.headers.update(BASE_HEADERS_DICT)
 client.hooks["response"] = [check_ddos_protect_hook]
