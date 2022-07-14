@@ -1,4 +1,5 @@
 # anicli-ru
+[![CI](https://github.com/vypivshiy/ani-cli-ru/actions/workflows/ci.yml/badge.svg)](https://github.com/vypivshiy/ani-cli-ru/actions/workflows/ci.yml)
 ___
 Скрипт для поиска и просмотра аниме из терминала с русской озвучкой или субтитрами для linux систем, 
 написанный на python.
