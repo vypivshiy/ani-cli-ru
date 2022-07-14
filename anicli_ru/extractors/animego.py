@@ -1,34 +1,26 @@
 from __future__ import annotations
-from typing import Union
+from typing import Union, List
 from anicli_ru.base import *
 import re
 
 
 class Anime(BaseAnimeHTTP):
     BASE_URL = "https://animego.org/"
-    _TESTS = {
-        "search": ["experiments lain", 13],
-        "ongoing": True,
-        "search_blocked": False,
-        "video": True,
-        "search_not_found": "_thisTitleIsNotExist123456",
-        "instant": "experiments lain"
-    }
     INSTANT_KEY_REPARSE = True
 
-    def search(self, q: str) -> ResultList[AnimeResult]:
+    def search(self, q: str) -> ResultList[AnimeResult]:  # type: ignore
         resp = self.request_get(self.BASE_URL + "search/anime", params={"q": q}).text
         return AnimeResult.parse(resp)
 
-    def ongoing(self) -> ResultList[Ongoing]:
+    def ongoing(self) -> ResultList[Ongoing]:  # type: ignore
         resp = self.request_get(self.BASE_URL).text
         return Ongoing.parse(resp)
 
-    def episodes(self, result: Union[AnimeResult, Ongoing]) -> ResultList[Episode]:
+    def episodes(self, result: Union[AnimeResult, Ongoing]) -> ResultList[Episode]:  # type: ignore
         resp = self.request_get(self.BASE_URL + f"anime/{result.id}/player?_allow=true").json()["content"]
         return Episode.parse(resp)
 
-    def players(self, episode: Episode) -> ResultList[Player]:
+    def players(self, episode: Episode) -> ResultList[Player]:  # type: ignore
         resp = self.request_get(self.BASE_URL + "anime/series", params={"dubbing": 2, "provider": 24,
                                                                         "episode": episode.num,
                                                                         "id": episode.id}).json()["content"]
@@ -37,7 +29,7 @@ class Anime(BaseAnimeHTTP):
 
 class AnimeResult(BaseAnimeResult):
     REGEX = {"url": re.compile(r'<a href="(https://animego\.org/anime/.*)" title=".*?">'),
-             "title": re.compile('<a href="https://animego\.org/anime/.*" title="(.*?)">')}
+             "title": re.compile(r'<a href="https://animego\.org/anime/.*" title="(.*?)">')}
     ANIME_HTTP = Anime()
     url: str
     title: str
@@ -81,7 +73,7 @@ class Ongoing(BaseOngoing):
 
         # shitty sort duplicates (by title and episode num) algorithm
         # but ongoings list contains less than 100 elements guaranty
-        sorted_ongoings = []
+        sorted_ongoings: List[Ongoing] = []
         for ongoing in ongoings:
             if ongoing in sorted_ongoings:
                 for sorted_ong in sorted_ongoings:
@@ -151,7 +143,7 @@ class Player(BasePlayer):
     dub_id: int
 
     @classmethod
-    def parse(cls, html: str) -> ResultList:
+    def parse(cls, html: str) -> ResultList[Player]:
         l_objects = []
         # generate dict like {attr_name: list(values)}
         dub_names = re.findall(cls.REGEX["dub_name"], html)  # dub_id, dub_name

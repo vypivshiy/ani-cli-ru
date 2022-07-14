@@ -274,7 +274,7 @@ class BaseJsonParser:
     KEYS: Sequence[str]
 
     @classmethod
-    def parse(cls, response: Union[dict, list[dict]]) -> ResultList:
+    def parse(cls, response: Union[Dict, List]) -> ResultList:
         """class object factory
 
         :param response: json response

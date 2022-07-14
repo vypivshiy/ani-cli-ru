@@ -28,22 +28,30 @@ def all_extractors(*, absolute_directory: bool = False) -> Tuple[str, ...]:
     return tuple(_.replace(".py", "") for _ in listdir(dir_path) if not _.startswith("__") and _.endswith(".py"))
 
 
-def import_extractor(module_name: Union[PathLike, str]) -> Extractor:
-    """
-    :param module_name: extractor name
-    :return: Imported extractor module
-    :raise ImportError:
-    """
-    try:
-        # typehint dynamically import API extractor
-        extractor = cast(Extractor, importlib.import_module(module_name, package=None))  # type: ignore
-    except ModuleNotFoundError as e:
-        raise ModuleNotFoundError(f"Module {module_name} has not founded") from e
-    # check extractor scheme
+def _validate_module(extractor: Extractor, module_name: Union[PathLike, str]):
     for class_ in ("Anime", "AnimeResult", "Episode", "Ongoing", "Player", "ResultList"):
         try:
             getattr(extractor, class_)
         except AttributeError as exc:
             raise AttributeError(f"Module {module_name} has no class {class_}. Did you import extractor?") from exc
 
+
+def _import_extractor(module_name: Union[PathLike, str]) -> Extractor:
+    try:
+        # typehint dynamically import API extractor
+        extractor = cast(Extractor, importlib.import_module(str(module_name), package=None))
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(f"Module {module_name} has not founded") from e
+    return extractor
+
+
+def import_extractor(module_name: Union[PathLike, str]) -> Extractor:
+    """
+    :param module_name: extractor name
+    :return: Imported extractor module
+    :raise ImportError:
+    """
+    extractor = _import_extractor(module_name)
+    # check extractor scheme
+    _validate_module(extractor, module_name)
     return extractor

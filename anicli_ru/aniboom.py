@@ -10,7 +10,7 @@ class Aniboom:
     def __init__(self):
         self.session = client
         self.headers = self.session.headers.get("user-agent")
-        
+
     def get_video_url(self, player_url: str, *, quality: int = 1080, referer: str) -> str:
         """
 
