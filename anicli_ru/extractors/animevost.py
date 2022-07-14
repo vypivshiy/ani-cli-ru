@@ -1,91 +1,152 @@
 from __future__ import annotations
-from typing import Union, List
+from typing import Union
+import json
+
 from anicli_ru.base import *
-import re
+
 
 class Anime(BaseAnimeHTTP):
-    BASE_URL = "https://v2.vost.pw/"
+    BASE_URL = "https://api.animevost.org/v1/"
+
+    INSTANT_KEY_REPARSE = True
+    _TESTS = {
+        "search": ["Зомбиленд", 12],
+        "ongoing": True,
+        "search_blocked": False,
+        "video": True,
+        "search_not_found": "_thisTitleIsNotExist123456",
+        "instant": "Зомбиленд"
+    }
+
+    def api_request(self, *, api_method: str, request_method: str = "GET", **kwargs) -> dict:
+        """
+        :param str api_method: Animevost api method
+        :param str request_method: requests send method type. Default "POST"
+        :param kwargs: any requests.Session kwargs
+        :return: json response
+        """
+        resp = self.request(request_method, self.BASE_URL + api_method, **kwargs)
+        return resp.json()
+
+    @staticmethod
+    def _kwargs_pop_params(kwargs, **params) -> dict:
+        data = kwargs.pop("params") if kwargs.get("params") else {}
+        data.update(params)
+        return data
+
+    def search_titles(self, search: str, **kwargs) -> dict:
+        params = self._kwargs_pop_params(kwargs, name=search)
+        return self.api_request(api_method="search", request_method="POST", data=params, **kwargs)['data']
+
+    def get_updates(self, *, limit: int = 20, **kwargs) -> dict:
+        params = self._kwargs_pop_params(kwargs, page=1, quantity=limit)
+        return self.api_request(api_method="last", params=params, **kwargs)['data']
+
+    def episode_reparse(self, *args, **kwargs):
+        raise NotImplementedError
 
     def search(self, q: str) -> ResultList[BaseAnimeResult]:
-        r = self.request_post("https://v2.vost.pw/index.php?do=search", data={"do": "search", "subaction": "search", "story": q})
-        # print(r)
-        return AnimeResult.parse(r.text)
+        return AnimeResult.parse(self.search_titles(search=q))
 
-    def ongoing(self) -> ResultList[Ongoing]:
-        r = self.request_get(self.BASE_URL + "ongoing").text
-        return Ongoing.parse(r)
+    def ongoing(self, *args, **kwargs) -> ResultList[BaseOngoing]:
+        return Ongoing.parse(self.get_updates())
 
-    def episodes(self, result: Union[AnimeResult, Ongoing]) -> ResultList[Episode]:
-        r = self.request_get("https://api.animevost.org/animevost/api/v0.2/GetInfo/" + str(result.id)).json()["data"][0]["series"]
-        return Episode.parse(r)
+    def episodes(self, result: Union[AnimeResult, Ongoing], *args, **kwargs) -> ResultList[BaseEpisode]:
+        req = self.api_request(api_method="playlist", request_method="POST", data={'id': result.id})
+        # print(Episode.parse(req))
+        return Episode.parse(req, result.series)
 
-    def players(self, episode: Episode) -> ResultList[Player]:
-        r = self.request_get(self.BASE_URL + "frame5.php", params=dict(play=episode.id, player=9)).text
-        return Player.parse(r)
+    def players(self, *args, **kwargs) -> ResultList[BasePlayer]:
+        raise NotImplementedError("Get this object from Episode object")
+
+    def get_video(self, player_url: str, quality: int = 720, *, referer: str = ""):
+        raise NotImplementedError("Get video from Player object")
 
 
-class AnimeResult(BaseAnimeResult):
-    ANIME_HTTP = Anime()
-    REGEX = {"url": re.compile(r"<span><a\shref=\"(.*)\"></a></span>\s<h2>.*</h2>"),
-             "title": re.compile(r"<span><a\shref=\".*\"></a></span>\s<h2>(.*)</h2>"),
-             "id": re.compile(r"<span><a\shref=\"\S*\/(\d*)-.*\"></a></span>")
-             }
-
+class Player(BaseJsonParser):
+    KEYS = ('key', 'url')
+    key: str
     url: str
-    title: str
-    id: str
-
-    @property
-    def id(self) -> str:
-        return self.id
 
     def __str__(self):
-        return f"{self.title}"
-
-
-class Ongoing(BaseOngoing):
-    ANIME_HTTP = Anime()
-    REGEX = {"url": re.compile(r"<span><a\shref=\"(.*)\"></a></span>\s<h2>.*</h2>"),
-             "title": re.compile(r"<span><a\shref=\".*\"></a></span>\s<h2>(.*)</h2>"),
-             "id": re.compile(r"<span><a\shref=\"\S*\/(\d*)-.*\"></a></span>")
-             }
-
-    url: str
-    title: str
-    id: str
-
-    def id(self) -> str:
-        return self.id
-
-    def __str__(self):
-        return f"{self.title}"
-
-
-class Player(BasePlayer):
-    ANIME_HTTP = Anime()
-    REGEX = {"rez": re.compile(r">(\d{3}p\s\(\w{2}\))</a>"),
-             "raw_url": re.compile(r"target=\"_blank\"\shref=\"(.*)\">")
-             }
-    rez: str
-    raw_url: str
-
-    def __str__(self):
-        return f"{self.rez}"
+        return self.key
 
     def get_video(self, *args, **kwargs) -> str:
-        return self.raw_url
+        return self.url
 
-class Episode(BaseEpisode):
-    ANIME_HTTP = Anime()
-    REGEX = {'num': re.compile(r"'(\d*\(?\d?\)?-?\d*\sсерия)':'\d*'"),
-             'id': re.compile(r"'\d*\(?\d?\)?-?\d*\sсерия':'(\d*)'")
-             }
 
-    num: str
-    id: str
+class Episode(BaseJsonParser):
+    KEYS = ('std', 'preview', 'name', 'hd')
+    std: str
+    preview: str
+    name: str
+    hd: str
 
-    def id(self) -> str:
-        return self.id
+    @staticmethod
+    def sorting_series(series, sort_series):
+        name = series.name
+        replace = sort_series.replace("\'", "\"")
+        jsn = json.loads(replace)
+        sort = list(jsn.keys())
+        return sort.index(name)
 
     def __str__(self):
-        return f"{self.num}"
+        return self.name
+
+    @classmethod
+    def parse(cls, response: list[dict], series) -> ResultList:
+        """class object factory
+
+        :param response: json response
+        :return: ResultList with objects
+        """
+        # response = sorted(response, key=lambda k: cls.sorting_series(k['name']))
+        rez = ResultList()
+        if isinstance(response, list):
+            for data in response:
+                c = cls()
+                for k in data.keys():
+                    if k in cls.KEYS:
+                        setattr(c, k, data[k])
+                rez.append(c)
+            rez.sort(key=lambda name: cls.sorting_series(name, series))
+        return rez
+
+    def player(self) -> ResultList[Player]:
+        rez = ResultList()
+        rez.extend(Player.parse([{'key': 'hd (720p)', 'url': self.hd},
+                                 {'key': 'std (480p)', 'url': self.std}]))
+        return rez
+
+
+class AnimeResult(BaseJsonParser):
+    ANIME_HTTP = Anime()
+    KEYS = ('id', 'description', 'isFavorite', 'rating', 'series', 'director', 'urlImagePreview', 'year',
+            'genre', 'votes', 'title', 'timer', 'type', 'isLikes', 'screenImage')
+    id: int
+    description: str
+    isFavorite: int
+    rating: int
+    series: dict
+    director: str
+    urlImagePreview: str
+    year: str
+    genre: str
+    votes: int
+    title: str
+    timer: int
+    type: str
+    isLikes: int
+    screenImage: list
+
+    def __str__(self):
+        return self.title
+
+    def episodes(self):
+        with self.ANIME_HTTP as a:
+            return a.episodes(self)
+
+
+class Ongoing(AnimeResult):
+    # response equal AnimeResult object
+    pass
