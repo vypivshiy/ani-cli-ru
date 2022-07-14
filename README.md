@@ -89,6 +89,6 @@ print(players[0].get_video())  # получить прямую ссылку на
 [DEV GUIDE](DEV.md)
 # TODO
 * ~~dev guide~~
-* CI/CD github actions: add autotest utils (without test parser), pylance, etc
-* mypy fix typing
+* ~~CI/CD github actions: add autotest utils (without test parser), pylance, etc~~
+* ~~mypy fix typing~~
 
