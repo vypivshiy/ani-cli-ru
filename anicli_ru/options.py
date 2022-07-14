@@ -110,7 +110,7 @@ def get_agent(key: str) -> Optional[str]:
     elif key == "d":
         return Agent.desktop()
     elif key == "f":
-        return
+        return None
     return Agent.random()
 
 

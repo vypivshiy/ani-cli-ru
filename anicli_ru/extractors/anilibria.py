@@ -1,4 +1,4 @@
-from typing import Sequence, Any, Union
+from typing import Any
 
 from anicli_ru.base import *
 
@@ -11,7 +11,7 @@ class Anime(BaseAnimeHTTP):
 
     INSTANT_KEY_REPARSE = True
     _TESTS = {
-        "search": ["Зомбиленд", 12],
+        "search": ("Зомбиленд", 12),
         "ongoing": True,
         "search_blocked": False,
         "video": True,
