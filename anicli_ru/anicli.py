@@ -1,5 +1,6 @@
 #!/usr/bin/python3
-"""Основной CLI скрипт"""
+# mypy: ignore-errors
+"""main cli script"""
 
 from __future__ import annotations
 

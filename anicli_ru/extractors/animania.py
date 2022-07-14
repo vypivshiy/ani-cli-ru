@@ -7,7 +7,7 @@ import re
 class Anime(BaseAnimeHTTP):
     BASE_URL = "https://animania.online/index.php"
     _TESTS = {
-        "search": ["experiments lain", 1],
+        "search": ("experiments lain", 1),
         "ongoing": True,
         "search_blocked": False,
         "video": True,
@@ -15,15 +15,15 @@ class Anime(BaseAnimeHTTP):
         "instant": "experiments lain"
     }
 
-    def search(self, q: str) -> ResultList[AnimeResult]:
+    def search(self, q: str) -> ResultList[BaseAnimeResult]:
         r = self.request_get(self.BASE_URL, params=dict(do="search", subaction="search", story=q))
         return AnimeResult.parse(r.text)
 
-    def ongoing(self) -> ResultList[Ongoing]:
+    def ongoing(self) -> ResultList[Ongoing]:  # type: ignore
         r = self.request_get(self.BASE_URL)
         return Ongoing.parse(r.text)
 
-    def episodes(self, result: Union[AnimeResult, Ongoing]) -> ResultList[Episode]:
+    def episodes(self, result: Union[AnimeResult, Ongoing]) -> ResultList[Episode]:  # type: ignore
         r = self.request_get(result.url, headers=self.session.headers.copy().update(
             {"Referer": result.url}))
         return Episode.parse(r.text)
@@ -66,7 +66,7 @@ class Ongoing(BaseOngoing):
 
     @property
     def url(self):
-        return "https://animania.online" + self.raw_url
+        return f"https://animania.online{self.raw_url}"
 
     def __str__(self):
         return f"{self.title} {self.num}"
@@ -81,7 +81,6 @@ class Player(BasePlayer):
     player str: video player url
     """
     ANIME_HTTP = Anime()
-    REGEX = {}
     dub_id: int
     num: int
 
@@ -119,7 +118,7 @@ class Episode(BaseEpisode):
     def __str__(self):
         return f"{self.dub_name} count: {self.count}"
 
-    def player(self) -> ResultList[Player]:
+    def player(self) -> ResultList[Player]:  # type: ignore
         _players = []
         for i, videos in enumerate(self.videos, 1):
             p: Player = Player()

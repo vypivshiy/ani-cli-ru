@@ -1,7 +1,7 @@
 """Kodik module utils"""
 import warnings
 from base64 import b64decode
-from typing import Optional, Pattern
+from typing import Optional, Pattern, Tuple, Dict, List
 from urllib.parse import urlparse
 
 
@@ -99,7 +99,7 @@ class Kodik:
         return self.session.get(player_url, headers={"user-agent": self.useragent, "referer": referer}).text
 
     @staticmethod
-    def _parse_payload(resp: str) -> tuple[dict, str]:
+    def _parse_payload(resp: str) -> Tuple[Dict, str]:
         # sourcery skip: dict-assign-update-to-union
 
         # prepare values for next POST request
@@ -119,7 +119,7 @@ class Kodik:
 
     def _get_kodik_video_links(self, api_url: str,
                                new_referer: str,
-                               data: dict) -> dict[dict, list[dict]]:
+                               data: dict) -> Dict[Dict, List[Dict]]:
         copy_headers = self.session.headers.copy()
         copy_headers.update()
 
