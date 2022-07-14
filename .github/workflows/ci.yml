@@ -27,9 +27,7 @@ jobs:
       - name: Run flake8
         run: python -m flake8 .
       - name: Run mypy
-        run: |
-        python -m mypy --install-types --non-interactive anicli_ru/
-        python -m mypy anicli_ru/
+        run: python -m mypy --install-types --non-interactive anicli_ru/
       - name: Run tests
         run: python -m pytest
       - name: Coverage
