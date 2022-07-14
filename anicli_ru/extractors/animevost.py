@@ -9,14 +9,6 @@ class Anime(BaseAnimeHTTP):
     BASE_URL = "https://api.animevost.org/v1/"
 
     INSTANT_KEY_REPARSE = True
-    _TESTS = {
-        "search": ["Зомбиленд", 12],
-        "ongoing": True,
-        "search_blocked": False,
-        "video": True,
-        "search_not_found": "_thisTitleIsNotExist123456",
-        "instant": "Зомбиленд"
-    }
 
     def api_request(self, *, api_method: str, request_method: str = "GET", **kwargs) -> dict:
         """
@@ -51,10 +43,9 @@ class Anime(BaseAnimeHTTP):
     def ongoing(self, *args, **kwargs) -> ResultList[BaseOngoing]:
         return Ongoing.parse(self.get_updates())
 
-    def episodes(self, result: Union[AnimeResult, Ongoing], *args, **kwargs) -> ResultList[BaseEpisode]:
+    def episodes(self, result: Union[AnimeResult, Ongoing], *args, **kwargs) -> ResultList[BaseEpisode]:  # type: ignore
         req = self.api_request(api_method="playlist", request_method="POST", data={'id': result.id})
-        # print(Episode.parse(req))
-        return Episode.parse(req, result.series)
+        return Episode.parse({"episodes": req, "series": result.series})  # signature fix issue
 
     def players(self, *args, **kwargs) -> ResultList[BasePlayer]:
         raise NotImplementedError("Get this object from Episode object")
@@ -94,26 +85,26 @@ class Episode(BaseJsonParser):
         return self.name
 
     @classmethod
-    def parse(cls, response: list[dict], series) -> ResultList:
+    def parse(cls, response) -> ResultList:
         """class object factory
 
         :param response: json response
         :return: ResultList with objects
         """
         # response = sorted(response, key=lambda k: cls.sorting_series(k['name']))
-        rez = ResultList()
-        if isinstance(response, list):
-            for data in response:
+        rez = []
+        if isinstance(response["episodes"], list):  # type: ignore
+            for data in response["episodes"]:  # type: ignore
                 c = cls()
                 for k in data.keys():
                     if k in cls.KEYS:
                         setattr(c, k, data[k])
                 rez.append(c)
-            rez.sort(key=lambda name: cls.sorting_series(name, series))
+            rez.sort(key=lambda name: cls.sorting_series(name, response["series"]))
         return rez
 
     def player(self) -> ResultList[Player]:
-        rez = ResultList()
+        rez = []
         rez.extend(Player.parse([{'key': 'hd (720p)', 'url': self.hd},
                                  {'key': 'std (480p)', 'url': self.std}]))
         return rez

@@ -101,13 +101,10 @@ class Episode(BaseJsonParser):
 
     def player(self) -> ResultList[Player]:
         # {url: str, key: str}
-        rez = ResultList()
+        rez = []
         for k, v in self.hls.items():
             if v:  # value maybe equal None
-                if not self.host.startswith("http"):
-                    url = "https://" + self.host + v
-                else:
-                    url = self.host + v
+                url = self.host + v if self.host.startswith("http") else f"https://{self.host}{v}"
                 rez.extend(Player.parse({"url": url, "key": k}))
         return rez
 
