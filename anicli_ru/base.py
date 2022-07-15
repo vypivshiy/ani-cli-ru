@@ -106,38 +106,38 @@ class BaseAnimeHTTP:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.session.close()
 
-    def request(self, method: str, url: str, **kwargs) -> Response:
-        """Session.request method
-
-        :param str method: method type
-        :param str url: url target
-        :param kwargs: optional requests.Session kwargs
-        :return: requests.Response object
-        """
-        # context manager solve ResourceWarning (trace this in tests)
-        warnings.warn("Usage self.session.request method in parsers", category=SyntaxWarning, stacklevel=2)
-        with self.session as s:
-            return s.request(method, url, timeout=self.TIMEOUT, **kwargs)
-
-    def request_get(self, url: str, **kwargs) -> Response:
-        """Session.get method
-
-        :param str url: url target
-        :param kwargs: optional requests.Session kwargs
-        :return: requests.Response object
-        """
-        warnings.warn("Usage self.session.get method in parsers", category=SyntaxWarning, stacklevel=2)
-        return self.request("GET", url, **kwargs)
-
-    def request_post(self, url: str, **kwargs) -> Response:
-        """Session.post method
-
-        :param url: url target
-        :param kwargs: optional requests.Session kwargs
-        :return: requests.Response object
-        """
-        warnings.warn("Usage self.session.post method in parsers", category=SyntaxWarning, stacklevel=2)
-        return self.request("POST", url, **kwargs)
+    # def request(self, method: str, url: str, **kwargs) -> Response:
+    #     """Session.request method
+    #
+    #     :param str method: method type
+    #     :param str url: url target
+    #     :param kwargs: optional requests.Session kwargs
+    #     :return: requests.Response object
+    #     """
+    #     # context manager solve ResourceWarning (trace this in tests)
+    #     warnings.warn("Usage self.session.request method in parsers", category=SyntaxWarning, stacklevel=2)
+    #     with self.session as s:
+    #         return s.request(method, url, timeout=self.TIMEOUT, **kwargs)
+    #
+    # def request_get(self, url: str, **kwargs) -> Response:
+    #     """Session.get method
+    #
+    #     :param str url: url target
+    #     :param kwargs: optional requests.Session kwargs
+    #     :return: requests.Response object
+    #     """
+    #     warnings.warn("Usage self.session.get method in parsers", category=SyntaxWarning, stacklevel=2)
+    #     return self.request("GET", url, **kwargs)
+    #
+    # def request_post(self, url: str, **kwargs) -> Response:
+    #     """Session.post method
+    #
+    #     :param url: url target
+    #     :param kwargs: optional requests.Session kwargs
+    #     :return: requests.Response object
+    #     """
+    #     warnings.warn("Usage self.session.post method in parsers", category=SyntaxWarning, stacklevel=2)
+    #     return self.request("POST", url, **kwargs)
 
     # need manually write requests in parsers with self.session object
 
