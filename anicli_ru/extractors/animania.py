@@ -16,15 +16,15 @@ class Anime(BaseAnimeHTTP):
     }
 
     def search(self, q: str) -> ResultList[BaseAnimeResult]:
-        r = self.request_get(self.BASE_URL, params=dict(do="search", subaction="search", story=q))
+        r = self.session.get(self.BASE_URL, params=dict(do="search", subaction="search", story=q))
         return AnimeResult.parse(r.text)
 
     def ongoing(self) -> ResultList[Ongoing]:  # type: ignore
-        r = self.request_get(self.BASE_URL)
+        r = self.session.get(self.BASE_URL)
         return Ongoing.parse(r.text)
 
     def episodes(self, result: Union[AnimeResult, Ongoing]) -> ResultList[Episode]:  # type: ignore
-        r = self.request_get(result.url, headers=self.session.headers.copy().update(
+        r = self.session.get(result.url, headers=self.session.headers.copy().update(
             {"Referer": result.url}))
         return Episode.parse(r.text)
 

@@ -17,7 +17,7 @@ class Anime(BaseAnimeHTTP):
         :param kwargs: any requests.Session kwargs
         :return: json response
         """
-        resp = self.request(request_method, self.BASE_URL + api_method, **kwargs)
+        resp = self.session.request(request_method, self.BASE_URL + api_method, **kwargs)
         return resp.json()
 
     @staticmethod

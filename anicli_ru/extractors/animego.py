@@ -9,21 +9,21 @@ class Anime(BaseAnimeHTTP):
     INSTANT_KEY_REPARSE = True
 
     def search(self, q: str) -> ResultList[AnimeResult]:  # type: ignore
-        resp = self.request_get(self.BASE_URL + "search/anime", params={"q": q}).text
+        resp = self.session.get(f"{self.BASE_URL}search/anime", params={"q": q}).text
         return AnimeResult.parse(resp)
 
     def ongoing(self) -> ResultList[Ongoing]:  # type: ignore
-        resp = self.request_get(self.BASE_URL).text
+        resp = self.session.get(self.BASE_URL).text
         return Ongoing.parse(resp)
 
     def episodes(self, result: Union[AnimeResult, Ongoing]) -> ResultList[Episode]:  # type: ignore
-        resp = self.request_get(self.BASE_URL + f"anime/{result.id}/player?_allow=true").json()["content"]
+        resp = self.session.get(f"{self.BASE_URL}anime/{result.id}/player?_allow=true").json()["content"]
         return Episode.parse(resp)
 
     def players(self, episode: Episode) -> ResultList[Player]:  # type: ignore
-        resp = self.request_get(self.BASE_URL + "anime/series", params={"dubbing": 2, "provider": 24,
-                                                                        "episode": episode.num,
-                                                                        "id": episode.id}).json()["content"]
+        resp = self.session.get(f"{self.BASE_URL}anime/series",
+                                params={"dubbing": 2, "provider": 24,
+                                        "episode": episode.num, "id": episode.id}).json()["content"]
         return Player.parse(resp)
 
 
@@ -88,7 +88,7 @@ class Ongoing(BaseOngoing):
 
     @property
     def url(self):
-        return "https://animego.org" + self.raw_url
+        return f"https://animego.org{self.raw_url}"
 
     @property
     def id(self) -> str:
