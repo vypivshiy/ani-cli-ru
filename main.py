@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 """CLI entrypoint from source"""
 from anicli_ru.anicli import main
 
