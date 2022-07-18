@@ -35,9 +35,14 @@ def setup_arguments() -> argparse.Namespace:
                         type=int,
                         default=0,
                         choices=[*range(len(ALL_PARSERS))],
-                        help="Site source keys: {}... DEFAULT 0. "
-                             "Usage --print-sources for get available parsers".format(
-                            ', '.join((str(i) + ' - ' + str(p) for i, p in ALL_PARSERS.items() if i < 3))))
+                        help=f"Site source keys: "
+                             f"{', '.join(f'{str(i)} - {str(p)}' for i, p in ALL_PARSERS.items() if i < 3)}"
+                             f"... DEFAULT 0. Usage --print-sources for get available parsers")
+    parser.add_argument("-exec",
+                        dest="EXEC",
+                        type=str,
+                        help="import anime extractor from file")
+
     parser.add_argument("--print-sources",
                         dest="PRINT_SOURCES",
                         default=False,

@@ -55,3 +55,9 @@ def import_extractor(module_name: Union[PathLike, str]) -> Extractor:
     # check extractor scheme
     _validate_module(extractor, module_name)
     return extractor
+
+
+def import_from_file(file: Union[PathLike, str]) -> Extractor:
+    extractor = _import_extractor(str(file).rstrip(".py"))
+    _validate_module(extractor, file)
+    return extractor

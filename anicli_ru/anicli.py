@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import subprocess
+import warnings
 from typing import Sequence
 from os import name as sys_name
 from os import system
@@ -12,7 +13,7 @@ from random import sample
 from string import ascii_letters
 from typing import Union, Optional
 
-from .loader import import_extractor
+from .loader import import_extractor, import_from_file
 from .options import ALL_PARSERS, setup_arguments, get_agent
 from anicli_ru import Aniboom
 
@@ -22,8 +23,18 @@ PLAYER = "mpv"
 OS_HEADERS_COMMAND = "http-header-fields"
 
 # load chosen extractor
-extractor = f"anicli_ru.extractors.{ALL_PARSERS.get(args.SOURCE)}"
-API = import_extractor(extractor)
+if args.EXEC:
+    if not args.FORCE:
+        warnings.warn("You have imported a third party parser. "
+                      "The developer is not responsible for the code content. Continue? (y/n)."
+                      "To not see this message, run with --force key", category=RuntimeWarning, stacklevel=2)
+        while (c := input("> ")) != "y":
+            if c == "n":
+                exit(-1)
+    API = import_from_file(args.EXEC)
+else:
+    extractor = f"anicli_ru.extractors.{ALL_PARSERS.get(args.SOURCE)}"
+    API = import_extractor(extractor)
 
 if not args.UPGRADE and not args.FORCE:
     print("Chosen source:", API.Anime.BASE_URL)
