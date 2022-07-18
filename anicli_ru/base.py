@@ -106,41 +106,6 @@ class BaseAnimeHTTP:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.session.close()
 
-    # def request(self, method: str, url: str, **kwargs) -> Response:
-    #     """Session.request method
-    #
-    #     :param str method: method type
-    #     :param str url: url target
-    #     :param kwargs: optional requests.Session kwargs
-    #     :return: requests.Response object
-    #     """
-    #     # context manager solve ResourceWarning (trace this in tests)
-    #     warnings.warn("Usage self.session.request method in parsers", category=SyntaxWarning, stacklevel=2)
-    #     with self.session as s:
-    #         return s.request(method, url, timeout=self.TIMEOUT, **kwargs)
-    #
-    # def request_get(self, url: str, **kwargs) -> Response:
-    #     """Session.get method
-    #
-    #     :param str url: url target
-    #     :param kwargs: optional requests.Session kwargs
-    #     :return: requests.Response object
-    #     """
-    #     warnings.warn("Usage self.session.get method in parsers", category=SyntaxWarning, stacklevel=2)
-    #     return self.request("GET", url, **kwargs)
-    #
-    # def request_post(self, url: str, **kwargs) -> Response:
-    #     """Session.post method
-    #
-    #     :param url: url target
-    #     :param kwargs: optional requests.Session kwargs
-    #     :return: requests.Response object
-    #     """
-    #     warnings.warn("Usage self.session.post method in parsers", category=SyntaxWarning, stacklevel=2)
-    #     return self.request("POST", url, **kwargs)
-
-    # need manually write requests in parsers with self.session object
-
     def search(self, q: str) -> ResultList[BaseAnimeResult]:
         """Search anime title by string pattern
 
@@ -335,10 +300,14 @@ class BasePlayer(BaseParserObject):
         :return: video url
         """
         if not referer:
-            referer = self.ANIME_HTTP.BASE_URL if self.ANIME_HTTP.BASE_URL.endswith("/") else f"{self.ANIME_HTTP.BASE_URL}/"
+            referer = self.ANIME_HTTP.BASE_URL if self.ANIME_HTTP.BASE_URL.endswith("/")\
+                else f"{self.ANIME_HTTP.BASE_URL}/"
 
         with self.ANIME_HTTP as a:
             return a.get_video(player_url=self.url, quality=quality, referer=referer)
+
+    def __call__(self, quality: int = 720, referer: Optional[str] = None):
+        return self.get_video(quality, referer)
 
 
 class BaseEpisode(BaseParserObject):
@@ -351,6 +320,9 @@ class BaseEpisode(BaseParserObject):
         """
         with self.ANIME_HTTP as a:
             return a.players(self)
+
+    def __call__(self):
+        return self.player()
 
 
 class BaseOngoing(BaseParserObject):
@@ -366,6 +338,9 @@ class BaseOngoing(BaseParserObject):
         with self.ANIME_HTTP as a:
             return a.episodes(self)
 
+    def __call__(self):
+        return self.episodes()
+
 
 class BaseAnimeResult(BaseParserObject):
     ANIME_HTTP: BaseAnimeHTTP
@@ -379,3 +354,6 @@ class BaseAnimeResult(BaseParserObject):
         """
         with self.ANIME_HTTP as a:
             return a.episodes(self)
+
+    def __call__(self):
+        return self.episodes()
