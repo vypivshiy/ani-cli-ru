@@ -96,7 +96,7 @@ class BaseAnimeHTTP:
         return cls._instance
 
     def __init__(self):
-        self.session = client
+        self.session = client()
         self.session.timeout = self.TIMEOUT
         self.session.headers.update(self.USER_AGENT)
 
@@ -270,7 +270,6 @@ class BasePlayer(BaseParserObject):
 
     """
     ANIME_HTTP: BaseAnimeHTTP
-    dub_name: str
     _player: str
 
     @property

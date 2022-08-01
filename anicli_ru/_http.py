@@ -31,6 +31,9 @@ def check_ddos_protect_hook(resp: Response, **kwargs):
                       stacklevel=2)
 
 
-client = SessionM()
-client.headers.update(BASE_HEADERS_DICT)
-client.hooks["response"] = [check_ddos_protect_hook]
+def client() -> SessionM:
+    client_ = SessionM()
+    client_.headers.update(BASE_HEADERS_DICT)
+    client_.hooks["response"] = [check_ddos_protect_hook]
+    return client_
+

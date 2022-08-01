@@ -8,7 +8,7 @@ from anicli_ru.defaults import AniboomDefaults, AniboomM3U8Data
 
 class Aniboom:
     def __init__(self):
-        self.session = client
+        self.session = client()
         self.headers = self.session.headers.get("user-agent")
 
     def get_video_url(self, player_url: str, *, quality: int = 1080, referer: str) -> str:
@@ -36,7 +36,7 @@ class Aniboom:
 
     @staticmethod
     def _parse_m3u8(m3u8_url: str) -> Tuple[AniboomM3U8Data, ...]:
-        m3u8_response = client.get(m3u8_url, headers={
+        m3u8_response = client().get(m3u8_url, headers={  # type: ignore
             "Referer": AniboomDefaults.REFERER, "Accept-Language": AniboomDefaults.ACCEPT_LANG}).text
 
         return tuple(AniboomM3U8Data(qual, url) for qual, url in AniboomDefaults.RE_M3U8_DATA.findall(m3u8_response))

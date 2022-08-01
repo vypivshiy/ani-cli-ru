@@ -30,7 +30,7 @@ class Kodik:
     QUALITY = KodikDefaults.QUALITY
 
     def __init__(self):
-        self.session = client
+        self.session = client()
         self.useragent = self.session.headers.get("user-agent")
 
     def get_video_url(self, player_url: str, quality: int = 720, *, referer: str = ""):
