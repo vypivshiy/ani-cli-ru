@@ -80,3 +80,11 @@ class ShikimoriCli:
                 self.print_results(user_rate, 3)
         else:
             print('no AnimeObj')
+
+    def get_history(self, limit: int = 20, page: int = 1):
+        if not self.whoami:
+            print('Для этого действия нужна авторизация.')
+            return
+        params = {'limit': limit, 'page': page}
+        history_list = self.client.users.history(self.whoami['id'], params=params).json()
+        self.print_results(history_list, 2)
