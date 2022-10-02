@@ -55,7 +55,8 @@ class Menu:
                           "q": ("[q]uit", self.exit),
                           "e": ("[e]xit (alias quit)", self.exit),
                           ":s": ("shikimori search", self.shiki.search),
-                          ":h": ("shikimori history", self.shiki.get_history)
+                          ":h": ("shikimori history", self.shiki.get_history),
+                          "+1": ("shikimori increment", self.shiki.increment),
                           }
         self.anime = API.Anime()
         if args.USERAGENT:

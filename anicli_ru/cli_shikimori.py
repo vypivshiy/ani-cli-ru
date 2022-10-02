@@ -88,3 +88,11 @@ class ShikimoriCli:
         params = {'limit': limit, 'page': page}
         history_list = self.client.users.history(self.whoami['id'], params=params).json()
         self.print_results(history_list, 2)
+
+    def increment(self):
+        user_rate = self.info.get('user_rate')
+        if user_rate:
+            result = self.client.user_rates.increment(user_rate['id']).json()
+            self.print_results(result, 3)
+        else:
+            print('Этого аниме нету у вас в списке.')
