@@ -16,6 +16,7 @@ from typing import Union, Optional
 from .loader import import_extractor, import_from_file
 from .options import ALL_PARSERS, setup_arguments, get_agent
 from anicli_ru import Aniboom
+from .cli_shikimori import ShikimoriCli
 
 args = setup_arguments()
 
@@ -44,6 +45,7 @@ class Menu:
     INSTANT = args.INSTANT
     DOWNLOAD = args.DOWNLOAD
     TIMEOUT = args.TIMEOUT
+    shiki = ShikimoriCli()
 
     def __init__(self):
         self.__ACTIONS = {"b": ("[b]ack next step", self.back_on),
@@ -52,6 +54,7 @@ class Menu:
                           "o": ("[o]ngoing print", self.ongoing),
                           "q": ("[q]uit", self.exit),
                           "e": ("[e]xit (alias quit)", self.exit),
+                          ":s": ("shikimori search", self.shiki.search)
                           }
         self.anime = API.Anime()
         if args.USERAGENT:
