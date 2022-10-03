@@ -29,7 +29,6 @@ class ShikimoriAPI:
                         print('Обновление токена')
                         self.refresh_access_token(cur_token['refresh_token'])
                     else:
-                        print('Token')
                         self.apply_access_token(cur_token)
             else:
                 self.get_access_token()
@@ -81,7 +80,7 @@ class ShikimoriAPI:
 
     def refresh_access_token(self, refresh_token):
         token = self.session.post('https://shikimori.one/oauth/token', data={
-            'grant_type': 'refresh_code',
+            'grant_type': 'refresh_token',
             'client_id': self.client_id,
             'client_secret': self.client_secret,
             'refresh_token': refresh_token,
