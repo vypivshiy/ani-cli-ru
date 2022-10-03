@@ -1,4 +1,5 @@
 from .shikimori import ShikimoriAPI
+from datetime import datetime
 
 class ShikimoriCli:
 
@@ -44,7 +45,9 @@ class ShikimoriCli:
                 desc = anime.get('description')
                 russian = anime.get('target').get('russian')
                 name = anime.get('target').get('name')
-                print('[{}] {} | {} \n - {}'.format(i, russian, name, desc))
+                created_at = anime.get('created_at')
+                date = datetime.fromisoformat(created_at).astimezone().strftime('%d.%m.%y %H:%M')
+                print(f'[{date}] {russian} | {name} \n - {desc}')
         # rates
         elif result_type == 3:
             if isinstance(results, list):
