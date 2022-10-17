@@ -15,11 +15,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Pattern, Optional, Any, Type, Callable, Tuple, Union, AnyStr, Match
+from typing import Pattern, Optional, Any, Type, Callable, Tuple, Union, AnyStr, Match, Dict
 
 __all__ = ('BaseModel',
            'ReField',
-           'ReFieldList'
+           'ReFieldList',
+           'ReFieldListDict'
            )
 
 
@@ -178,11 +179,11 @@ class ReFieldListDict(ReBaseField):
                  pattern: Union[Pattern, AnyStr],
                  page: str = " ",
                  *,
-                 name: str = "",
+                 name: str,
                  default: Tuple[Any, ...] = (),
                  type_: Type = str,
-                 before_func: Optional[Callable] = None,
-                 after_func: Optional[Callable] = None
+                 before_func: Optional[Dict[str, Callable]] = None,
+                 after_func: Optional[Dict[str, Callable]] = None
                  ):
         """Convert regular expression result with pattern.search method to variable and return list of dicts values.
         If pattern has not found values, return defalut value
@@ -199,53 +200,50 @@ class ReFieldListDict(ReBaseField):
                                               name=name,
                                               type_=type_,
                                               default=default,
-                                              before_func=before_func,
-                                              after_func=after_func)
+                                              )
         self.value = []
-
-        if result := self.pattern.search(page):
+        self.after_func = after_func  # type: ignore
+        self.before_func = before_func  # type: ignore
+        if not self.pattern.groupindex:
+            raise AttributeError("Pattern without (?P<name_var>...) expressions")
+        if self.pattern.search(page):
             # if pattern without (?P<name_var>...) expression
-            if not result.groupdict():
-                if not name:
-                    raise AttributeError("Pattern without (?P<name_var>...) expression must have <name> param")
+            for result in self.pattern.finditer(page):
+                rez = result.groupdict()
+                for k in rez:
+                    if self.before_func and before_func.get(k):  # type: ignore
+                        rez[k] = before_func.get(k)(result[k])  # type: ignore
 
-                names = tuple(n.strip() for n in name.split(","))
+                    rez[k] = type_(result[k])
 
-                for result in self.pattern.finditer(page):
-                    result = result.groups()
+                    if self.after_func and after_func.get(k):  # type: ignore
+                        rez[k] = after_func.get(k)(result[k])  # type: ignore
+                self.value.append(rez)
 
-                    if self.before_func:
-                        result = tuple(self.before_func(i) for i in result)
 
-                    result = tuple(type_(i) for i in result)
-
-                    if self.after_func:
-                        result = tuple(self.after_func(i) for i in result)
-
-                    self.value.append(dict(zip(names, result)))
-            else:
-                # pattern with (?P<name_var>...) expression
-                for result in self.pattern.finditer(page):
-                    result = result.groupdict()
-                    for k in result:
-                        if self.before_func:
-                            result[k] = self.before_func(result[k])
-
-                        result[k] = type_(result[k])
-
-                        if self.after_func:
-                            result[k] = self.after_func(result[k])
-                    self.value.append(result)
+class MiddleWare:
+    @classmethod
+    def activate(cls, re_cls: ReBaseField):
+        return re_cls
 
 
 @dataclass(init=False)
 class BaseModel:
     __REGEX__: Tuple[ReBaseField, ...]
+    __MIDDLEWARES__: Tuple[MiddleWare, ...]
 
     def __init__(self, page: str):
         for cls in self.__REGEX__:
+            cls = self.on_event(cls)
             cls = cls.reparse(page)
-            setattr(self, cls.name, cls.value)
+            name, value = self.middleware(cls)
+            setattr(self, name, value)
+
+    def on_event(self, re_cls: ReBaseField) -> ReBaseField:
+        return re_cls
+
+    def middleware(self, re_cls: ReBaseField) -> Tuple[str, Any]:
+        return re_cls.name, re_cls.value
 
     def dict(self):
         return {k: getattr(self, k) for k in self.__annotations__ if not k.startswith("__") and not k.endswith("__")}
