@@ -15,12 +15,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Pattern, Optional, Any, Type, Callable, Tuple, Union, AnyStr, Match, Dict
+from typing import Pattern, Optional, Any, Type, Callable, Tuple, Union, AnyStr, Match, Dict, List
 
 __all__ = ('BaseModel',
            'ReField',
            'ReFieldList',
-           'ReFieldListDict'
+           'ReFieldListDict',
+           'ReBaseField'
            )
 
 
@@ -201,7 +202,7 @@ class ReFieldListDict(ReBaseField):
                                               type_=type_,
                                               default=default,
                                               )
-        self.value = []
+        self.value: List[Dict] = []
         self.after_func = after_func  # type: ignore
         self.before_func = before_func  # type: ignore
         if not self.pattern.groupindex:
@@ -221,29 +222,14 @@ class ReFieldListDict(ReBaseField):
                 self.value.append(rez)
 
 
-class MiddleWare:
-    @classmethod
-    def activate(cls, re_cls: ReBaseField):
-        return re_cls
-
-
 @dataclass(init=False)
 class BaseModel:
     __REGEX__: Tuple[ReBaseField, ...]
-    __MIDDLEWARES__: Tuple[MiddleWare, ...]
 
     def __init__(self, page: str):
         for cls in self.__REGEX__:
-            cls = self.on_event(cls)
             cls = cls.reparse(page)
-            name, value = self.middleware(cls)
-            setattr(self, name, value)
-
-    def on_event(self, re_cls: ReBaseField) -> ReBaseField:
-        return re_cls
-
-    def middleware(self, re_cls: ReBaseField) -> Tuple[str, Any]:
-        return re_cls.name, re_cls.value
+            setattr(self, cls.name, cls.value)
 
     def dict(self):
         return {k: getattr(self, k) for k in self.__annotations__ if not k.startswith("__") and not k.endswith("__")}
