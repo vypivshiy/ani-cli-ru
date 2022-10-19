@@ -45,6 +45,10 @@ class ReBaseField:
         self.value: Optional[Any] = None
         self.default = default
 
+    @property
+    def kw(self) -> Dict:
+        return {self.name: self.value}
+
     def _set_name(self, name):
         if not name and len(self.pattern.groupindex) > 0:
             return ",".join(self.pattern.groupindex)
@@ -150,7 +154,7 @@ class ReFieldList(ReBaseField):
         :param page: string text. recreate dataclass with cls.reparse method in BaseContentData dataclass
         :param name: name variable.
         :param default: default value, if regex not found result. Default empty list
-        :param type_: type, were need convert element. Default str
+        :param type_: type, where need convert element. Default str
         :param before_func: function that activates BEFORE typecasting
         :param after_func: function that activates AFTER typecasting
         """
