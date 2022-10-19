@@ -80,3 +80,6 @@ class BaseEpisode(BaseModel):
 
     def videos(self):
         raise NotImplementedError
+
+class BaseAnimeInfo(BaseModel):
+    ...
