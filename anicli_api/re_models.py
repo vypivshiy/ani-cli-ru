@@ -1,48 +1,46 @@
-"""Dataclass regular expressions Parser
-Example:
-    import re
-    class TestModel(BaseModel):
-         __REGEX__ = (ReField(r"(\d+)", type_=float, name="digit"),
-                      ReFieldList(r"t", type_=str, name="t_lst", after_func=lambda s: f"{s}est"))
-         digit: int
-         t_lst: list[str]
-     sample_test = "test 123 fooobarbaz"
-     data = TestModel(sample_test)
-     assert data.dict() == {"digit": 123.0, "t_lst": ["test", "test"]}
-"""
-
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
-from typing import Pattern, Optional, Any, Type, Callable, Tuple, Union, AnyStr, Match, Dict
-
-__all__ = ('BaseModel',
-           'ReField',
-           'ReFieldList',
-           'ReFieldListDict'
-           )
+from typing import Pattern, Optional, Any, Type, Union, AnyStr, Dict, Iterable, Callable
 
 
-@dataclass(init=False)
 class ReBaseField:
-    """base field class"""
+    """base regex parser and dict converter
 
+    work strategy:
+        1. set regex pattern and set name. if pattern not found, return  {name: default} dict
+
+        2. functions convert priority:
+
+        2.1  before_func attr, if set
+
+        2.2  before_func_call method
+
+        2.3 result_type set type (default str)
+
+        2.4 after_func_call method
+
+        2.5 after_func attr, if set
+
+        3. return {name: result}
+    """
     def __init__(self,
                  pattern: Union[Pattern, AnyStr],
                  *,
-                 name: str = "",
-                 type_: Type = str,
-                 default: Any = None,
-                 before_func: Optional[Callable] = None,
-                 after_func: Optional[Callable] = None):
+                 name: Optional[str] = None,
+                 default: Optional[Any] = None,
+                 result_type: Type = str,
+                 before_func: Optional[Union[Callable, Dict[str, Callable]]] = None,
+                 after_func: Optional[Union[Callable, Dict[str, Callable]]] = None):
         self.pattern = pattern if isinstance(pattern, Pattern) else re.compile(pattern)
-        self.type_ = type_
+
+        self.name = self._set_name(name)
+
+        self.result_type = result_type
         self.before_func = before_func
         self.after_func = after_func
-        self.name = self._set_name(name)
-        self.value: Optional[Any] = None
         self.default = default
+        self.value = None
 
     def _set_name(self, name):
         if not name and len(self.pattern.groupindex) > 0:
@@ -50,200 +48,150 @@ class ReBaseField:
         else:
             return name
 
-    def reparse(self, page: str) -> ReBaseField:
-        return self._reparse_class(page=page,
-                                   pattern=self.pattern,
-                                   type_=self.type_,
-                                   before_func=self.before_func,
-                                   after_func=self.after_func,
-                                   name=self.name,
-                                   default=self.default)
+    @staticmethod
+    def _init_lambda_function(*,
+                              value: Any,
+                              func: Optional[Union[Dict[str, Callable], Callable]] = None,
+                              key: str = "",
+                              ) -> Any:
+        if func:
+            if isinstance(func, dict) and func.get(key):
+                if not callable(func.get(key)):
+                    raise TypeError
+                value = func.get(key)(value)  # type: ignore
+            elif callable(func):
+                value = func(value)
+        return value
 
-    @classmethod
-    def _reparse_class(cls, **kwargs):
-        return cls(**kwargs)
+    def _enchant_value(self, key: str, value: Any):
+        value = self._init_lambda_function(func=self.before_func, key=key, value=value)
+        if val := self.before_func_call(key=key, value=value):
+            value = val
+        value = self._set_type(value)
+        if val := self.after_func_call(key=key, value=value):
+            value = val
+        value = self._init_lambda_function(func=self.after_func, key=key, value=value)
+        return value
+
+    def parse(self, text: str):
+        raise NotImplementedError
+
+    def before_func_call(self, key: str, value: Any):
+        ...
+
+    def after_func_call(self, key: str, value: Any):
+        ...
+
+    def _set_type(self, value: Any) -> Type[Any]:
+        return self.result_type(value)
 
     def __repr__(self):
-        return f"[{self.__class__.__name__}] type={self.type_} pattern={self.pattern} " \
-               f"name={self.name} value={self.value}"
+        return f"[{self.__class__.__name__}] type={self.result_type} pattern={self.pattern} " \
+               f"{{{self.name}: {self.value}}}"
 
 
 class ReField(ReBaseField):
-    def __init__(self,
-                 pattern: Union[Pattern, AnyStr],
-                 page: str = " ",
-                 *,
-                 name: str = "",
-                 default: Any = None,
-                 type_: Type = str,
-                 before_func: Optional[Callable] = None,
-                 after_func: Optional[Callable] = None):
-        """Convert regular expression result with pattern.search method to variable and return first founded value
 
-        :param pattern: re.compile expression pattern
-        :param page: string text. recreate dataclass with cls.reparse method in BaseModel dataclass
-        :param name: name variable. Optional, if regular expression have (?P<name_var>...) expression
-        :param default: default value, if regex has not found result
-        :param type_: type, were need convert result. Default str
-        :param before_func: function that activates BEFORE typecasting
-        :param after_func: function that activates AFTER typecasting
-        """
-        super(ReField, self).__init__(pattern,
-                                      name=name,
-                                      type_=type_,
-                                      default=default,
-                                      before_func=before_func,
-                                      after_func=after_func)
-
-        if result := self.pattern.search(page):
-            # if pattern without (?P<name_var>...) expression
-            if self.pattern.groupindex:
-                # pattern with (?P<name_var>...) expression
-                self._group_dict(result, type_)
-
-            elif not name:
-                raise AttributeError("Pattern without (?P<name_var>...) expression must have <name> param")
-
+    def parse(self, text: str) -> Dict[str, Any]:
+        if not (result := self.pattern.search(text)):
+            if isinstance(self.default, Iterable):
+                return dict(zip(self.name.split(","), self.default))
             else:
-                self._group(result, type_)
+                return {self.name: self.default}
+        elif result and self.pattern.groupindex:
+            rez = result.groupdict()
+        elif result:
+            rez = dict(zip(self.name.split(","), result.groups()))
         else:
-            self.value = default
-
-    def _group(self, result: Match, type_: Type) -> None:
-        result = result.group()
-        if self.before_func:
-            result = self.before_func(result)
-
-        self.value = type_(result)
-
-        if self.after_func:
-            self.value = self.after_func(self.value)
-
-    def _group_dict(self, result: Match, type_: Type) -> None:
-        for k, v in result.groupdict().items():
-            if not self.name:
-                self.name = k
-
-            if self.before_func:
-                v = self.before_func(v)
-            self.value = type_(v)
-
-            if self.after_func:
-                self.value = self.after_func(self.value)
+            raise RuntimeError
+        for k in rez.keys():
+            rez[k] = self._enchant_value(key=k, value=rez[k])
+        return rez
 
 
 class ReFieldList(ReBaseField):
     def __init__(self,
                  pattern: Union[Pattern, AnyStr],
-                 page: str = " ",
                  *,
-                 default: Tuple[Any, ...] = (),
-                 name: str = "",
-                 type_: Type = str,
+                 name: str,
+                 default: Optional[Iterable[Any]] = None,
+                 result_type: Type = str,
                  before_func: Optional[Callable] = None,
-                 after_func: Optional[Callable] = None
-                 ):
-        """Convert regular expression result with pattern.findall method to list variables
+                 after_func: Optional[Callable] = None):
 
-        :param pattern: re.compile expression pattern
-        :param page: string text. recreate dataclass with cls.reparse method in BaseContentData dataclass
-        :param name: name variable.
-        :param default: default value, if regex not found result. Default empty list
-        :param type_: type, were need convert element. Default str
-        :param before_func: function that activates BEFORE typecasting
-        :param after_func: function that activates AFTER typecasting
-        """
-        super(ReFieldList, self).__init__(pattern,
-                                          name=name,
-                                          type_=type_,
-                                          default=default,
-                                          before_func=before_func,
-                                          after_func=after_func)
+        if not default:
+            default = []
 
-        if result := self.pattern.findall(page):
-            if self.before_func:
-                self.value = [self.before_func(i) for i in result]
+        if not isinstance(default, Iterable):
+            raise TypeError
 
-            self.value = [self.type_(i) for i in result]
+        if not isinstance(default, list):
+            default = list(default)
 
-            if self.after_func:
-                self.value = [self.after_func(i) for i in self.value]
+        super().__init__(pattern, name=name, default=default,
+                         result_type=result_type, before_func=before_func, after_func=after_func)
 
-        else:
-            self.name = name
-            self.value = default
+    def parse(self, text: str) -> Dict:
+        if not (result := self.pattern.findall(text)):
+            return {self.name: self.default}
+        for i, el in enumerate(result):
+            el = self._enchant_value("", el)
+            result[i] = el
+        return {self.name: result}
 
 
 class ReFieldListDict(ReBaseField):
     def __init__(self,
                  pattern: Union[Pattern, AnyStr],
-                 page: str = " ",
                  *,
                  name: str,
-                 default: Tuple[Any, ...] = (),
-                 type_: Type = str,
+                 default: Optional[Iterable[Any]] = None,
+                 result_type: Type = str,
                  before_func: Optional[Dict[str, Callable]] = None,
-                 after_func: Optional[Dict[str, Callable]] = None
-                 ):
-        """Convert regular expression result with pattern.search method to variable and return list of dicts values.
-        If pattern has not found values, return defalut value
+                 after_func: Optional[Dict[str, Callable]] = None):
+        if not default:
+            default = []
 
-        :param pattern: regular expression patter
-        :param page: text
-        :param name: name variables. if pattern without ?P key, need separate names by `,`
-        :param default:
-        :param type_:
-        :param before_func:
-        :param after_func:
-        """
-        super(ReFieldListDict, self).__init__(pattern,
-                                              name=name,
-                                              type_=type_,
-                                              default=default,
-                                              )
-        self.value = []
-        self.after_func = after_func  # type: ignore
-        self.before_func = before_func  # type: ignore
+        if not isinstance(default, Iterable):
+            raise TypeError
+
+        super().__init__(pattern, name=name, default=default,
+                         result_type=result_type, before_func=before_func, after_func=after_func)
+
+    def parse(self, text: str) -> Dict:
+        if not self.pattern.search(text):
+            return {self.name: self.default}
         if not self.pattern.groupindex:
-            raise AttributeError("Pattern without (?P<name_var>...) expressions")
-        if self.pattern.search(page):
-            # if pattern without (?P<name_var>...) expression
-            for result in self.pattern.finditer(page):
-                rez = result.groupdict()
-                for k in rez:
-                    if self.before_func and before_func.get(k):  # type: ignore
-                        rez[k] = before_func.get(k)(result[k])  # type: ignore
-
-                    rez[k] = type_(result[k])
-
-                    if self.after_func and after_func.get(k):  # type: ignore
-                        rez[k] = after_func.get(k)(result[k])  # type: ignore
-                self.value.append(rez)
+            raise TypeError
+        values = []
+        for result in self.pattern.finditer(text):
+            rez = result.groupdict()
+            for k in rez.keys():
+                rez[k] = self._enchant_value(k, rez[k])
+            values.append(rez)
+        return {self.name: values}
 
 
-class MiddleWare:
-    @classmethod
-    def activate(cls, re_cls: ReBaseField):
-        return re_cls
+def parse_many(text: str, *re_fields: ReBaseField) -> dict:
+    result = {}
+    for re_field in re_fields:
+        result.update(re_field.parse(text))
+    return result
 
 
-@dataclass(init=False)
-class BaseModel:
-    __REGEX__: Tuple[ReBaseField, ...]
-    __MIDDLEWARES__: Tuple[MiddleWare, ...]
+if __name__ == '__main__':
+    tst = "foo=123, bar=based 9129 800 1 92"
+    f = ReField(r"foo=(?P<digit>\d+)", result_type=int)
+    f2 = ReField(r"foo=(\d+)", result_type=float, name="float_digit")
 
-    def __init__(self, page: str):
-        for cls in self.__REGEX__:
-            cls = self.on_event(cls)
-            cls = cls.reparse(page)
-            name, value = self.middleware(cls)
-            setattr(self, name, value)
+    f3 = ReFieldList(r"(\d+)", result_type=int, name="digit_list",
+                     before_func=lambda s: f"{s}0",
+                     after_func=lambda s: s * 5)
 
-    def on_event(self, re_cls: ReBaseField) -> ReBaseField:
-        return re_cls
+    f4 = ReFieldListDict(r"(?P<key>\w+)=(?P<value>[\d\w]+)", name="lst_dict",
+                         after_func={"value": lambda s: int(s) if s.isdigit() else s.title(),
+                                      "key": lambda s: s.upper()})
 
-    def middleware(self, re_cls: ReBaseField) -> Tuple[str, Any]:
-        return re_cls.name, re_cls.value
+    f5 = ReField(r"patternnotexist", name="empty")
 
-    def dict(self):
-        return {k: getattr(self, k) for k in self.__annotations__ if not k.startswith("__") and not k.endswith("__")}
+    print(parse_many(tst, f, f2, f3, f4, f5))
