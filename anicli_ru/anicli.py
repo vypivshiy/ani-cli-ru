@@ -24,13 +24,6 @@ OS_HEADERS_COMMAND = "http-header-fields"
 
 # load chosen extractor
 if args.EXEC:
-    if not args.FORCE:
-        warnings.warn("You have imported a third party parser. "
-                      "The developer is not responsible for the code content. Continue? (y/n)."
-                      "To not see this message, run with --force key", category=RuntimeWarning, stacklevel=2)
-        while (c := input("> ")) != "y":
-            if c == "n":
-                exit(-1)
     API = import_from_file(args.EXEC)
 else:
     extractor = f"anicli_ru.extractors.{ALL_PARSERS.get(args.SOURCE)}"

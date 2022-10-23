@@ -59,10 +59,11 @@ o [o]ngoing - напечатать недавно вышедшие онгоин�
 **Q**: Скрипт не запускается из терминала.
 
 **A**: Добавьте в настройки терминала следующую строку:
-```bash
-# ~/.bashrc
-export PATH="$HOME/.local/bin:$PATH"
-# ~/.zshrc
+```sh
+# shell type - config file
+# bash - ~/.bashrc
+# zsh ~/.zshrc
+# fish ~/.config/fish/config.fish 
 export PATH="$HOME/.local/bin:$PATH"
 ```
 

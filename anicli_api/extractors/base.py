@@ -1,23 +1,26 @@
 """base prototype architecture for anicli extractor"""
-from dataclasses import dataclass
+from typing import Dict, Union
+import re
 
 from anicli_api._http import BaseAsyncExtractorHttp, BaseSyncExtractorHttp
+from anicli_api.re_models import ReBaseField
 
-# TODO: ???
 
-
-class Extractor(BaseSyncExtractorHttp):
-    def search(self, query: str):
+class AnimeHTTP(BaseSyncExtractorHttp):
+    def search(self, query: str, *args, **kwargs):
         raise NotImplementedError
 
-    def episode(self):
+    def episode(self, *args, **kwargs):
         raise NotImplementedError
 
-    def ongoing(self):
+    def ongoing(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def download(self, *args, **kwargs):
         raise NotImplementedError
 
 
-class AsyncExtractor(BaseAsyncExtractorHttp):
+class AnimeHTTPAsync(BaseAsyncExtractorHttp):
     async def search(self, query: str, *args, **kwargs):
         raise NotImplementedError
 
@@ -27,23 +30,56 @@ class AsyncExtractor(BaseAsyncExtractorHttp):
     async def ongoing(self, *args, **kwargs):
         raise NotImplementedError
 
+    async def download(self, *args, **kwargs):
+        raise NotImplementedError
 
-@dataclass
+
+class AnimeExtractor:
+    HTTP: AnimeHTTP = NotImplemented
+
+    def search(self, query: str, *args, **kwargs):
+        return self.HTTP.search(query)
+
+    def ongoing(self, *args, **kwargs):
+        return self.HTTP.ongoing()
+
+    def download(self, *args, **kwargs):
+        return self.HTTP.download()
+
+
 class BaseModel:
-    ...
+
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    def dict(self):
+        return {k: getattr(self, k) for k in self.__annotations__
+                if not k.startswith("__") and not k.endswith("__")}
+
+    def __repr__(self):
+        return f"[{self.__class__.__name__}] " + ", ".join((f"<{k}>={v}" for k,v in self.dict().items()))
 
 
-class SearchResult(BaseModel):
-    ...
+class BaseSearchResult(BaseModel):
+    HTTP: Union[AnimeHTTP, AnimeHTTPAsync] = NotImplemented
+
+    def episodes(self):
+        raise NotImplementedError
 
 
-class Ongoing(BaseModel):
-    ...
+class BaseOngoing(BaseModel):
+    HTTP: Union[AnimeHTTP, AnimeHTTPAsync] = NotImplemented
+
+    def episodes(self):
+        raise NotImplementedError
 
 
-class Episode(BaseModel):
-    ...
+class BaseEpisode(BaseModel):
+    HTTP: Union[AnimeHTTP, AnimeHTTPAsync] = NotImplemented
 
+    def videos(self):
+        raise NotImplementedError
 
-class Video(BaseModel):
+class BaseAnimeInfo(BaseModel):
     ...
