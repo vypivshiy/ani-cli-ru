@@ -2,7 +2,8 @@
 Example usage:
     >>> kodik_links = Kodik.parse("https://kodik.info/seria/1026046/02a256101df196484d68d10d28987fbb/720p")
     >>> aniboom_links = Aniboom.parse('https://aniboom.one/embed/N9QdKm4Mwz1?episode=1&translation=2')
-    >>> print(kodik_links, aniboom_links, sep='\n')
+    >>> print(kodik_links)
+    >>> print(aniboom_links)
     >>> # example output:
     >>> # {'360': [{'src': 'https://cloud.kodik-storage.com/...',
     >>> # 'type': 'application/x-mpegURL'}], '480': [{...}], '720': [{...}]}
