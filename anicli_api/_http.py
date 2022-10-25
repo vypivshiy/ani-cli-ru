@@ -1,12 +1,12 @@
 from typing import Dict
+from html import unescape
 
 from httpx import Client, AsyncClient
 
-
 TIMEOUT: float = 30.0
-HEADERS: Dict[str, str] = {"user-agent":
-                               "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) "
-                               "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36",
+HEADERS: Dict[str, str] = {"user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) "
+                                         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 "
+                                         "Mobile Safari/537.36",
                            "x-requested-with": "XMLHttpRequest"}  # required
 
 
@@ -36,6 +36,10 @@ class BaseHTTPSync:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.session.close()
 
+    @staticmethod
+    def unescape(text: str) -> str:
+        return unescape(text)
+
 
 class BaseHTTPAsync:
     BASE_URL: str
@@ -52,6 +56,10 @@ class BaseHTTPAsync:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.session.aclose()
+
+    @staticmethod
+    def unescape(text: str) -> str:
+        return unescape(text)
 
 
 class BaseSyncExtractorHttp(Singleton, BaseHTTPSync):
