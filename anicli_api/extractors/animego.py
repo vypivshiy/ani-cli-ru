@@ -1,5 +1,17 @@
-"""THIS EXTRACTOR WORKS ONLY MOBILE USERAGENT!!!"""
-from typing import List, Dict, Optional
+"""THIS EXTRACTOR WORKS ONLY MOBILE USERAGENT!!!
+
+Example:
+    >>> extractor = Extractor()
+    >>> search_results = extractor.search("lain")  # search
+    >>> anime = search_results[0].anime()  # get first title (Serial of experiments lain)
+    >>> episodes = anime.episodes()  # get all episodes
+    >>> videos = episodes[0].videos() # get available video object
+    >>> videos[0].link()  # get direct links
+    >>> ongoings = extractor.ongoing()  # get ongoings
+    >>> anime = ongoings[0].anime()  # get first ongoing
+    >>> # ... equal upper :)
+"""
+from typing import List, Optional
 
 from anicli_api.extractors.base import (
     AnimeHTTP,

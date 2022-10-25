@@ -1,4 +1,14 @@
-"""Decoders class for kodik, aniboom"""
+"""Decoders class for kodik, aniboom
+Example usage:
+    >>> kodik_links = Kodik.parse("https://kodik.info/seria/1026046/02a256101df196484d68d10d28987fbb/720p")
+    >>> aniboom_links = Aniboom.parse('https://aniboom.one/embed/N9QdKm4Mwz1?episode=1&translation=2')
+    >>> print(kodik_links, aniboom_links, sep='\n')
+    >>> # example output:
+    >>> # {'360': [{'src': 'https://cloud.kodik-storage.com/...',
+    >>> # 'type': 'application/x-mpegURL'}], '480': [{...}], '720': [{...}]}
+    >>> # {'m3u8': {'360': 'https://kekistan.cdn-aniboom.com/pq/foobar/media_0.m3u8', '480': ..., '720': ..., '1080': ...},
+    >>> # 'mpd': 'https://kekistan.cdn-aniboom.com/pq/PQmM3Dx0XDl/bazfoo.mpd'}
+"""
 # TODO: add asyncio
 # TODO create custom error classes
 from base64 import b64decode
@@ -83,7 +93,7 @@ class Kodik(BaseHTTPSync):
             url = f"//{url}"
         if not url.startswith("https:"):
             url = f"https:{url}"
-        if url_ := cls.RE_VALIDATE_URL.search(url):
+        if url_ := re.search(r"https://\w+\.\w{2,6}/seria/\d+/\w+/\d{3,4}p", url):
             return f"https://{urlparse(url_.group()).netloc}/gvi"
         raise TypeError
 
@@ -156,7 +166,7 @@ class Aniboom(BaseHTTPSync):
         for url_data in re.finditer(r'#EXT-X-STREAM-INF:BANDWIDTH=\d+,RESOLUTION=(?P<resolution>\d+x\d+),'
                                     r'CODECS=".*?",AUDIO="\w+"\s(?P<src>\w+\.m3u8)', response):
             if m3u8_dict := url_data.groupdict():
-                result[m3u8_dict["resolution"].split("x")[-1]] = f"{base_m3u8_url}{url_data['src']}"
+                result[m3u8_dict["resolution"].split("x")[-1]] = f"{base_m3u8_url}/{url_data['src']}"
         return result
 
     @classmethod
@@ -176,8 +186,3 @@ class Aniboom(BaseHTTPSync):
         for k, v in result.items():
             result[k] = v.replace("\\", "")
         return result
-
-
-if __name__ == '__main__':
-    # Kodik.parse("https://kodik.info/seria/1026046/02a256101df196484d68d10d28987fbb/720p")
-    print(Aniboom.parse('https://aniboom.one/embed/N9QdKm4Mwz1?episode=1&translation=2'))
