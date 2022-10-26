@@ -12,61 +12,92 @@ Example usage:
 """
 # TODO: add asyncio
 # TODO create custom error classes
+from abc import ABC, abstractmethod
 from base64 import b64decode
 import re
 from html import unescape
-from typing import Optional, Dict, List
+from typing import Dict, List
 from urllib.parse import urlparse
 import json
 
-from anicli_api._http import BaseHTTPSync
+from anicli_api._http import BaseHTTPSync, BaseHTTPAsync
 
 
-# TODO docstrings, base abc class for direct links extractor, doc errors
+class BaseDecoder(ABC):
+    ASYNC_HTTP: BaseHTTPAsync = BaseHTTPAsync()
+    HTTP: BaseHTTPSync = BaseHTTPSync()
+
+    @classmethod
+    @abstractmethod
+    def parse(cls, url: str):
+        ...
+
+    @classmethod
+    @abstractmethod
+    async def async_parse(cls, url: str):
+        ...
 
 
-class Kodik(BaseHTTPSync):
-    HEADERS = {"user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) "
-                             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36"}
+class Kodik(BaseDecoder):
     REFERER = "https://kodik.info"
     BASE_PAYLOAD = {"bad_user": True,
                     "info": "{}"}
-    QUALITY = (720, 480, 360)
-
-    def __init__(self):
-        super().__init__()
-        self.session.headers.update(self.HEADERS)
 
     @classmethod
-    def parse(cls, url: str, *, referer: Optional[str] = None, raw_response: Optional[str] = None):
+    def parse(cls, url: str):
+        """High-level kodik video link extractor
+
+        Usage: Kodik.parse(<url>)
+
+        :param str url: kodik url
+        :return: dict of direct links
+        """
         url = url.split("?")[0]
         if url != cls():
-            raise AttributeError
-        if not referer:
-            referer = cls.REFERER
-        if not raw_response:
-            raw_response = cls().session.get(url, headers={"referer": referer}).text
+            raise AttributeError(f"{url} is not Kodik")
+
+        raw_response = cls.HTTP.get(url, headers={"referer": cls.REFERER}).text
         if cls.is_banned(raw_response):  # type: ignore
-            raise TypeError
+            raise TypeError("This video is not available in your country")
+
         payload = cls._parse_payload(raw_response)  # type: ignore
         api_url = cls._get_api_url(url)
-        response = cls()._get_kodik_videos(api_url, referer, payload)
-        for k in response.keys():
-            response[k][0]['src'] = cls.decode(response[k][0]['src'])
+        response = cls.HTTP.post(api_url, data=payload,
+                                 headers={"origin": cls.REFERER,
+                                          "referer": api_url.replace("/gvi", ""),
+                                          "accept": "application/json, text/javascript, */*; q=0.01"}).json()["links"]
+        response = {quality: cls.decode(response[quality][0]['src']) for quality in response.keys()}  # type: ignore
+        if response.get("720") and "480.mp4" in response.get("720"):  # type: ignore
+            response["720"] = response.get("720").replace("/480.mp4", "/720.mp4")  # type: ignore
         return response
 
-    def _get_kodik_videos(self, api_url: str, referer: str, payload: dict) -> Dict[Dict, List[Dict]]:
-        response = self.session.post(api_url, data=payload,
-                                     headers={"origin": f"https://{referer}",
-                                              "referer": api_url.replace("/gvi", ""),
-                                              "accept": "application/json, text/javascript, */*; q=0.01"})
-        return response.json()["links"]
+    @classmethod
+    async def async_parse(cls, url: str):
+        url = url.split("?")[0]
+        if url != cls():
+            raise AttributeError(f"{url} is not Kodik")
+
+        async with cls.ASYNC_HTTP as session:
+            raw_response = (await session.get(url, headers={"referer": cls.REFERER})).text
+            if cls.is_banned(raw_response):  # type: ignore
+                raise TypeError("This video is not available in your country")
+            payload = cls._parse_payload(raw_response)  # type: ignore
+            api_url = cls._get_api_url(url)
+            response = (await session.post(api_url, data=payload,
+                                           headers={"origin": cls.REFERER,
+                                                    "referer": api_url.replace("/gvi", ""),
+                                                    "accept": "application/json, text/javascript, */*; q=0.01"}
+                                           )).json()["links"]
+            response = {quality: cls.decode(response[quality][0]['src']) for quality in response.keys()}  # type: ignore
+            if response.get("720") and "480.mp4" in response.get("720"):  # type: ignore
+                response["720"] = response.get("720").replace("/480.mp4", "/720.mp4")  # type: ignore
+            return response
 
     @classmethod
     def _parse_payload(cls, response: str) -> Dict:
         payload = cls.BASE_PAYLOAD.copy()
         if not (result := re.search(r"var urlParams = (?P<params>'{.*?}')", response)):
-            raise TypeError
+            raise TypeError("Error parse payload params")
         result = json.loads(result.groupdict()["params"].strip("'"))
         payload.update(result)  # type: ignore
         for pattern in (r'var type = "(?P<type>.*?)";',
@@ -76,7 +107,7 @@ class Kodik(BaseHTTPSync):
             if result := re.search(pattern, response):
                 payload.update(result.groupdict())
             else:
-                raise ValueError
+                raise ValueError("Error parse payload params")
         return payload
 
     @classmethod
@@ -96,7 +127,7 @@ class Kodik(BaseHTTPSync):
             url = f"https:{url}"
         if url_ := re.search(r"https://\w+\.\w{2,6}/seria/\d+/\w+/\d{3,4}p", url):
             return f"https://{urlparse(url_.group()).netloc}/gvi"
-        raise TypeError
+        raise TypeError(f"{url} is not Kodik")
 
     def __eq__(self, url: str) -> bool:  # type: ignore
         return self.is_kodik(url) if isinstance(url, str) else NotImplemented
@@ -116,33 +147,65 @@ class Kodik(BaseHTTPSync):
         return link
 
 
-class Aniboom(BaseHTTPSync):
+class Aniboom(BaseDecoder):
     REFERER = "https://animego.org/"
-    USERAGENT = "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, " \
-                "like Gecko) Chrome/94.0.4606.114 Mobile Safari/537.36"
     ACCEPT_LANG = "ru-RU"
 
-    def __init__(self, *, referer: Optional[str] = None):
+    def __init__(self):
         super().__init__()
-        if not referer:
-            referer = self.REFERER
-        self.session.headers.update({"user-agent": self.USERAGENT,
-                                     "referer": referer,
-                                     "accept-language": self.ACCEPT_LANG,
-                                     })
-        self.session.headers.pop("x-requested-with")
+        self.HTTP.headers.update({"referer": self.REFERER,
+                                  "accept-language": self.ACCEPT_LANG,
+                                  })
 
     @classmethod
     def parse(cls, url: str) -> Dict:
+        """High-level aniboom video link extractor.
+
+        For play video required next headers:
+
+        * user-agent: any desktop/mobile
+        * referer: https://aniboom.one/
+        * origin: https://aniboom.one
+        * accept-language: ru-RU  # increase download speed
+
+        Usage: Aniboom.parse(<url>)
+
+        :param str url: aniboom url
+        :return: dict of direct links
+        """
         if url != cls():
-            raise TypeError
+            raise TypeError(f"{url} is not Aniboom")
         cls_ = cls()
-        response = cls_._aniboom_request(url)
+        response = unescape(cls_.HTTP.get(url).text)
+
         links = cls_._extract_links(response)
         if len(links.keys()) == 0:
-            raise TypeError("links not found")
-        links["m3u8"] = cls_._parse_m3u8(links["m3u8"])
+            raise TypeError("Video links not found")
+
+        m3u8_response = cls.HTTP.get(links["m3u8"], headers={"referer": cls.REFERER,
+                                                             "origin": cls.REFERER.rstrip("/"),
+                                                             "accept-language": cls.ACCEPT_LANG}).text
+        links["m3u8"] = cls_._parse_m3u8(links["m3u8"], m3u8_response)
+
         return links
+
+    @classmethod
+    async def async_parse(cls, url: str):
+        if url != cls():
+            raise TypeError(f"{url} is not Aniboom")
+        cls_ = cls()
+        async with cls.ASYNC_HTTP as session:
+            response = unescape((await session.get(url)).text)
+            links = cls_._extract_links(response)
+            if len(links.keys()) == 0:
+                raise TypeError("Video links not found")
+            m3u8_response = (await session.get(links["m3u8"],
+                                               headers={"referer": cls.REFERER,
+                                                        "origin": cls.REFERER.rstrip("/"),
+                                                        "accept-language": cls.ACCEPT_LANG})).text
+
+            links["m3u8"] = cls_._parse_m3u8(links["m3u8"], m3u8_response)
+            return links
 
     @staticmethod
     def is_aniboom(url: str) -> bool:
@@ -152,20 +215,12 @@ class Aniboom(BaseHTTPSync):
     def __eq__(self, url: str) -> bool:  # type: ignore
         return self.is_aniboom(url)
 
-    def _aniboom_request(self, player_url: str) -> str:
-        # need set lowercase keys
-        r = self.session.get(player_url)
-        return unescape(r.text)
-
     @classmethod
-    def _parse_m3u8(cls, m3u8_url: str) -> Dict:
-        response = cls().session.get(m3u8_url, headers={"referer": "https://aniboom.one/",
-                                                        "origin": "https://aniboom.one",
-                                                        "Accept-Language": cls.ACCEPT_LANG}).text
+    def _parse_m3u8(cls, m3u8_url: str, m3u8_response: str) -> Dict:
         result = {}
         base_m3u8_url = m3u8_url.replace("/master.m3u8", "")
         for url_data in re.finditer(r'#EXT-X-STREAM-INF:BANDWIDTH=\d+,RESOLUTION=(?P<resolution>\d+x\d+),'
-                                    r'CODECS=".*?",AUDIO="\w+"\s(?P<src>\w+\.m3u8)', response):
+                                    r'CODECS=".*?",AUDIO="\w+"\s(?P<src>\w+\.m3u8)', m3u8_response):
             if m3u8_dict := url_data.groupdict():
                 result[m3u8_dict["resolution"].split("x")[-1]] = f"{base_m3u8_url}/{url_data['src']}"
         return result
