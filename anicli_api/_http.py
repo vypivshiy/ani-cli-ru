@@ -3,11 +3,19 @@ from html import unescape
 
 from httpx import Client, AsyncClient
 
+
 TIMEOUT: float = 30.0
 HEADERS: Dict[str, str] = {"user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) "
                                          "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 "
                                          "Mobile Safari/537.36",
                            "x-requested-with": "XMLHttpRequest"}  # required
+
+__all__ = (
+    "BaseHTTPSync",
+    "BaseHTTPAsync",
+    "HTTPSync",
+    "HTTPAsync"
+)
 
 
 class Singleton:
@@ -19,52 +27,38 @@ class Singleton:
         return cls._instance
 
 
-class BaseHTTPSync:
-    """Base sync HTTP with default config session instance"""
-    BASE_URL: str
-    TIMEOUT: float = TIMEOUT
-    HEADERS = HEADERS
+class BaseHTTPSync(Client):
+    _DEFAULT_HEADERS = HEADERS
+    _DEFAULT_TIMEOUT: float = TIMEOUT
 
     def __init__(self):
-        self.session = Client()
-        self.session.timeout = self.TIMEOUT
-        self.session.headers.update(self.HEADERS)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
+        super().__init__()
+        self.headers.update(self._DEFAULT_HEADERS)
+        self.timeout = self._DEFAULT_TIMEOUT
+        self.follow_redirects = True
 
     @staticmethod
     def unescape(text: str) -> str:
         return unescape(text)
 
 
-class BaseHTTPAsync:
-    BASE_URL: str
-    TIMEOUT = TIMEOUT
-    HEADERS = HEADERS
+class BaseHTTPAsync(AsyncClient):
+    _DEFAULT_HEADERS = HEADERS
+    _DEFAULT_TIMEOUT: float = TIMEOUT
 
     def __init__(self):
-        self.session = AsyncClient()
-        self.session.timeout = self.TIMEOUT
-        self.session.headers.update(self.HEADERS)
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.session.aclose()
+        super().__init__()
+        self.headers.update(self._DEFAULT_HEADERS)
+        self.timeout = self._DEFAULT_TIMEOUT
 
     @staticmethod
     def unescape(text: str) -> str:
         return unescape(text)
 
 
-class BaseSyncExtractorHttp(Singleton, BaseHTTPSync):
-    """Base Extractor class"""
+class HTTPSync(Singleton, BaseHTTPSync):
+    """Base singleton sync HTTP with recommended config"""
 
 
-class BaseAsyncExtractorHttp(Singleton, BaseHTTPAsync):
-    """Base Async Extractor class"""
+class HTTPAsync(Singleton, BaseHTTPAsync):
+    """Base singleton async HTTP class with recommended config"""
