@@ -23,7 +23,7 @@ from bs4 import BeautifulSoup
 
 from anicli_api.re_models import ReField, ReFieldList, ReFieldListDict, parse_many
 from anicli_api._http import BaseHTTPSync, BaseHTTPAsync
-from anicli_ru import Kodik, Aniboom
+from anicli_api.decoders import Kodik, Aniboom
 
 
 class AnimeExtractor:
@@ -42,11 +42,45 @@ class AnimeExtractor:
     def ongoing(self):
         raise NotImplementedError
 
+    @staticmethod
+    def _soup(markup: Union[str, bytes], *, parser: str = "html.parser", **kwargs) -> BeautifulSoup:
+        """return BeautifulSoup instance"""
+        return BeautifulSoup(markup, parser, **kwargs)
+
+    @staticmethod
+    def _unescape(text: str) -> str:
+        """equal html.unescape"""
+        return unescape(text)
+
 
 class BaseModel:
-    # http sync requests class
+    """Base Model class
+
+    instances:
+
+    HTTP = BaseHTTPSync() - http singleton sync requests class
+
+    HTTP_ASYNC = BaseHTTPAsync() - http singleton async requests class
+
+    methods:
+
+    BaseModel._soup - return BeautifulSoap instance
+
+    BaseModel._unescape - unescape text
+
+    optional regex search class helpers:
+
+    _ReField - ReField
+
+    _ReFieldList - re_models.ReFieldList
+
+    _ReFieldListDict - re_models.ReFieldListDict
+
+    _parse_many - re_models.parse_many
+    """
+    # http singleton sync requests class
     HTTP = BaseHTTPSync()
-    # http async requests class
+    # http singleton async requests class
     HTTP_ASYNC = BaseHTTPAsync()
 
     # optional regex search class helpers
@@ -87,14 +121,11 @@ class BaseSearchResult(BaseModel):
     name: str - anime title name
 
     type: str - anime type: serial, film, OVA, etc"""
-
-    "year: str - year release"
     url: str
     name: str
     type: str
-    year: int
 
-    def anime(self):
+    def get_anime(self):
         """return BaseAnimeInfo object"""
         raise NotImplementedError
 
@@ -113,31 +144,31 @@ class BaseOngoing(BaseSearchResult):
     name: str
     num: int
 
-    def anime(self):
+    def get_anime(self):
         """return BaseAnimeInfo object"""
         raise NotImplementedError
 
 
 class BaseEpisode(BaseModel):
-    def videos(self):
+    def get_videos(self):
         """return List[BaseVideo] objects"""
         raise NotImplementedError
 
 
 class BaseAnimeInfo(BaseModel):
-    id: int
-    url: str
-    name: str
-    alt_names: List[str]
-    status: str
-    images: List[str]
-    type: str # tv, episodes, etc
-    series: int
-    length: str
-    genres: List[str]
-    season: str
+    # id: str
+    # url: str
+    # name: str
+    # alt_names: List[str]
+    # status: str
+    # images: List[str]
+    # type: str  # tv, episodes, etc
+    # series: int
+    # length: str
+    # genres: List[str]
+    # season: str
 
-    def episodes(self):
+    def get_episodes(self):
         """return List[Episodes] objects"""
         raise NotImplementedError
 
@@ -145,16 +176,11 @@ class BaseAnimeInfo(BaseModel):
 class BaseVideo(BaseModel):
     """Base video class object.
 
-    required attributes:
+    minimum required attributes:
 
     url: str - url to balancer or direct video
-
-    dub: str - dubber name
-
-    name: str - host name (Sibnet, Kodik, AniBoom etc)"""
+    """
     url: str
-    dub: str
-    name: str
 
     def get_source(self):
         """if video is Kodik or Aniboom, return dict with videos. Else, return direct url"""
