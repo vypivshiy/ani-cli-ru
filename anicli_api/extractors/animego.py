@@ -14,215 +14,208 @@ Example:
 from typing import List, Optional
 
 from anicli_api.extractors.base import (
-    AnimeHTTP,
     AnimeExtractor,
     BaseSearchResult,
     BaseEpisode,
     BaseOngoing,
     BaseAnimeInfo,
-    BaseVideo
+    BaseVideo,
+    BaseModel
 )
-
-from anicli_api.decoders import Kodik, Aniboom
-
-from anicli_api.re_models import ReField, ReFieldList, ReFieldListDict, parse_many
-
-
-class Animego(AnimeHTTP):
-    BASE_URL = "https://animego.org/"
-
-    def search(self, query: str, *args, **kwargs) -> str:
-        return self.session.get(f"{self.BASE_URL}search/anime", params={"q": query}).text
-
-    def episode(self, url: str, *args, **kwargs):
-        anime_id = url.split("-")[-1]
-        return self.unescape(self.session.get(f"https://animego.org/anime/{anime_id}/player",
-                                              params={"_allow": "true"}).json()["content"])
-
-    def episode_metadata(self, episode_num: int, episode_id: int):
-        resp = self.session.get(f"{self.BASE_URL}anime/series",
-                                params={"dubbing": 2, "provider": 24,
-                                        "episode": episode_num, "id": episode_id}).json()["content"]
-
-        return self.unescape(resp)
-
-    def ongoing(self, *args, **kwargs) -> str:
-        return self.session.get(self.BASE_URL).text
-
-    def download(self, *args, **kwargs):
-        pass
-
-    def anime(self, url: str, *args, **kwargs):
-        return self.unescape(self.session.get(url).text)
 
 
 class Extractor(AnimeExtractor):
-    HTTP = Animego()
+    BASE_URL = "https://animego.org/"
 
-    def search(self, query: str, *args, **kwargs) -> List["SearchResult"]:
-        response = self.HTTP.search(query)
-        result = ReFieldListDict(r'data-original="(?P<thumbnail>https://animego\.org/media/[^>]+\.\w{2,4})".*'
-                                 r'<a href="(?P<url>https://animego\.org/anime/[^>]+)" '
-                                 r'title="(?P<title>[^>]+)".*'
-                                 r'href="https://animego\.org/anime/type/[^>]+>(?P<type>[^>]+)<[^>]+.*'
-                                 r'href="https://animego\.org/anime/season/(?P<year>\d+)',
-                                 name="info",
-                                 after_exec_type={"year": lambda i: int(i)}).parse(response)
+    def search(self, query: str) -> List["SearchResult"]:
+        response = self.HTTP.get(f"{self.BASE_URL}search/anime", params={"q": query}).text
+        result = self._ReFieldListDict(
+            r'data-original="(?P<thumbnail>https://animego\.org/media/[^>]+\.\w{2,4})".*'
+            r'<a href="(?P<url>https://animego\.org/anime/[^>]+)" '
+            r'title="(?P<name>[^>]+)".*'
+            r'href="https://animego\.org/anime/type/[^>]+>(?P<type>[^>]+)<[^>]+.*'
+            r'href="https://animego\.org/anime/season/(?P<year>\d+)',
+            name="info",
+            after_exec_type={"year": lambda i: int(i)}).parse_values(response)
+        # {thumbnail:str, url: str, name: str, type: str, year: int}
+        return [SearchResult(**data) for data in result]
 
-        return [SearchResult(**data) for data in result["info"]]
+    def ongoing(self):
+        response = self.HTTP.get(self.BASE_URL)
+        result = self._ReFieldListDict(
+            r'onclick="location\.href=\'(?P<url>[^>]+)\'.*?url\((?P<thumbnail>[^>]+)\);.*?'
+            r'<span class="[^>]+"><span class="[^>]+">(?P<name>[^>]+)</span>.*?'
+            r'<div class="[^>]+"><div class="[^>]+">(?P<num>[^>]+)'
+            r'</div><div class="[^>]+">\((?P<dub>[^>]+)\)',
+            name="info",
+            after_exec_type={"url": lambda s: f"https://animego.org{s}",
+                             "num": int}).parse_values(response)
+        # {url: str, thumbnail: str, name: str, num: int, dub: str}
+        return [Ongoing(**data) for data in result]
 
-    def ongoing(self, *args, **kwargs):
-        response = self.HTTP.ongoing()
-        result = ReFieldListDict(r'onclick="location\.href=\'(?P<url>[^>]+)\'.*?url\((?P<thumbnail>[^>]+)\);.*?'
-                                 r'<span class="[^>]+"><span class="[^>]+">(?P<title>[^>]+)</span>.*?'
-                                 r'<div class="[^>]+"><div class="[^>]+">(?P<num>[^>]+)'
-                                 r'</div><div class="[^>]+">\((?P<dub>[^>]+)\)',
-                                 name="info",
-                                 after_exec_type={"url": lambda s: f"https://animego.org{s}"}).parse(response)
-        return [Ongoing(**data) for data in result["info"]]
+    def deep_ongoing(self):
+        ongoings = self.ongoing()
+        for ong in ongoings:
+            anime = ong.get_anime()
+            for episode in anime.get_episodes():
+                for video in episode.get_videos():
+                    yield {
+                        "ongoing": ong.dict(),
+                        "anime": anime.dict(),
+                        "episode": episode.dict(),
+                        "video_meta": video.dict(),
+                        "video": video.get_source()
+                    }
 
-    def download(self, *args, **kwargs):
-        pass
 
-
-class SearchResult(BaseSearchResult):
-    HTTP = Animego()
-    thumbnail: str
+class AnimeParser(BaseModel):
+    """avoid duplicate code"""
     url: str
-    title: str
+
+    _DECODE_TABLE = {
+        "Тип": "type",
+        "Эпизоды": "episodes",
+        "Статус": "status",
+        "Жанр": "genres",
+        "Первоисточник": "source",
+        "Сезон": "season",
+        "Выпуск": "release",
+        "Студия": "studio",
+        "Рейтинг MPAA": "mpaa",
+        "Возрастные ограничения": "age",
+        "Длительность": "length",
+        "Озвучка": "dubs",
+        "Автор оригинала": "author",
+        "Главные герои": "characters"
+    }
+
+    @classmethod
+    def _decode_table(cls, table: dict):
+        return {cls._DECODE_TABLE.get(k): table[k] for k in table if cls._DECODE_TABLE.get(k)}
+
+    @classmethod
+    def _soup_extract_table(cls, soup):
+        keys, values = [], []
+        # get from table metadata
+        for el in soup.find("dl", attrs={"class": "row"}).find_all("dt"):
+            key = el.get_text(strip=True)
+            value = el.find_next("dd").get_text(strip=True)
+            keys.append(key)
+            values.append(value)
+        # convert keys to latin
+        return cls._decode_table(dict(zip(keys, values)))
+
+    def get_anime(self) -> "AnimeInfo":
+        response = self.HTTP.get(self.url).text
+        soup = self._soup(response)
+        meta = self._soup_extract_table(soup)
+
+        meta["name"] = soup.find("div", attrs={"class": "anime-title"}).find_next("h1").get_text()
+        meta["alt_names"] = [
+            t.get_text(strip=True) for t in soup.find("div", attrs={"class": "synonyms"}).find_all("li")]
+        meta["rating"] = float(soup.find("span", class_="rating-value").get_text(strip=True).replace(",", "."))
+        meta["description"] = soup.find("div", attrs={"data-readmore": "content"}).get_text(strip=True)
+        meta["genres"] = meta.get("genres").split(",")
+        meta["id"] = self.url.split("-")[-1]
+        meta["screenshots"] = self._ReFieldList(
+            r'<a class="screenshots-item[^>]+" href="([^>]+)" data-ajax',
+            name="screenshots",
+            after_exec_type=lambda s: f"https://animego.org{s}").parse_values(response)
+        meta["thumbnails"] = self._ReFieldList(
+            r'class="img-fluid" src="([^>]+)"',
+            name="a").parse_values(response)
+        meta["dubs"] = meta.get("dubs").split(",") if meta.get("dubs") else []
+        meta["url"] = self.url
+        return AnimeInfo(**meta)
+
+
+class SearchResult(AnimeParser, BaseSearchResult):
+    url: str
+    name: str
     type: str
+    # extra metadata
     year: int
-
-    def anime(self) -> "AnimeInfo":
-        response = self.HTTP.anime(self.url)
-        metadata = parse_many(response,
-                              ReField(r'ratingValue":"(?P<rating>[\d\.]+)"',
-                                      type=float,
-                                      default=0),
-                              ReField(r'"numberOfEpisodes":(?P<max_count>\d+),',
-                                      type=int,
-                                      default=1),
-                              ReField(r'"startDate":"(?P<date>\d{4}-\d{2}-\d{2})"'),
-                              ReField(r'"genre":\[(.*?)\],"',
-                                      name="genres",
-                                      after_exec_type=lambda s: s.strip('"').split(","),  # list[str] genres
-                                      ),
-                              ReField(r'"alternativeHeadline":\[(.*?)\],"',
-                                      name="alternative_headlines",
-                                      after_exec_type=lambda s: s.strip('"').split(",")),  # list[str]
-                              ReFieldList(r'/person.*?,"name":"([\w\s]+)"}', name="actors"),
-                              ReField(r'@type":"Organization".*?"name":"(?P<studio>[^>]+)"'),
-                              ReField(r'<div class="anime-title"><div><h1>(?P<title>[^>]+)</h1>'),
-                              ReField(r'Первоисточник</dt><dd [^>]+>(?P<source>[^>]+)</dd>'),
-                              ReField(r'>Сезон</dt><dd [^>]+><a href=[^>]+>(?P<season>[^>]+)</a>'),
-                              ReField(r'<div data-readmore="content">(?P<description>[^>]+)<'),
-                              ReFieldList(r'<a class="screenshots-item ml-3" href="([^>]+)" data',
-                                          name="screenshots",
-                                          after_exec_type=lambda s: f"https://animego.org{s}"),
-                              ReFieldList(r'class="img-fluid" src="([^>]+)"',
-                                          name="thumbnails"),
-                              ReField(r'Возрастные ограничения[^>]+><dd[^>]+>[^>]+>[^>]+(?P<age>\d+)\+',
-                                      type=int),
-                              ReField(r'Длительность[^>]+>[^>]+>\s*(?P<duration>[^>]+)<',
-                                      after_exec_type=lambda s: s.strip()),
-                              ReFieldList(r'href="/anime/dubbing/[^>]+">(?P<dubs>[^>]+)</a>',
-                                          name="dubs"),
-                              )
-        return AnimeInfo(url=self.url, **metadata)
-
-
-class Ongoing(BaseOngoing):
-    HTTP = Animego()
-    url: str
     thumbnail: str
-    title: str
-    num: str
+
+
+class Ongoing(AnimeParser, BaseOngoing):
+    url: str
+    name: str
+    num: int
+
+    # meta
+    thumbnail: str
     dub: str
-
-    def anime(self) -> "AnimeInfo":
-        response = self.HTTP.anime(self.url)
-        metadata = parse_many(response,
-                              ReField(r'ratingValue":"(?P<rating>[\d\.]+)"',
-                                      type=float,
-                                      default=0),
-                              ReField(r'"startDate":"(?P<date>\d{4}-\d{2}-\d{2})"'),
-                              ReFieldList(r'<a href="https?:[\w\-\./]+/genre/[\w\-\.]+" title="([\w\-]+)">',
-                                          name="genres",
-                                          after_exec_type=lambda s: s.rstrip().rstrip(".")),
-                              ReFieldList(r'<li>([^>]+)</li>{1,15}', name="alternative_headlines"),
-                              ReField(r'@type":"Organization".*?"name":"(?P<studio>[^>]+)"'),
-                              ReField(r'<div class="anime-title"><div><h1>(?P<title>[^>]+)</h1>'),
-                              ReField(r'Первоисточник</dt><dd [^>]+>(?P<source>[^>]+)</dd>'),
-                              ReField(r'>Сезон</dt><dd [^>]+><a href=[^>]+>(?P<season>[^>]+)</a>'),
-                              ReField(r'<div data-readmore="content">(?P<description>[^>]+)<',
-                                      after_exec_type=lambda s: s.strip().rstrip("&hellip;")),
-                              ReFieldList(r'<a class="screenshots-item[^>]+ href="([^>]+)" data-ajax',
-                                          name="screenshots",
-                                          after_exec_type=lambda s: f"https://animego.org{s}"),
-                              ReFieldList(r'class="img-fluid" src="([^>]+)"',
-                                          name="thumbnails"),
-                              ReField(r'Возрастные ограничения[^>]+><dd[^>]+>[^>]+>\s*(?P<age>\d+)\+',
-                                      type=int,
-                                      default=0),
-                              ReField(r'Длительность[^>]+>[^>]+>\s*(?P<duration>[^>]+)<',
-                                      after_exec_type=lambda s: s.strip()),
-                              )
-
-        return AnimeInfo(url=self.url, **metadata)
 
 
 class AnimeInfo(BaseAnimeInfo):
-    HTTP = Animego()
+    id: str
     url: str
-    rating: float
-    date: str
-    alternative_headlines: List[str]
-    studio: Optional[str]
-    title: str
+    # meta
+    type: str
+    episodes: str
+    status: str
+    genres: List[str]
     source: str
     season: str
+    release: str
+    studio: str
+    mpaa: str
+    age: str
+    length: str
+    dubs: Optional[List[str]]
+    author: str
+    characters: str
+    name: str
+    alt_names = List[str]
+    rating: float
     description: str
     screenshots: List[str]
     thumbnails: List[str]
-    age: int
-    duration: str
 
-    def episodes(self) -> List["Episode"]:
-        response = self.HTTP.episode(self.url)
-        episodes = ReFieldListDict(r'''data-episode="(?P<num>\d+)"
+    def get_episodes(self) -> List["Episode"]:
+        response = self.HTTP.get(f"https://animego.org/anime/{self.id}/player",
+                                 params={"_allow": "true"}).json()["content"]
+        episodes = self._ReFieldListDict(
+            r'''data-episode="(?P<num>\d+)"
         \s*data-id="(?P<id>\d+)"
         \s*data-episode-type="(?P<type>.*?)"
-        \s*data-episode-title="(?P<title>.*?)"
+        \s*data-episode-title="(?P<name>.*?)"
         \s*data-episode-released="(?P<released>.*?)"
         \s*data-episode-description="(?P<description>.*?)"''',
-                                   name="episodes",
-                                   after_exec_type={
-                                       "num": int,
-                                       "id": int,
-                                       "type": int}).parse_values(response)
+            name="episodes",
+            after_exec_type={"num": int, "id": int, "type": int}).parse_values(response)
         return [Episode(url=self.url, **ep) for ep in episodes]
 
 
 class Episode(BaseEpisode):
-    HTTP = Animego()
     id: int
     num: int
+    # meta
     type: int
-    title: str
+    name: str
     released: str
     description: str
     url: str
 
-    def videos(self):
-        resp = self.HTTP.episode_metadata(self.num, self.id)
-        dubs = ReFieldListDict(r'data-dubbing="(?P<dub_id>\d+)"><span [^>]+>\s*(?P<dub>[\w\s\-]+)\n',
-                               name="dubs",
-                               after_exec_type={"id": int}).parse_values(resp)
-        videos = ReFieldListDict(r'player="(?P<url>//[\w/\.\?&;=]+)"[^>]+data-[\w\-]+="(?P<dub_id>\d+)">'  # kodik data-provider
-                                 r'<span[^>]+>(?P<name>[^>]+)<',  # aniboom - data-provide-dubbing
-                                 name="videos",
-                                 after_exec_type={"id": int,
-                                                  "url": lambda u: f"https:{u}"}).parse_values(resp)
+    def get_videos(self):
+        resp = self.HTTP.get("https://animego.org/anime/series",
+                             params={"dubbing": 2,
+                                     "provider": 24,
+                                     "episode": self.num, "id": self.id}).json()["content"]
+
+        dubs = self._ReFieldListDict(
+            r'data-dubbing="(?P<dub_id>\d+)"><span [^>]+>\s*(?P<dub>[\w\s\-]+)\n',
+            name="dubs",
+            after_exec_type={"id": int}).parse_values(resp)
+
+        videos = self._ReFieldListDict(
+            r'player="(?P<url>//[\w/\.\?&;=]+)"'
+            r'[^>]+data-[\w\-]'  # aniboom - data-provide-dubbing kodik  - data-provider strings
+            r'+="(?P<dub_id>\d+)"><span[^>]+>(?P<name>[^>]+)<',
+            name="videos",
+            after_exec_type={"id": int,
+                             "url": lambda u: f"https:{u}"}).parse_values(resp)
         result = []
         for video in videos:
             result.extend({**dub, **video} for dub in dubs if video["dub_id"] == dub["dub_id"])
@@ -230,40 +223,19 @@ class Episode(BaseEpisode):
 
 
 class Video(BaseVideo):
-    dub_id: int
     url: str
+    # meta
+    dub_id: int
     dub: str
     name: str
-
-    def link(self):
-        if self.url == Kodik():
-            return Kodik.parse(self.url)
-        elif self.url == Aniboom():
-            return Aniboom.parse(self.url)
-        return self.url
 
 
 if __name__ == '__main__':
     # example get all series Serial of experiments Lain
     ex = Extractor()
     res = ex.search("lain")  # search
-    ani = res[0].anime()  # get anime metadata
-    print(ani.title, ani.rating, ani.duration)
-    print(ani.description)
-    print(ani.screenshots)
-    eps = ani.episodes()
-    for ep in eps[:3]:
-        vi = ep.videos()
-        print(vi[0].dub, vi[0].link())
+    ani = res[0].get_anime()
+    eps = ani.get_episodes()
+    vids = eps[0].get_videos()
+    print(vids[0].get_source())
 
-    # example get first ongoing videos:
-    ongs = ex.ongoing()
-    ani = ongs[0].anime()
-    print(ani.title, ani.rating, ani.duration)
-    print(ani.description)
-    print(ani.screenshots)
-    eps = ani.episodes()
-    for ep in eps[:2]:
-        vi = ep.videos()
-        for v in vi:
-            print(v.dub, v.link())
