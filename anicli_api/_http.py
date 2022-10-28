@@ -1,7 +1,8 @@
+import warnings
 from typing import Dict
 from html import unescape
 
-from httpx import Client, AsyncClient
+from httpx import Client, AsyncClient, Response
 
 
 TIMEOUT: float = 30.0
@@ -9,6 +10,7 @@ HEADERS: Dict[str, str] = {"user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus
                                          "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 "
                                          "Mobile Safari/537.36",
                            "x-requested-with": "XMLHttpRequest"}  # required
+DDOS_SERVICES = ("cloudflare", "ddos-guard")  # for check ddos-protect response
 
 __all__ = (
     "BaseHTTPSync",
@@ -56,9 +58,25 @@ class BaseHTTPAsync(AsyncClient):
         return unescape(text)
 
 
+# simple check ddos protect hook
+def check_ddos_protect_hook(resp: Response):
+    if resp.headers.get("Server") in DDOS_SERVICES \
+            and resp.headers["Connection"] == 'close' \
+            or resp.status_code == 403:
+        raise ConnectionError(f"{resp.url} have ddos protect {resp.headers.get('Server')} and return 403 code.")
+
+
 class HTTPSync(Singleton, BaseHTTPSync):
     """Base singleton sync HTTP with recommended config"""
+
+    def __init__(self):
+        super(HTTPSync, self).__init__()
+        self.event_hooks.update({"response": [check_ddos_protect_hook]})
 
 
 class HTTPAsync(Singleton, BaseHTTPAsync):
     """Base singleton async HTTP class with recommended config"""
+
+    def __init__(self):
+        super(HTTPAsync, self).__init__()
+        self.event_hooks.update({"response": [check_ddos_protect_hook]})
