@@ -31,28 +31,28 @@ class Extractor(AnimeExtractor):
 
 
 class SearchResult(BaseSearchResult):
-    async def a_get_anime(self) -> 'BaseAnimeInfo':
+    async def a_get_anime(self) -> 'AnimeInfo':
         pass
 
-    def get_anime(self) -> 'BaseAnimeInfo':
+    def get_anime(self) -> 'AnimeInfo':
         # past code here
         pass
 
 
 class Ongoing(BaseOngoing):
-    async def a_get_anime(self) -> 'BaseAnimeInfo':
+    async def a_get_anime(self) -> 'AnimeInfo':
         pass
 
-    def get_anime(self) -> 'BaseAnimeInfo':
+    def get_anime(self) -> 'AnimeInfo':
         # past code here
         pass
 
 
 class AnimeInfo(BaseAnimeInfo):
-    async def a_get_episodes(self) -> List['BaseEpisode']:
+    async def a_get_episodes(self) -> List['Episode']:
         pass
 
-    def get_episodes(self) -> List['BaseEpisode']:
+    def get_episodes(self) -> List['Episode']:
         # past code here
         ...
 
