@@ -3,12 +3,12 @@
 Example:
     >>> extractor = Extractor()
     >>> search_results = extractor.search("lain")  # search
-    >>> anime = search_results[0].anime()  # get first title (Serial of experiments lain)
-    >>> episodes = anime.episodes()  # get all episodes
-    >>> videos = episodes[0].videos() # get available video object
-    >>> videos[0].link()  # get direct links
+    >>> anime = search_results[0].get_anime()  # get first title (Serial of experiments lain)
+    >>> episodes = anime.get_episodes()  # get all episodes
+    >>> videos = episodes[0].get_videos() # get available video object
+    >>> videos[0].get_source()  # get direct links
     >>> ongoings = extractor.ongoing()  # get ongoings
-    >>> anime = ongoings[0].anime()  # get first ongoing
+    >>> anime = ongoings[0].get_anime()  # get first ongoing
     >>> # ... equal upper :)
 """
 from typing import List, Optional
@@ -25,6 +25,12 @@ from anicli_api.extractors.base import (
 
 
 class Extractor(AnimeExtractor):
+    async def a_search(self, query: str) -> List['SearchResult']:
+        pass
+
+    async def a_ongoing(self) -> List['Ongoing']:
+        pass
+
     BASE_URL = "https://animego.org/"
 
     def search(self, query: str) -> List["SearchResult"]:
@@ -53,7 +59,7 @@ class Extractor(AnimeExtractor):
         # {url: str, thumbnail: str, name: str, num: int, dub: str}
         return [Ongoing(**data) for data in result]
 
-    def deep_ongoing(self):
+    def iter_ongoing(self):
         ongoings = self.ongoing()
         for ong in ongoings:
             anime = ong.get_anime()

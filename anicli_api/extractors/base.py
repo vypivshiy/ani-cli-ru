@@ -16,7 +16,7 @@ Extractor works schema:
     [Video] <-----------------------
 
 """
-from typing import Union, Dict, Any, List
+from typing import Union, Dict, Any, List, Generator
 from html import unescape
 
 from bs4 import BeautifulSoup
@@ -36,11 +36,63 @@ class AnimeExtractor:
     _ReFieldListDict = ReFieldListDict
     _parse_many = parse_many
 
-    def search(self, query: str):
+    @staticmethod
+    def _iter_from_result(obj: Union['BaseSearchResult', 'BaseOngoing']):
+        # TODO add __iter__ magic methods in objects
+        anime = obj.get_anime()
+        for episode in anime.get_episodes():
+            for video in episode.get_videos():
+                yield {
+                    "search": obj.dict(),
+                    "anime": anime.dict(),
+                    "episode": episode.dict(),
+                    "video_meta": video.dict(),
+                    "video": video.get_source()}
+
+    @staticmethod
+    async def _aiter_from_result(obj: Union['BaseSearchResult', 'BaseOngoing']):
+        # TODO add __aiter__ magic methods in objects
+        anime = await obj.a_get_anime()
+        for episode in (await anime.a_get_episodes()):
+            for video in (await episode.a_get_videos()):
+                yield {
+                    "search": obj.dict(),
+                    "anime": anime.dict(),
+                    "episode": episode.dict(),
+                    "video_meta": video.dict(),
+                    "video": video.get_source()}
+
+    def search(self, query: str) -> List['BaseSearchResult']:
         raise NotImplementedError
 
-    def ongoing(self):
+    def iter_search(self, query: str) -> Generator[Dict[str, Any], None, None]:
+        for search_result in self.search(query):
+            yield from self._iter_from_result(search_result)
+
+    def ongoing(self) -> List['BaseOngoing']:
         raise NotImplementedError
+
+    def iter_ongoing(self) -> Generator[Dict[str, Any], None, None]:
+        for ongoing in self.ongoing():
+            yield from self._iter_from_result(ongoing)
+
+    async def a_search(self, query: str) -> List['BaseSearchResult']:
+        raise NotImplementedError
+
+    async def aiter_search(self, query: str) -> Generator[Dict[str, Any], None, None]:
+        # TODO add __aiter__, __iter__ magic methods in objects
+        for search_result in (await self.a_search(query)):
+            async for data in self._aiter_from_result(search_result):
+                yield data
+
+    async def a_ongoing(self) -> List['BaseOngoing']:
+        raise NotImplementedError
+
+    async def aiter_ongoing(self) -> Generator[Dict[str, Any], None, None]:
+        # TODO add __aiter__, __iter__ magic methods in objects
+        for ongoing in (await self.a_ongoing()):
+            async for data in self._aiter_from_result(ongoing):
+                yield data
 
     @staticmethod
     def _soup(markup: Union[str, bytes], *, parser: str = "html.parser", **kwargs) -> BeautifulSoup:
@@ -125,7 +177,10 @@ class BaseSearchResult(BaseModel):
     name: str
     type: str
 
-    def get_anime(self):
+    async def a_get_anime(self) -> 'BaseAnimeInfo':
+        raise NotImplementedError
+
+    def get_anime(self) -> 'BaseAnimeInfo':
         """return BaseAnimeInfo object"""
         raise NotImplementedError
 
@@ -144,13 +199,20 @@ class BaseOngoing(BaseSearchResult):
     name: str
     num: int
 
-    def get_anime(self):
+    async def a_get_anime(self) -> 'BaseAnimeInfo':
+        raise NotImplementedError
+
+    def get_anime(self) -> 'BaseAnimeInfo':
         """return BaseAnimeInfo object"""
         raise NotImplementedError
 
 
 class BaseEpisode(BaseModel):
-    def get_videos(self):
+
+    async def a_get_videos(self) -> List['BaseVideo']:
+        raise NotImplementedError
+
+    def get_videos(self) -> List['BaseVideo']:
         """return List[BaseVideo] objects"""
         raise NotImplementedError
 
@@ -168,7 +230,10 @@ class BaseAnimeInfo(BaseModel):
     # genres: List[str]
     # season: str
 
-    def get_episodes(self):
+    async def a_get_episodes(self) -> List['BaseEpisode']:
+        raise NotImplementedError
+
+    def get_episodes(self) -> List['BaseEpisode']:
         """return List[Episodes] objects"""
         raise NotImplementedError
 
@@ -182,7 +247,14 @@ class BaseVideo(BaseModel):
     """
     url: str
 
-    def get_source(self):
+    async def a_get_source(self) -> Union[Dict[str, Any], str]:
+        if self.url == Kodik():
+            return await Kodik.async_parse(self.url)
+        elif self.url == Aniboom():
+            return await Aniboom.async_parse(self.url)
+        return self.url
+
+    def get_source(self) -> Union[Dict[str, Any], str]:
         """if video is Kodik or Aniboom, return dict with videos. Else, return direct url"""
         if self.url == Kodik():
             return Kodik.parse(self.url)
