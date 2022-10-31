@@ -11,6 +11,7 @@ Example:
     >>> anime = ongoings[0].get_anime()  # get first ongoing
     >>> # ... equal upper :)
 """
+
 from typing import List, Optional
 
 from anicli_api.extractors.base import (
@@ -20,20 +21,15 @@ from anicli_api.extractors.base import (
     BaseOngoing,
     BaseAnimeInfo,
     BaseVideo,
-    BaseModel
+    BaseModel,
+    TypeSearch
 )
 
 
 class Extractor(AnimeExtractor):
-    async def a_search(self, query: str) -> List['SearchResult']:
-        pass
-
-    async def a_ongoing(self) -> List['Ongoing']:
-        pass
-
     BASE_URL = "https://animego.org/"
 
-    def search(self, query: str) -> List["SearchResult"]:
+    def search(self, query: str) -> List[TypeSearch]: #List["SearchResult"]:
         response = self.HTTP.get(f"{self.BASE_URL}search/anime", params={"q": query}).text
         result = self._ReFieldListDict(
             r'data-original="(?P<thumbnail>https://animego\.org/media/[^>]+\.\w{2,4})".*'
@@ -45,6 +41,12 @@ class Extractor(AnimeExtractor):
             after_exec_type={"year": lambda i: int(i)}).parse_values(response)
         # {thumbnail:str, url: str, name: str, type: str, year: int}
         return [SearchResult(**data) for data in result]
+
+    async def async_search(self, query: str) -> List['SearchResult']:
+        ...
+
+    async def async_ongoing(self) -> List['Ongoing']:
+        ...
 
     def ongoing(self):
         response = self.HTTP.get(self.BASE_URL)
@@ -133,6 +135,9 @@ class AnimeParser(BaseModel):
         meta["dubs"] = meta.get("dubs").split(",") if meta.get("dubs") else []
         meta["url"] = self.url
         return AnimeInfo(**meta)
+
+    async def a_get_anime(self):
+        ...
 
 
 class SearchResult(AnimeParser, BaseSearchResult):
@@ -231,17 +236,13 @@ class Episode(BaseEpisode):
 class Video(BaseVideo):
     url: str
     # meta
-    dub_id: int
-    dub: str
-    name: str
+    # dub_id: int
+    # dub: str
+    # name: str
 
 
 if __name__ == '__main__':
     # example get all series Serial of experiments Lain
     ex = Extractor()
-    res = ex.search("lain")  # search
-    ani = res[0].get_anime()
-    eps = ani.get_episodes()
-    vids = eps[0].get_videos()
-    print(vids[0].get_source())
-
+    res = ex.search("lain")
+    res[0].get_anime()
