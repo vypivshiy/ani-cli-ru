@@ -32,7 +32,7 @@ from anicli_api.decoders import Kodik, Aniboom
 
 class RawData(TypedDict):
     search: Dict[str, Any]  # Ongoing.dict() | SearchResult.dict()
-    anime: Dict[str, Any]   # AnimeInfo.dict()
+    anime: Dict[str, Any]  # AnimeInfo.dict()
     episode: Dict[str, Any]  # Episode.dict()
     video_meta: Dict[str, Any]  # Video.dict()
     video: Union[str, Dict[str, Any]]  # Video.get_source()
@@ -127,7 +127,8 @@ class BaseSearchResult(BaseModel):
         for episode in anime.get_episodes():
             for video_meta in episode.get_videos():
                 video = video_meta.get_source()
-                yield {"anime": anime.dict(),
+                yield {"search": self.dict(),
+                       "anime": anime.dict(),
                        "episode": episode.dict(),
                        "video_meta": video_meta.dict(),
                        "video": video}
@@ -137,7 +138,8 @@ class BaseSearchResult(BaseModel):
         for episode in (await anime.a_get_episodes()):
             for video_meta in (await episode.a_get_videos()):
                 video = await video_meta.a_get_source()
-                yield {"anime": anime.dict(),
+                yield {"search": self.dict(),
+                       "anime": anime.dict(),
                        "episode": episode.dict(),
                        "video_meta": video_meta.dict(),
                        "video": video}
@@ -334,3 +336,20 @@ class BaseAnimeExtractor(ABC):
     def _soup(markup: Union[str, bytes], *, parser: str = "html.parser", **kwargs) -> BeautifulSoup:
         """return BeautifulSoup instance"""
         return BeautifulSoup(markup, parser, **kwargs)
+
+
+class BaseTestCollections(ABC):
+    @abstractmethod
+    def test_search(self):
+        ...
+
+    @abstractmethod
+    def test_ongoing(self):
+        ...
+
+    @abstractmethod
+    def test_extract_metadata(self):
+        ...
+    @abstractmethod
+    def test_extract_video(self):
+        ...
