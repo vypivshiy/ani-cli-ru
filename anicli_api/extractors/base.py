@@ -5,16 +5,18 @@ Extractor works schema:
         | search()/ongoing()        |
         V                           |
   [SearchResult | Ongoing]          |
-         | anime()                  |
+         | get_anime()              |
          V                          |
     [AnimeInfo]                     |
-        | episodes()                |
+        | get_episodes()            |
         V                           |
     [Episodes]                      |
-        | videos()                  |
+        | get_videos()              |
         V                           |
     [Video] <-----------------------
-
+        |
+        V
+    {quality: url, ...} or url
 """
 # TODO fix superclass typehints!!!
 from __future__ import annotations
