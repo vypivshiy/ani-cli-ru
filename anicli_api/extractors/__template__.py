@@ -1,40 +1,40 @@
 """Template extractor
 
 """
-from typing import List, TypeVar # for python 3.8 support typehint
+from typing import List
 
 from anicli_api.extractors.base import (
-    AnimeExtractor,
+    BaseAnimeExtractor,
     BaseSearchResult,
     BaseEpisode,
     BaseOngoing,
     BaseAnimeInfo,
     BaseVideo,
     BaseModel,
-    T_Ongoing,
-    T_Search, TypeOngoing, TypeSearch
 )
 
 
-T_Base = TypeVar("T_Base", bound=BaseModel)
-
-
-class Extractor(AnimeExtractor):
-
-    def search(self, query: str) -> List[TypeSearch]:
+class ExtractorName(BaseAnimeExtractor):
+    # optional constants, HTTP configuration here
+    def search(self, query: str) -> List[BaseSearchResult]:
+        # past code here
         pass
 
-    def ongoing(self) -> List[TypeOngoing]:
+    def ongoing(self) -> List[BaseOngoing]:
+        # past code here
         pass
 
-    async def async_search(self, query: str) -> List[TypeSearch]:
+    async def async_search(self, query: str) -> List[BaseSearchResult]:
+        # past async code here
         pass
 
-    async def async_ongoing(self) -> List[TypeOngoing]:
+    async def async_ongoing(self) -> List[BaseOngoing]:
+        # past async code here
         pass
 
 
 class SearchResult(BaseSearchResult):
+    # optional past metadata attrs here
     async def a_get_anime(self) -> 'AnimeInfo':
         # past async code here
         pass
@@ -45,6 +45,7 @@ class SearchResult(BaseSearchResult):
 
 
 class Ongoing(BaseOngoing):
+    # optional past metadata attrs here
     async def a_get_anime(self) -> 'AnimeInfo':
         # past async code here
         pass
@@ -55,21 +56,23 @@ class Ongoing(BaseOngoing):
 
 
 class AnimeInfo(BaseAnimeInfo):
-    async def a_get_episodes(self) -> List['Episode']:
+    # optional past metadata attrs here
+    async def a_get_episodes(self) -> List['BaseEpisode']:
         # past async code here
         pass
 
-    def get_episodes(self) -> List['Episode']:
+    def get_episodes(self) -> List['BaseEpisode']:
         # past code here
         pass
 
 
 class Episode(BaseEpisode):
-    async def a_get_videos(self) -> List['Video']:
+    # optional past metadata attrs here
+    async def a_get_videos(self) -> List['BaseVideo']:
         # past async code here
         pass
 
-    def get_videos(self) -> List['Video']:
+    def get_videos(self) -> List['BaseVideo']:
         # past code here
         pass
 
