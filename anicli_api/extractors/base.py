@@ -19,25 +19,26 @@ Extractor works schema:
 # TODO fix superclass typehints!!!
 from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod
-from typing import Union, Dict, Any, List, Generator, Awaitable, AsyncGenerator, TypeVar, Generic
+from typing import Union, Dict, Any, List, Generator, Awaitable, AsyncGenerator, TypedDict
 from html import unescape
 
 from bs4 import BeautifulSoup
 
+from abc import ABC, abstractmethod
 from anicli_api.re_models import ReField, ReFieldList, ReFieldListDict, parse_many
 from anicli_api._http import BaseHTTPSync, BaseHTTPAsync
 from anicli_api.decoders import Kodik, Aniboom
 
-TypeBaseModel = TypeVar("TypeBaseModel", bound='BaseModel')
-TypeSearch = TypeVar("TypeSearch", bound='BaseSearchResult')
-TypeOngoing = TypeVar("TypeOngoing", bound='BaseOngoing')
-TypeAnimeInfo = TypeVar("TypeAnimeInfo", bound='BaseAnimeInfo')
-TypeEpisode = TypeVar("TypeEpisode", bound='BaseEpisode')
-TypeVideo = TypeVar("TypeVideo", bound='BaseVideo')
+
+class RawData(TypedDict):
+    search: Dict[str, Any]  # Ongoing.dict() | SearchResult.dict()
+    anime: Dict[str, Any]   # AnimeInfo.dict()
+    episode: Dict[str, Any]  # Episode.dict()
+    video_meta: Dict[str, Any]  # Video.dict()
+    video: Union[str, Dict[str, Any]]  # Video.get_source()
 
 
-class BaseModel(metaclass=ABCMeta):
+class BaseModel(ABC):
     """Base Model class
 
     instances:
@@ -98,9 +99,6 @@ class BaseModel(metaclass=ABCMeta):
         return f"[{self.__class__.__name__}] " + ", ".join((f"{k}={v}" for k, v in self.dict().items()))
 
 
-TypeModel = TypeVar("TypeModel", bound=BaseModel)
-
-
 class BaseSearchResult(BaseModel):
     """Base search result class object.
 
@@ -116,16 +114,15 @@ class BaseSearchResult(BaseModel):
     type: str
 
     @abstractmethod
-    async def a_get_anime(self) -> TypeAnimeInfo:
+    async def a_get_anime(self) -> BaseAnimeInfo:
         pass
 
     @abstractmethod
-    def get_anime(self) -> TypeAnimeInfo:
+    def get_anime(self) -> BaseAnimeInfo:
         """return BaseAnimeInfo object"""
         pass
 
-    def _full_parse(self) -> Generator[Dict[str, Any], None, None]:
-        # TODO typehints
+    def _full_parse(self) -> Generator[RawData, None, None]:
         anime = self.get_anime()
         for episode in anime.get_episodes():
             for video_meta in episode.get_videos():
@@ -135,8 +132,7 @@ class BaseSearchResult(BaseModel):
                        "video_meta": video_meta.dict(),
                        "video": video}
 
-    async def _async_full_parse(self) -> AsyncGenerator[Dict[str, Any], None]:
-        # TODO typehints
+    async def _async_full_parse(self) -> AsyncGenerator[RawData, None]:
         anime = await self.a_get_anime()  # type: ignore
         for episode in (await anime.a_get_episodes()):
             for video_meta in (await episode.a_get_videos()):
@@ -168,16 +164,15 @@ class BaseOngoing(BaseSearchResult):
     num: int
 
     @abstractmethod
-    async def a_get_anime(self) -> TypeAnimeInfo:
+    async def a_get_anime(self) -> BaseAnimeInfo:
         pass
 
     @abstractmethod
-    def get_anime(self) -> TypeAnimeInfo:
+    def get_anime(self) -> BaseAnimeInfo:
         """return BaseAnimeInfo object"""
         pass
 
-    def _full_parse(self):
-        # TODO typehints
+    def _full_parse(self) -> Generator[RawData, None, None]:
         anime = self.get_anime()
         for episode in anime.get_episodes():
             for video_meta in episode.get_videos():
@@ -188,8 +183,7 @@ class BaseOngoing(BaseSearchResult):
                        "video_meta": video_meta.dict(),
                        "video": video}
 
-    async def _async_full_parse(self):
-        # TODO typehints
+    async def _async_full_parse(self) -> AsyncGenerator[RawData, None]:
         anime = await self.a_get_anime()
         for episode in (await anime.a_get_episodes()):
             for video_meta in (await episode.a_get_videos()):
@@ -208,24 +202,12 @@ class BaseOngoing(BaseSearchResult):
 
 
 class BaseAnimeInfo(BaseModel):
-    # id: str
-    # url: str
-    # name: str
-    # alt_names: List[str]
-    # status: str
-    # images: List[str]
-    # # type: str tv, episodes, etc
-    # series: int
-    # length: str
-    # genres: List[str]
-    # season: str
-
     @abstractmethod
-    async def a_get_episodes(self) -> List[TypeEpisode]:
+    async def a_get_episodes(self) -> List[BaseEpisode]:
         pass
 
     @abstractmethod
-    def get_episodes(self) -> List[TypeEpisode]:
+    def get_episodes(self) -> List[BaseEpisode]:
         """return List[Episodes] objects"""
         pass
 
@@ -237,13 +219,12 @@ class BaseAnimeInfo(BaseModel):
 
 
 class BaseEpisode(BaseModel):
-
     @abstractmethod
-    async def a_get_videos(self) -> List[TypeVideo]:
+    async def a_get_videos(self) -> List[BaseVideo]:
         pass
 
     @abstractmethod
-    def get_videos(self) -> List[TypeVideo]:
+    def get_videos(self) -> List[BaseVideo]:
         """return List[BaseVideo] objects"""
         pass
 
@@ -279,7 +260,7 @@ class BaseVideo(BaseModel):
         return self.url
 
 
-class AnimeExtractor(metaclass=ABCMeta):
+class BaseAnimeExtractor(ABC):
     """First extractor entrypoint class"""
     HTTP = BaseHTTPSync()
     ASYNC_HTTP = BaseHTTPAsync()
@@ -292,23 +273,23 @@ class AnimeExtractor(metaclass=ABCMeta):
     _parse_many = parse_many
 
     @abstractmethod
-    def search(self, query: str) -> List[TypeSearch]:
+    def search(self, query: str) -> List[BaseSearchResult]:
         pass
 
     @abstractmethod
-    def ongoing(self) -> List[TypeOngoing]:
+    def ongoing(self) -> List[BaseOngoing]:
         pass
 
     @abstractmethod
-    async def async_search(self, query: str) -> List[TypeSearch]:
+    async def async_search(self, query: str) -> List[BaseSearchResult]:
         pass
 
     @abstractmethod
-    async def async_ongoing(self) -> List[TypeOngoing]:
+    async def async_ongoing(self) -> List[BaseOngoing]:
         pass
 
     @staticmethod
-    def _iter_from_result(obj: Union[TypeSearch, TypeOngoing]):
+    def _iter_from_result(obj: Union[BaseSearchResult, BaseOngoing]) -> Generator[RawData, None, None]:
         anime = obj.get_anime()
         for episode in anime.get_episodes():
             for video in episode.get_videos():
@@ -320,7 +301,7 @@ class AnimeExtractor(metaclass=ABCMeta):
                     "video": video.get_source()}
 
     @staticmethod
-    async def _aiter_from_result(obj: Union[TypeSearch, TypeOngoing]):
+    async def _aiter_from_result(obj: Union[BaseSearchResult, BaseOngoing]) -> AsyncGenerator[RawData, None]:
         anime = await obj.a_get_anime()
         for episode in (await anime.a_get_episodes()):
             for video in (await episode.a_get_videos()):
@@ -331,20 +312,20 @@ class AnimeExtractor(metaclass=ABCMeta):
                     "video_meta": video.dict(),
                     "video": video.get_source()}
 
-    def walk_search(self, query: str) -> Generator[Dict[str, Any], None, None]:
+    def walk_search(self, query: str) -> Generator[RawData, None, None]:
         for search_result in self.search(query):
             yield from self._iter_from_result(search_result)
 
-    def walk_ongoing(self) -> Generator[Dict[str, Any], None, None]:
+    def walk_ongoing(self) -> Generator[RawData, None, None]:
         for ongoing in self.ongoing():
             yield from self._iter_from_result(ongoing)
 
-    async def async_walk_search(self, query: str) -> AsyncGenerator[Dict[str, Any], None]:
+    async def async_walk_search(self, query: str) -> AsyncGenerator[RawData, None]:
         for search_result in (await self.async_search(query)):
             async for data in self._aiter_from_result(search_result):
                 yield data
 
-    async def async_walk_ongoing(self) -> AsyncGenerator[Dict[str, Any], None]:
+    async def async_walk_ongoing(self) -> AsyncGenerator[RawData, None]:
         for ongoing in (await self.async_ongoing()):
             async for data in self._aiter_from_result(ongoing):
                 yield data
@@ -353,4 +334,3 @@ class AnimeExtractor(metaclass=ABCMeta):
     def _soup(markup: Union[str, bytes], *, parser: str = "html.parser", **kwargs) -> BeautifulSoup:
         """return BeautifulSoup instance"""
         return BeautifulSoup(markup, parser, **kwargs)
-
