@@ -16,11 +16,12 @@ from abc import ABC, abstractmethod
 from base64 import b64decode
 import re
 from html import unescape
-from typing import Dict, List
+from typing import Dict, Optional
 from urllib.parse import urlparse
 import json
 
 from anicli_api._http import BaseHTTPSync, BaseHTTPAsync
+from anicli_api.exceptions import DecoderError, RegexParseError
 
 
 class BaseDecoder(ABC):
@@ -35,6 +36,11 @@ class BaseDecoder(ABC):
     @classmethod
     @abstractmethod
     async def async_parse(cls, url: str):
+        ...
+
+    @abstractmethod
+    def __eq__(self, other: str):  # type: ignore
+        """compare class instance with url string"""
         ...
 
 
@@ -54,11 +60,11 @@ class Kodik(BaseDecoder):
         """
         url = url.split("?")[0]
         if url != cls():
-            raise AttributeError(f"{url} is not Kodik")
+            raise DecoderError(f"{url} is not Kodik")
 
         raw_response = cls.HTTP.get(url, headers={"referer": cls.REFERER}).text
         if cls.is_banned(raw_response):  # type: ignore
-            raise TypeError("This video is not available in your country")
+            raise DecoderError("This video is not available in your country")
 
         payload = cls._parse_payload(raw_response)  # type: ignore
         api_url = cls._get_api_url(url)
@@ -75,12 +81,12 @@ class Kodik(BaseDecoder):
     async def async_parse(cls, url: str):
         url = url.split("?")[0]
         if url != cls():
-            raise AttributeError(f"{url} is not Kodik")
+            raise DecoderError(f"{url} is not Kodik")
 
         async with cls.ASYNC_HTTP as session:
             raw_response = (await session.get(url, headers={"referer": cls.REFERER})).text
             if cls.is_banned(raw_response):  # type: ignore
-                raise TypeError("This video is not available in your country")
+                raise DecoderError("This video is not available in your country")
             payload = cls._parse_payload(raw_response)  # type: ignore
             api_url = cls._get_api_url(url)
             response = (await session.post(api_url, data=payload,
@@ -97,7 +103,7 @@ class Kodik(BaseDecoder):
     def _parse_payload(cls, response: str) -> Dict:
         payload = cls.BASE_PAYLOAD.copy()
         if not (result := re.search(r"var urlParams = (?P<params>'{.*?}')", response)):
-            raise TypeError("Error parse payload params")
+            raise RegexParseError("Error parse payload params with 'var urlParams = (?P<params>'{.*?}')'")
         result = json.loads(result.groupdict()["params"].strip("'"))
         payload.update(result)  # type: ignore
         for pattern in (r'var type = "(?P<type>.*?)";',
@@ -107,7 +113,7 @@ class Kodik(BaseDecoder):
             if result := re.search(pattern, response):
                 payload.update(result.groupdict())
             else:
-                raise ValueError("Error parse payload params")
+                raise RegexParseError(f"Error parse payload params with '{pattern}'")
         return payload
 
     @classmethod
@@ -127,7 +133,7 @@ class Kodik(BaseDecoder):
             url = f"https:{url}"
         if url_ := re.search(r"https://\w+\.\w{2,6}/seria/\d+/\w+/\d{3,4}p", url):
             return f"https://{urlparse(url_.group()).netloc}/gvi"
-        raise TypeError(f"{url} is not Kodik")
+        raise DecoderError(f"{url} is not Kodik")
 
     def __eq__(self, url: str) -> bool:  # type: ignore
         return self.is_kodik(url) if isinstance(url, str) else NotImplemented
@@ -158,7 +164,7 @@ class Aniboom(BaseDecoder):
                                   })
 
     @classmethod
-    def parse(cls, url: str) -> Dict:
+    def parse(cls, url: str) -> Dict[str, Optional[str]]:
         """High-level aniboom video link extractor.
 
         For play video required next headers:
@@ -174,37 +180,37 @@ class Aniboom(BaseDecoder):
         :return: dict of direct links
         """
         if url != cls():
-            raise TypeError(f"{url} is not Aniboom")
+            raise DecoderError(f"{url} is not Aniboom")
         cls_ = cls()
         response = unescape(cls_.HTTP.get(url).text)
 
         links = cls_._extract_links(response)
         if len(links.keys()) == 0:
-            raise TypeError("Video links not found")
+            raise RegexParseError("Failed extract aniboom video links")
 
         m3u8_response = cls.HTTP.get(links["m3u8"], headers={"referer": cls.REFERER,
                                                              "origin": cls.REFERER.rstrip("/"),
                                                              "accept-language": cls.ACCEPT_LANG}).text
-        links["m3u8"] = cls_._parse_m3u8(links["m3u8"], m3u8_response)
+        links["m3u8"] = cls_._parse_m3u8(links["m3u8"], m3u8_response)  # type: ignore # TODO
 
-        return links
+        return links  # type: ignore  # TODO
 
     @classmethod
-    async def async_parse(cls, url: str):
+    async def async_parse(cls, url: str) -> Dict[str, str]:
         if url != cls():
-            raise TypeError(f"{url} is not Aniboom")
+            raise DecoderError(f"{url} is not Aniboom")
         cls_ = cls()
         async with cls.ASYNC_HTTP as session:
             response = unescape((await session.get(url)).text)
             links = cls_._extract_links(response)
             if len(links.keys()) == 0:
-                raise TypeError("Video links not found")
+                raise RegexParseError("Failed extract aniboom video links")
             m3u8_response = (await session.get(links["m3u8"],
                                                headers={"referer": cls.REFERER,
                                                         "origin": cls.REFERER.rstrip("/"),
                                                         "accept-language": cls.ACCEPT_LANG})).text
 
-            links["m3u8"] = cls_._parse_m3u8(links["m3u8"], m3u8_response)
+            links["m3u8"] = cls_._parse_m3u8(links["m3u8"], m3u8_response)  # type: ignore
             return links
 
     @staticmethod
@@ -216,7 +222,7 @@ class Aniboom(BaseDecoder):
         return self.is_aniboom(url)
 
     @classmethod
-    def _parse_m3u8(cls, m3u8_url: str, m3u8_response: str) -> Dict:
+    def _parse_m3u8(cls, m3u8_url: str, m3u8_response: str) -> Dict[str, str]:
         result = {}
         base_m3u8_url = m3u8_url.replace("/master.m3u8", "")
         for url_data in re.finditer(r'#EXT-X-STREAM-INF:BANDWIDTH=\d+,RESOLUTION=(?P<resolution>\d+x\d+),'
@@ -226,7 +232,7 @@ class Aniboom(BaseDecoder):
         return result
 
     @classmethod
-    def _extract_links(cls, raw_response: str) -> Dict:
+    def _extract_links(cls, raw_response: str) -> Dict[str, str]:
         raw_response = unescape(raw_response)
         result = {}
         if m3u8_url := re.search(r'"hls":"{\\"src\\":\\"(?P<m3u8>.*\.m3u8)\\"', raw_response):
