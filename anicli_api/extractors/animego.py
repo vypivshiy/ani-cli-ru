@@ -1,7 +1,7 @@
 """THIS EXTRACTOR WORKS ONLY MOBILE USERAGENT!!!
 
 Example:
-    >>> extractor = Extractor()
+    >>> extractor = ExtractorBase()
     >>> search_results = extractor.search("lain")  # search
     >>> anime = search_results[0].get_anime()  # get first title (Serial of experiments lain)
     >>> episodes = anime.get_episodes()  # get all episodes
@@ -12,24 +12,23 @@ Example:
     >>> # ... equal upper :)
 """
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from anicli_api.extractors.base import (
-    AnimeExtractor,
+    BaseAnimeExtractor,
     BaseSearchResult,
     BaseEpisode,
     BaseOngoing,
     BaseAnimeInfo,
     BaseVideo,
     BaseModel,
-    TypeSearch
 )
 
 
-class Extractor(AnimeExtractor):
+class ExtractorBase(BaseAnimeExtractor):
     BASE_URL = "https://animego.org/"
 
-    def search(self, query: str) -> List[TypeSearch]: #List["SearchResult"]:
+    def search(self, query: str) -> List[Union['BaseSearchResult']]:
         response = self.HTTP.get(f"{self.BASE_URL}search/anime", params={"q": query}).text
         result = self._ReFieldListDict(
             r'data-original="(?P<thumbnail>https://animego\.org/media/[^>]+\.\w{2,4})".*'
@@ -42,13 +41,15 @@ class Extractor(AnimeExtractor):
         # {thumbnail:str, url: str, name: str, type: str, year: int}
         return [SearchResult(**data) for data in result]
 
-    async def async_search(self, query: str) -> List['SearchResult']:
-        ...
+    async def async_search(self, query: str) -> List['BaseSearchResult']:  # type: ignore
+        # TODO
+        raise NotImplementedError
 
-    async def async_ongoing(self) -> List['Ongoing']:
-        ...
+    async def async_ongoing(self) -> List['BaseOngoing']:  # type: ignore
+        # TODO
+        raise NotImplementedError
 
-    def ongoing(self):
+    def ongoing(self) -> List['BaseOngoing']:
         response = self.HTTP.get(self.BASE_URL)
         result = self._ReFieldListDict(
             r'onclick="location\.href=\'(?P<url>[^>]+)\'.*?url\((?P<thumbnail>[^>]+)\);.*?'
@@ -57,7 +58,7 @@ class Extractor(AnimeExtractor):
             r'</div><div class="[^>]+">\((?P<dub>[^>]+)\)',
             name="info",
             after_exec_type={"url": lambda s: f"https://animego.org{s}",
-                             "num": int}).parse_values(response)
+                             "num": int}).parse_values(response.text)
         # {url: str, thumbnail: str, name: str, num: int, dub: str}
         return [Ongoing(**data) for data in result]
 
@@ -137,6 +138,7 @@ class AnimeParser(BaseModel):
         return AnimeInfo(**meta)
 
     async def a_get_anime(self):
+        # TODO
         ...
 
 
@@ -163,28 +165,32 @@ class AnimeInfo(BaseAnimeInfo):
     id: str
     url: str
     # meta
-    type: str
-    episodes: str
-    status: str
-    genres: List[str]
-    source: str
-    season: str
-    release: str
-    studio: str
-    mpaa: str
-    age: str
-    length: str
-    dubs: Optional[List[str]]
-    author: str
-    characters: str
-    name: str
-    alt_names = List[str]
-    rating: float
-    description: str
-    screenshots: List[str]
-    thumbnails: List[str]
+    # #  type: str
+    # episodes: str
+    # status: str
+    # genres: List[str]
+    # source: str
+    # season: str
+    # release: str
+    # studio: str
+    # mpaa: str
+    # age: str
+    # length: str
+    # dubs: Optional[List[str]]
+    # author: str
+    # characters: str
+    # name: str
+    # alt_names = List[str]
+    # rating: float
+    # description: str
+    # screenshots: List[str]
+    # thumbnails: List[str]
 
-    def get_episodes(self) -> List["Episode"]:
+    async def a_get_episodes(self) -> List[BaseEpisode]:
+        # TODO
+        pass
+
+    def get_episodes(self) -> List[BaseEpisode]:
         response = self.HTTP.get(f"https://animego.org/anime/{self.id}/player",
                                  params={"_allow": "true"}).json()["content"]
         episodes = self._ReFieldListDict(
@@ -208,6 +214,10 @@ class Episode(BaseEpisode):
     released: str
     description: str
     url: str
+
+    async def a_get_videos(self) -> List[BaseVideo]:
+        # TODO
+        pass
 
     def get_videos(self):
         resp = self.HTTP.get("https://animego.org/anime/series",
@@ -235,14 +245,11 @@ class Episode(BaseEpisode):
 
 class Video(BaseVideo):
     url: str
-    # meta
-    # dub_id: int
-    # dub: str
-    # name: str
 
 
 if __name__ == '__main__':
     # example get all series Serial of experiments Lain
-    ex = Extractor()
+    ex = ExtractorBase()
     res = ex.search("lain")
-    res[0].get_anime()
+    r = res[0].get_anime()
+    print()
