@@ -18,7 +18,6 @@ Extractor works schema:
         V
     {quality: url, ...} or url
 """
-# TODO fix superclass typehints!!!
 from __future__ import annotations
 
 from typing import Union, Dict, Any, List, Generator, Awaitable, AsyncGenerator, TypedDict
@@ -41,8 +40,10 @@ __all__ = (
     'BaseAnimeInfo',
     'BaseAnimeExtractor',
     'BaseTestCollections',
-    'List'  # python 3.8 support
+    'RawData',
+    'List'  # python 3.8 support typehint
 )
+
 
 class RawData(TypedDict):
     search: Dict[str, Any]  # Ongoing.dict() | SearchResult.dict()
@@ -364,6 +365,7 @@ class BaseTestCollections(ABC):
     @abstractmethod
     def test_extract_metadata(self):
         ...
+
     @abstractmethod
     def test_extract_video(self):
         ...
