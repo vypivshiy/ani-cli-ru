@@ -32,6 +32,18 @@ from anicli_api._http import BaseHTTPSync, BaseHTTPAsync
 from anicli_api.decoders import Kodik, Aniboom
 
 
+__all__ = (
+    'BaseModel',
+    'BaseOngoing',
+    'BaseEpisode',
+    'BaseVideo',
+    'BaseSearchResult',
+    'BaseAnimeInfo',
+    'BaseAnimeExtractor',
+    'BaseTestCollections',
+    'List'  # python 3.8 support
+)
+
 class RawData(TypedDict):
     search: Dict[str, Any]  # Ongoing.dict() | SearchResult.dict()
     anime: Dict[str, Any]  # AnimeInfo.dict()
