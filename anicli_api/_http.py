@@ -10,7 +10,7 @@ HEADERS: Dict[str, str] = {"user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus
                                          "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 "
                                          "Mobile Safari/537.36",
                            "x-requested-with": "XMLHttpRequest"}  # required
-DDOS_SERVICES = ("cloudflare", "ddos-guard")  # for check ddos-protect response
+DDOS_SERVICES = ("cloudflare", "ddos-guard")  # check ddos-protect strings response
 
 __all__ = (
     "BaseHTTPSync",
@@ -52,6 +52,7 @@ class BaseHTTPAsync(AsyncClient):
         super().__init__()
         self.headers.update(self._DEFAULT_HEADERS)
         self.timeout = self._DEFAULT_TIMEOUT
+        self.follow_redirects = True
 
     @staticmethod
     def unescape(text: str) -> str:
