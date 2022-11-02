@@ -3,8 +3,18 @@
 """
 from anicli_api.extractors.base import *
 
+__all__ = (
+    'Extractor',
+    'SearchResult',
+    'Ongoing',
+    'AnimeInfo',
+    'Episode',
+    'Video',
+    'TestCollections'
+)
 
-class ExtractorName(BaseAnimeExtractor):
+
+class Extractor(BaseAnimeExtractor):
     # optional constants, HTTP configuration here
     def search(self, query: str) -> List[BaseSearchResult]:
         # past code here
@@ -70,3 +80,17 @@ class Episode(BaseEpisode):
 class Video(BaseVideo):
     # optional past metadata attrs here
     pass
+
+
+class TestCollections(BaseTestCollections):
+    def test_search(self):
+        pass
+
+    def test_ongoing(self):
+        pass
+
+    def test_extract_metadata(self):
+        pass
+
+    def test_extract_video(self):
+        pass
