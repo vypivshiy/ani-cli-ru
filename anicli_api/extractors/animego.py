@@ -15,7 +15,7 @@ Example:
 from anicli_api.extractors.base import *
 
 
-class AnimegoExtractor(BaseAnimeExtractor):
+class Extractor(BaseAnimeExtractor):
     BASE_URL = "https://animego.org/"
 
     def search(self, query: str) -> List['BaseSearchResult']:
