@@ -1,7 +1,7 @@
 """THIS EXTRACTOR WORKS ONLY MOBILE USERAGENT!!!
 
 Example:
-    >>> extractor = ExtractorBase()
+    >>> extractor = AnimegoExtractor()
     >>> search_results = extractor.search("lain")  # search
     >>> anime = search_results[0].get_anime()  # get first title (Serial of experiments lain)
     >>> episodes = anime.get_episodes()  # get all episodes
@@ -12,23 +12,13 @@ Example:
     >>> # ... equal upper :)
 """
 
-from typing import List, Optional, Union
-
-from anicli_api.extractors.base import (
-    BaseAnimeExtractor,
-    BaseSearchResult,
-    BaseEpisode,
-    BaseOngoing,
-    BaseAnimeInfo,
-    BaseVideo,
-    BaseModel,
-)
+from anicli_api.extractors.base import *
 
 
-class ExtractorBase(BaseAnimeExtractor):
+class AnimegoExtractor(BaseAnimeExtractor):
     BASE_URL = "https://animego.org/"
 
-    def search(self, query: str) -> List[Union['BaseSearchResult']]:
+    def search(self, query: str) -> List['BaseSearchResult']:
         response = self.HTTP.get(f"{self.BASE_URL}search/anime", params={"q": query}).text
         result = self._ReFieldListDict(
             r'data-original="(?P<thumbnail>https://animego\.org/media/[^>]+\.\w{2,4})".*'

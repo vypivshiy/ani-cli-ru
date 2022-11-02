@@ -1,17 +1,7 @@
 """Template extractor
 
 """
-from typing import List
-
-from anicli_api.extractors.base import (
-    BaseAnimeExtractor,
-    BaseSearchResult,
-    BaseEpisode,
-    BaseOngoing,
-    BaseAnimeInfo,
-    BaseVideo,
-    BaseModel,
-)
+from anicli_api.extractors.base import *
 
 
 class ExtractorName(BaseAnimeExtractor):
