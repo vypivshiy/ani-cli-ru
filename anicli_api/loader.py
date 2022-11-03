@@ -59,7 +59,7 @@ class ExtractorLoader(BaseExtractorLoader):
             try:
                 getattr(extractor, cls)
             except AttributeError as exc:
-                raise AttributeError(f"Module {module_name} has no class {cls}. Did you import extractor?") from exc
+                raise AttributeError(f"Module '{module_name}' has no class '{cls}'. It is a real Extractor?") from exc
 
     @staticmethod
     def _import(module_name: str) -> ModuleExtractor:
@@ -67,7 +67,7 @@ class ExtractorLoader(BaseExtractorLoader):
             module_name = module_name.replace('/', '.').replace('\\', '.').rstrip('.py')
             extractor = cast(ModuleExtractor, importlib.import_module(module_name, package=None))
         except ModuleNotFoundError as e:
-            raise ModuleNotFoundError(f"{module_name} not found") from e
+            raise ModuleNotFoundError(f"'{module_name}' not found") from e
         return extractor
 
     @staticmethod
@@ -81,11 +81,13 @@ class ExtractorLoader(BaseExtractorLoader):
             mdl = cls._import(file_import)
             cls._validate(mdl, file_import)
             return mdl
+        cls._import(module_name)  # try import. If error with module_name, throw ModuleNotFoundError
+        raise AttributeError(f"'{module_name}' is not Extractor")
 
     @staticmethod
     def _check_module_name(module: str) -> bool:
-        return bool(not module.startswith("_") and not module.endswith("_.py") and module.endswith(".py")
-                    and module != "base.py")
+        module = module.rstrip(".py").split(".")[-1]
+        return not module.startswith("_") and not module.endswith("_") and module != "base.py"
 
     @classmethod
     def load_all(cls) -> List[ModuleExtractor]:
