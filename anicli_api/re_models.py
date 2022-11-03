@@ -8,6 +8,14 @@ T_AFTER_EXEC = Union[Callable[[Any], Any], Dict[str, Callable[[Any], Any]]]
 
 # TODO write docstring, add tests
 
+__all__ = (
+    'ReBaseField',
+    'ReField',
+    'ReFieldList',
+    'ReFieldListDict',
+    'parse_many',
+)
+
 
 class ReBaseField:
     """base regex parser and dict converter
@@ -107,7 +115,7 @@ class ReField(ReBaseField):
 
     def parse(self, text: str) -> Dict[str, Any]:
         if not (result := self.pattern.search(text)):
-            if isinstance(self.default, Iterable):
+            if isinstance(self.default, Iterable) and not isinstance(self.default, str):  # string is iterable
                 return dict(zip(self.name.split(","), self.default))
             else:
                 return {self.name: self.default}
