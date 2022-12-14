@@ -1,12 +1,12 @@
 from setuptools import setup, find_packages
-from anicli_ru.__version__ import __version__
+# from anicli_ru.__version__ import __version__
 
 with open("README.md", encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
     name='anicli-ru',
-    version=__version__,
+    version="???",
     packages=find_packages(),
     url='https://github.com/vypivshiy/ani-cli-ru',
     license='GPL-3',

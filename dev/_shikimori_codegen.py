@@ -201,5 +201,5 @@ class ShikimoriCodegen:
 
 if __name__ == '__main__':
     code_ = ShikimoriCodegen.generate()
-    with open("../shikimori.py", "w") as f:
+    with open("shikimori.py", "w") as f:
         f.write(code_)
