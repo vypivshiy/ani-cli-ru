@@ -39,7 +39,7 @@ def search(query: str):
         print(*[f"{i} - {e.num} {e.name}" for i, e in enumerate(episodes)], sep="\n")
         validator_func = partial(_validate_num, max_len=len(episodes))
         validator = Validator.from_callable(validator_func,
-                                            error_message=f"Should be integer and (0<=n<{len(results)})")
+                                            error_message=f"Should be integer and (0<=n<{len(episodes)})")
         num = session.prompt("[EPISODE] > ", validator=validator)
         episode = episodes[int(num)]
         videos = episode.get_videos()
