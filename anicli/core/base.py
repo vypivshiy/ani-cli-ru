@@ -220,7 +220,7 @@ class BaseDispatcher(ABCDispatcher):
                 logging.debug("KeyboardInterrupt | EOFError exit")
                 exit(0)
             except Exception as e:
-                logging.exception("{}\ntext {}\ncommand {} {}".format(e, text, command, args))
+                logging.exception("{}\nInput `{}` get arguments `{} {}`".format(e, text, command, args))
 
     @property
     def list_commands(self) -> list[Command]:

@@ -19,7 +19,7 @@ from prompt_toolkit.shortcuts.prompt import PromptContinuationText
 from prompt_toolkit.styles import BaseStyle, StyleTransformation
 from prompt_toolkit.validation import Validator
 
-from anicli.base import BaseDispatcher
+from anicli.core.base import BaseDispatcher
 
 def _exit(_):  # ctx dispatcher
     if confirm():
