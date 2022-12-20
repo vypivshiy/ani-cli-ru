@@ -1,1 +1,0 @@
-from anicli.commands import app
