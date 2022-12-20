@@ -32,13 +32,19 @@ def _help(ctx: BaseDispatcher, command: Optional[str] = None):
         for i, cls_command in enumerate(ctx.list_commands, 1):
             if command in cls_command:
                 keywords, params = cls_command.help
-                print(f"[{i}] {' | '.join(keywords)} params:\n\t{', '.join(params)} - {cls_command.meta}")
+                if params and params[0] == "ctx":
+                    params.pop(0)
+                params = f"\n\tparams {', '.join(params)}" if params else ""
+                print(f"[{i}] {' | '.join(keywords)} - {cls_command.meta}{params}")
                 return
         print("command", command, "not found.\n\tusage `help` for get list available commands")
     else:
         for i, cls_command in enumerate(ctx.list_commands):
             keywords, params = cls_command.help
-            print(f"[{i}] {' | '.join(keywords)} params:\n\t{', '.join(params)} - {cls_command.meta}")
+            if params and params[0] == "ctx":
+                params.pop(0)
+            params = f"\n\tparams {', '.join(params)}" if params else ""
+            print(f"[{i}] {' | '.join(keywords)} - {cls_command.meta}{params}")
 
 
 class CliApp(BaseDispatcher):
