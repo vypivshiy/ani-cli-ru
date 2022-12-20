@@ -1,14 +1,15 @@
-# config file
+"""config PromptSession and CliApp class"""
 
 from random import choice
 import datetime
 import os
 from string import hexdigits
 
-from prompt_toolkit.shortcuts import set_title
+from prompt_toolkit.shortcuts import set_title, CompleteStyle
 from prompt_toolkit.styles import Style
-
+from prompt_toolkit.formatted_text import ANSI
 from anicli import CliApp
+
 
 def get_prompt():
     now = datetime.datetime.now()
@@ -21,8 +22,9 @@ def get_prompt():
         ("", " *_~ ")
     ]
 
-_default_style = Style.from_dict(
-    {        # Default style.
+
+DEFAULT_STYLE = Style.from_dict(
+    {   # Default style.
         "": "#0031ff bold",
         # Prompt.
         "prompt": "#ffd966 italic",
@@ -32,4 +34,8 @@ _default_style = Style.from_dict(
         "completer": "#f1c232"}
 )
 
-app = CliApp(message=get_prompt, refresh_interval=0.5, style=_default_style)
+app = CliApp(message=get_prompt,
+             refresh_interval=0.5,
+             style=DEFAULT_STYLE,
+             description=ANSI("\x1b[1mSAMPLE START DESCRIPTION\ntype help for get commands"),
+             complete_style=CompleteStyle.MULTI_COLUMN)
