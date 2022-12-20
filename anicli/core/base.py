@@ -1,11 +1,10 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Optional, Callable, get_type_hints, List, Union, Any
+from typing import Optional, Callable, List, Union, Any, Iterable
 import logging
-import inspect
 
 from prompt_toolkit import PromptSession
+from prompt_toolkit import print_formatted_text as print
 
 from prompt_toolkit.auto_suggest import AutoSuggest
 from prompt_toolkit.clipboard import Clipboard
@@ -23,61 +22,13 @@ from prompt_toolkit.shortcuts.prompt import PromptContinuationText
 from prompt_toolkit.styles import BaseStyle, StyleTransformation
 from prompt_toolkit.validation import Validator
 
-
-
-def set_logger(level: int):
-    logging.basicConfig(format='%(asctime)s %(message)s',
-                        level=level)
-
-
-@dataclass
-class Command:
-    keywords: list[str]
-    meta: str
-    func: Callable
-    rule: Optional[Callable[..., bool]] = None
-    args_hook: Optional[Callable[[tuple[str, ...]], tuple[Any, ...]]] = None
-    ctx: Optional[ABCDispatcher] = None
-
-    def __contains__(self, item):
-        return item in self.keywords
-
-    @property
-    def help(self):
-        str_params = [str(param) for param in inspect.signature(self.func).parameters.values()
-                      if not str(param).startswith("_") and ".base." not in str(param)]
-        return ", ".join(str_params) + f" - {self.meta}"
-
-    def __hash__(self):
-        return hash(tuple(self.keywords))
-
-    def __call__(self, *args):
-        if self.args_hook:
-            args = self.args_hook(*args)
-
-        t_hints = list(get_type_hints(self.func).values())
-        signature = [p for p in inspect.signature(self.func).parameters.keys() if not p.startswith("_")]
-
-        # try typing objects
-        if len(t_hints) == 1 and len(signature) == 1:
-            typed_args = [t_hints[0](arg) for arg in args]
-        else:
-            typed_args = list(args)
-
-        # check rule
-        if self.rule and not self.rule(*args):
-            return
-
-        if self.ctx:
-            self.func(self.ctx, *typed_args)
-        else:
-            self.func(*typed_args)
+from anicli.core.command import Command
 
 
 class ABCDispatcher(ABC):
     @abstractmethod
     def command(self,
-                keywords: list[str],
+                keywords: Union[list[str], str],
                 help_meta: Optional[str] = None,
                 *,
                 rule: Optional[Callable[..., bool]] = None,
@@ -87,9 +38,10 @@ class ABCDispatcher(ABC):
     @abstractmethod
     def add_command(self,
                     function: Callable,
-                    keywords: list[str],
+                    keywords: Union[list[str], str],
                     help_meta: Optional[str] = None,
                     *,
+                    completer: Optional[Completer] = None,
                     rule: Optional[Callable[..., bool]] = None,
                     args_hook: Optional[Callable[[tuple[str, ...]], tuple[str, ...]]] = None):
         ...
@@ -106,6 +58,7 @@ class ABCDispatcher(ABC):
 class BaseDispatcher(ABCDispatcher):
     def __init__(self,
                  message: AnyFormattedText = "> ",
+                 description: str = "",
                  *,
                  is_password: FilterOrBool = False,
                  complete_while_typing: FilterOrBool = True,
@@ -142,7 +95,11 @@ class BaseDispatcher(ABCDispatcher):
                  tempfile: Optional[Union[str, Callable[[], str]]] = None,
                  refresh_interval: float = 0,
                  ):
+
+        self.description = description
         self._commands: list[Command] = []
+        # {func_name: {error_name_1: func, error_name_2: func_2, ...}}
+        self.error_handlers: dict[str, dict[str: Callable]] = {}
 
         self.session: PromptSession = PromptSession(
             message=message,
@@ -182,13 +139,14 @@ class BaseDispatcher(ABCDispatcher):
             refresh_interval=refresh_interval
         )
 
-    def _update_word_completer(self) -> WordCompleter:
+    def _update_word_completer(self) -> Completer:
+        # sourcery skip: assign-if-exp, or-if-exp-identity
         words, meta_dict = [], {}
         for cls_command in self.list_commands:
             for word in cls_command.keywords:
                 words.append(word)
                 meta_dict[word] = cls_command.help
-        logging.debug("Update word completer {} {}".format(words, meta_dict))
+        logging.debug("create word completer: {} {}".format(words, meta_dict))
         return WordCompleter(words=words, meta_dict=meta_dict, sentence=True, ignore_case=True)
 
     def _has_keywords(self, keywords: list[str]) -> bool:
@@ -200,11 +158,14 @@ class BaseDispatcher(ABCDispatcher):
     @staticmethod
     def _parse_prompt(text: str) -> tuple[str, list[str]]:
         command, args = text.split()[0], text.split()[1:]
+        logging.debug("command `{}` args: `{}`".format(command, args))
         return command, args
 
     def _reset_prompt_session(self) -> None:
         self.session.completer = self._update_word_completer()
+
     def _loop(self) -> None:  # sourcery skip: use-fstring-for-formatting
+        print(self.description)
         self._reset_prompt_session()
         while True:
             try:
@@ -216,9 +177,12 @@ class BaseDispatcher(ABCDispatcher):
                 if not self.command_handler(command, *args):
                     logging.debug("not found {} {}".format(command, args))
                     print("command", command, "not found")
-            except (KeyboardInterrupt, EOFError) as e:
-                logging.debug("KeyboardInterrupt | EOFError exit")
-                exit(0)
+            except KeyboardInterrupt:
+                logging.debug("KeyboardInterrupt, exit")
+                exit(1)
+            except EOFError:
+                logging.debug("EOFError, exit")
+                exit(1)
             except Exception as e:
                 logging.exception("{}\nInput `{}` get arguments `{} {}`".format(e, text, command, args))
 
@@ -227,65 +191,74 @@ class BaseDispatcher(ABCDispatcher):
         return self._commands
 
     def command(self,
-                keywords: list[str],
+                keywords: Union[list[str], str],
                 help_meta: Optional[str] = None,
                 *,
                 rule: Optional[Callable[..., bool]] = None,
-                args_hook: Optional[Callable[[tuple[str, ...]], tuple[Any, ...]]] = None) -> Callable:
+                args_hook: Optional[Callable[[tuple[str, ...]], tuple[Any, ...]]] = None) -> Callable[[Any], None] | None:
+        if isinstance(keywords, str):
+            keywords = [keywords]
+
         if self._has_keywords(keywords):
-            logging.warning("commands {} has already added".format(keywords))
-            return lambda *a: False
+            logging.warning("command `{}` has already added".format(keywords))
+            return lambda *a: None
 
         if not help_meta:
             help_meta = ""
 
         def decorator(func):
+            nonlocal help_meta
             logging.debug("register command {} {}".format(keywords, help_meta))
-            self._commands.append(Command(func=func, meta=help_meta, keywords=keywords,
-                                          rule=rule, args_hook=args_hook))
+            if not help_meta:
+                help_meta = func.__doc__ or ""
+            self._commands.append(Command(func=func,
+                                          meta=help_meta,
+                                          keywords=keywords,
+                                          rule=rule,
+                                          args_hook=args_hook))
             self._reset_prompt_session()
             return func
         return decorator
 
     @classmethod
     def new_prompt_session(cls,
-               message: AnyFormattedText = "> ",
-               *,
-               is_password: FilterOrBool = False,
-               complete_while_typing: FilterOrBool = True,
-               validate_while_typing: FilterOrBool = True,
-               enable_history_search: FilterOrBool = False,
-               search_ignore_case: FilterOrBool = False,
-               lexer: Optional[Lexer] = None,
-               enable_system_prompt: FilterOrBool = False,
-               enable_suspend: FilterOrBool = False,
-               enable_open_in_editor: FilterOrBool = False,
-               validator: Optional[Validator] = None,
-               completer: Optional[Completer] = None,
-               complete_in_thread: bool = False,
-               reserve_space_for_menu: int = 8,
-               complete_style: CompleteStyle = CompleteStyle.COLUMN,
-               auto_suggest: Optional[AutoSuggest] = None,
-               style: Optional[BaseStyle] = None,
-               style_transformation: Optional[StyleTransformation] = None,
-               swap_light_and_dark_colors: FilterOrBool = False,
-               color_depth: Optional[ColorDepth] = None,
-               cursor: AnyCursorShapeConfig = None,
-               include_default_pygments_style: FilterOrBool = True,
-               history: Optional[History] = None,
-               clipboard: Optional[Clipboard] = None,
-               prompt_continuation: Optional[PromptContinuationText] = None,
-               rprompt: AnyFormattedText = None,
-               bottom_toolbar: AnyFormattedText = None,
-               mouse_support: FilterOrBool = False,
-               input_processors: Optional[List[Processor]] = None,
-               placeholder: Optional[AnyFormattedText] = None,
-               key_bindings: Optional[KeyBindingsBase] = None,
-               erase_when_done: bool = False,
-               tempfile_suffix: Optional[Union[str, Callable[[], str]]] = ".txt",
-               tempfile: Optional[Union[str, Callable[[], str]]] = None,
-               refresh_interval: float = 0,
-               ) -> PromptSession:
+                           message: AnyFormattedText = "> ",
+                           *,
+                           is_password: FilterOrBool = False,
+                           complete_while_typing: FilterOrBool = True,
+                           validate_while_typing: FilterOrBool = True,
+                           enable_history_search: FilterOrBool = False,
+                           search_ignore_case: FilterOrBool = False,
+                           lexer: Optional[Lexer] = None,
+                           enable_system_prompt: FilterOrBool = False,
+                           enable_suspend: FilterOrBool = False,
+                           enable_open_in_editor: FilterOrBool = False,
+                           validator: Optional[Validator] = None,
+                           completer: Optional[Completer] = None,
+                           complete_in_thread: bool = False,
+                           reserve_space_for_menu: int = 8,
+                           complete_style: CompleteStyle = CompleteStyle.COLUMN,
+                           auto_suggest: Optional[AutoSuggest] = None,
+                           style: Optional[BaseStyle] = None,
+                           style_transformation: Optional[StyleTransformation] = None,
+                           swap_light_and_dark_colors: FilterOrBool = False,
+                           color_depth: Optional[ColorDepth] = None,
+                           cursor: AnyCursorShapeConfig = None,
+                           include_default_pygments_style: FilterOrBool = True,
+                           history: Optional[History] = None,
+                           clipboard: Optional[Clipboard] = None,
+                           prompt_continuation: Optional[PromptContinuationText] = None,
+                           rprompt: AnyFormattedText = None,
+                           bottom_toolbar: AnyFormattedText = None,
+                           mouse_support: FilterOrBool = False,
+                           input_processors: Optional[List[Processor]] = None,
+                           placeholder: Optional[AnyFormattedText] = None,
+                           key_bindings: Optional[KeyBindingsBase] = None,
+                           erase_when_done: bool = False,
+                           tempfile_suffix: Optional[Union[str, Callable[[], str]]] = ".txt",
+                           tempfile: Optional[Union[str, Callable[[], str]]] = None,
+                           refresh_interval: float = 0,
+                           ) -> PromptSession:
         return PromptSession(
             message=message,
             is_password=is_password,
@@ -334,22 +307,30 @@ class BaseDispatcher(ABCDispatcher):
 
     def add_command(self,
                     function: Callable,
-                    keywords: list[str],
+                    keywords: Union[str, list[str]],
                     help_meta: Optional[str] = None,
                     *,
+                    completer: Optional[Completer] = None,
                     rule: Optional[Callable[..., bool]] = None,
                     args_hook: Optional[Callable[[tuple[str, ...]], tuple[Any, ...]]] = None
                     ) -> Callable[[Any], None] | None:
         # sourcery skip: use-fstring-for-formatting
+        if isinstance(keywords, str):
+            keywords = [keywords]
+
         if self._has_keywords(keywords):
-            logging.warning("commands {} has already added".format(keywords))
+            logging.warning("command `{}` has already added".format(keywords))
             return lambda *a: None
 
         if not help_meta:
-            help_meta = ""
+            help_meta = function.__doc__ or ""
         logging.debug("Add command {} {}".format(keywords, help_meta))
-        self._commands.append(Command(func=function, meta=help_meta, keywords=keywords,
-                                      rule=rule, ctx=self, args_hook=args_hook))
+        self._commands.append(Command(ctx=self,
+                                      func=function,
+                                      meta=help_meta,
+                                      keywords=keywords,
+                                      rule=rule,
+                                      args_hook=args_hook))
         self._reset_prompt_session()
         return None
 
@@ -357,18 +338,40 @@ class BaseDispatcher(ABCDispatcher):
         # sourcery skip: use-fstring-for-formatting
         for cls_command in self._commands:
             if command.lower() in cls_command:
-                logging.debug("Found {}".format(cls_command.keywords,))
-                cls_command(*args)
-                self._reset_prompt_session()
+                logging.debug("Found {}".format(cls_command.keywords, ))
+                try:
+                    cls_command(*args)
+                except (Exception, KeyboardInterrupt) as e:
+                    if not (error_handler := self.error_handlers.get(cls_command.func.__name__)):
+                        raise e
+                    if func := error_handler.get(e.__class__.__name__):
+                        func()
+                    else:
+                        raise e
+                # self._reset_prompt_session()
                 return True
         return False
 
-    def run(self, debug: bool = False) -> None:
-        if debug:
-            logging.basicConfig(format='%(asctime)s %(message)s',
-                                level=logging.DEBUG)
-        else:
-            logging.basicConfig(format='%(asctime)s %(message)s',
-                                level=logging.WARNING)
-        self._loop()
+    def on_command_error(self, exception: Union[Exception, Iterable[Exception]]) -> Callable:
+        def decorator(func: Callable):
+            if func_handler := self.error_handlers.get(func.__name__):
+                if isinstance(exception, Iterable):
+                    for e in exception:
+                        if not func_handler.get(e.__name__):
+                            logging.debug("add handler {} {}".format(func.__name__, e.__name__))
+                            self.error_handlers[func.__name__][e.__name__] = func
+                elif issubclass(exception, BaseException) and not func_handler.get(exception.__name__):
+                    logging.debug("add handler {} {}".format(func.__name__, exception.__name__))
+                    self.error_handlers[func.__name__][exception.__name__] = func
 
+            else:
+                if isinstance(exception, Iterable):
+                    logging.debug("add handlers {} {}".format(func.__name__, [e.__name__ for e in exception]))
+                    self.error_handlers = {func.__name__: {e.__name__: func for e in exception}}
+                elif issubclass(exception, BaseException):
+                    logging.debug("add handler {} {}".format(func.__name__, exception.__name__))
+                    self.error_handlers = {func.__name__: {exception.__name__: func}}
+        return decorator
+
+    def run(self) -> None:
+        self._loop()

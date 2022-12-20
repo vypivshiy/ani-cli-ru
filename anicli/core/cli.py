@@ -21,6 +21,7 @@ from prompt_toolkit.validation import Validator
 
 from anicli.core.base import BaseDispatcher
 
+
 def _exit(_):  # ctx dispatcher
     if confirm():
         exit(1)
@@ -41,6 +42,7 @@ def _help(ctx: BaseDispatcher, command: Optional[str] = None):
 class CliApp(BaseDispatcher):
     def __init__(self,
                  message: AnyFormattedText = "> ",
+                 description: str = "Press <tab> or type help for get commands",
                  *,
                  is_password: FilterOrBool = False,
                  complete_while_typing: FilterOrBool = True,
@@ -79,6 +81,7 @@ class CliApp(BaseDispatcher):
                  ):
         super().__init__(
             message=message,
+            description=description,
             is_password=is_password,
             complete_while_typing=complete_while_typing,
             validate_while_typing=validate_while_typing,
@@ -115,5 +118,5 @@ class CliApp(BaseDispatcher):
             refresh_interval=refresh_interval
         )
 
-        self.add_command(_exit, keywords=["exit", "quit"], help_meta="exit this app")
+        self.add_command(_exit, keywords=["exit"], help_meta="exit this app")
         self.add_command(_help, keywords=["help"], help_meta="show help message")
