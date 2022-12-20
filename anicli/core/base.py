@@ -99,7 +99,7 @@ class BaseDispatcher(ABCDispatcher):
         self.description = description
         self._commands: list[Command] = []
         # {func_name: {error_name_1: func, error_name_2: func_2, ...}}
-        self.error_handlers: dict[str, dict[str: Callable]] = {}
+        self.error_handlers: dict[str, Callable[[ABCDispatcher, BaseException, tuple[Any, ...]], ...]] = {}
 
         self.session: PromptSession = PromptSession(
             message=message,
@@ -143,9 +143,13 @@ class BaseDispatcher(ABCDispatcher):
         # sourcery skip: assign-if-exp, or-if-exp-identity
         words, meta_dict = [], {}
         for cls_command in self.list_commands:
+            _, params = cls_command.help
             for word in cls_command.keywords:
                 words.append(word)
-                meta_dict[word] = cls_command.help
+                if params:
+                    meta_dict[word] = f"{', '.join(params)} - {cls_command.meta}"
+                else:
+                    meta_dict[word] = cls_command.meta
         logging.debug("create word completer: {} {}".format(words, meta_dict))
         return WordCompleter(words=words, meta_dict=meta_dict, sentence=True, ignore_case=True)
 
@@ -195,7 +199,8 @@ class BaseDispatcher(ABCDispatcher):
                 help_meta: Optional[str] = None,
                 *,
                 rule: Optional[Callable[..., bool]] = None,
-                args_hook: Optional[Callable[[tuple[str, ...]], tuple[Any, ...]]] = None) -> Callable[[Any], None] | None:
+                args_hook:
+                Optional[Callable[[tuple[str, ...]], tuple[Any, ...]]] = None) -> Callable[[Any], None] | None:
         if isinstance(keywords, str):
             keywords = [keywords]
 
@@ -303,7 +308,7 @@ class BaseDispatcher(ABCDispatcher):
                 logging.debug("Remove command {} {} {}".format(keyword, cls_command.keywords, cls_command.meta))
                 self._commands.pop(i)
                 return
-        logging.debug("command {} has not included".format(keyword))
+        logging.debug("command {} not found".format(keyword))
 
     def add_command(self,
                     function: Callable,
@@ -325,7 +330,7 @@ class BaseDispatcher(ABCDispatcher):
         if not help_meta:
             help_meta = function.__doc__ or ""
         logging.debug("Add command {} {}".format(keywords, help_meta))
-        self._commands.append(Command(ctx=self,
+        self._commands.append(Command(
                                       func=function,
                                       meta=help_meta,
                                       keywords=keywords,
@@ -337,40 +342,27 @@ class BaseDispatcher(ABCDispatcher):
     def command_handler(self, command: str, *args) -> bool:
         # sourcery skip: use-fstring-for-formatting
         for cls_command in self._commands:
-            if command.lower() in cls_command:
+            if command in cls_command:
                 logging.debug("Found {}".format(cls_command.keywords, ))
                 try:
-                    cls_command(*args)
-                except (Exception, KeyboardInterrupt) as e:
-                    if not (error_handler := self.error_handlers.get(cls_command.func.__name__)):
-                        raise e
-                    if func := error_handler.get(e.__class__.__name__):
-                        func()
+                    if args:
+                        cls_command(self, *args)
+                    else:
+                        cls_command(self)
+                except BaseException as e:
+                    print(e.__class__.__name__)
+                    print(self.error_handlers)
+                    if error_handler := self.error_handlers.get(cls_command.func.__name__):
+                        error_handler(self, e, *args)
                     else:
                         raise e
-                # self._reset_prompt_session()
                 return True
         return False
 
-    def on_command_error(self, exception: Union[Exception, Iterable[Exception]]) -> Callable:
+    def on_command_error(self) -> Callable:
         def decorator(func: Callable):
-            if func_handler := self.error_handlers.get(func.__name__):
-                if isinstance(exception, Iterable):
-                    for e in exception:
-                        if not func_handler.get(e.__name__):
-                            logging.debug("add handler {} {}".format(func.__name__, e.__name__))
-                            self.error_handlers[func.__name__][e.__name__] = func
-                elif issubclass(exception, BaseException) and not func_handler.get(exception.__name__):
-                    logging.debug("add handler {} {}".format(func.__name__, exception.__name__))
-                    self.error_handlers[func.__name__][exception.__name__] = func
-
-            else:
-                if isinstance(exception, Iterable):
-                    logging.debug("add handlers {} {}".format(func.__name__, [e.__name__ for e in exception]))
-                    self.error_handlers = {func.__name__: {e.__name__: func for e in exception}}
-                elif issubclass(exception, BaseException):
-                    logging.debug("add handler {} {}".format(func.__name__, exception.__name__))
-                    self.error_handlers = {func.__name__: {exception.__name__: func}}
+            if not self.error_handlers.get(func.__name__):
+                self.error_handlers[func.__name__] = func
         return decorator
 
     def run(self) -> None:

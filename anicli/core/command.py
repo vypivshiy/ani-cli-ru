@@ -5,7 +5,6 @@ from typing import Callable, Optional, Any, get_type_hints, List, TYPE_CHECKING
 import re
 
 from prompt_toolkit import print_formatted_text as print
-from prompt_toolkit.completion import Completer
 
 from anicli.core.defaults import ERROR_FRAGMENT, ERROR_STYLE
 if TYPE_CHECKING:
@@ -19,7 +18,6 @@ class BaseCommand:
     func: Callable
     rule: Optional[Callable[..., bool]] = None
     args_hook: Optional[Callable[[tuple[str, ...]], tuple[Any, ...]]] = None
-    ctx: Optional[ABCDispatcher] = None
 
     def __contains__(self, item):
         return item in self.keywords
@@ -30,24 +28,24 @@ class BaseCommand:
     def __eq__(self, other: BaseCommand):
         return hash(other) == hash(self)
 
-    def __call__(self, *args):
+    def __call__(self, ctx: ABCDispatcher, *args):
         if self.args_hook:
             args = self.args_hook(*args)
 
         t_hints = list(get_type_hints(self.func).values())
         signature = [p for p in inspect.signature(self.func).parameters.keys() if not p.startswith("_")]
-
         # try typing objects
         if len(t_hints) == 1 and len(signature) == 1:
             typed_args = [t_hints[0](arg) for arg in args]
         else:
             typed_args = list(args)
+
         try:
             if self.rule and not self.rule(*args):
                 return
-
-            if self.ctx:
-                self.func(self.ctx, *typed_args)
+            # костыль, чтобы через метод добавлять команды до инициализации объекта
+            elif signature and signature[0] == "ctx":
+                self.func(ctx, *typed_args)
             else:
                 self.func(*typed_args)
         except TypeError as e:
@@ -60,6 +58,9 @@ class BaseCommand:
                 print(ERROR_FRAGMENT, "Command does not take arguments",
                       style=ERROR_STYLE)
             return
+        except ValueError as e:
+            print(ERROR_FRAGMENT, e, e.args)
+            raise e
 
 
 class Command(BaseCommand):
@@ -73,6 +74,6 @@ class Command(BaseCommand):
                 if self._is_valid_help_argument(str(param))]
 
     @property
-    def help(self):
+    def help(self) -> tuple[list[str], list[str]]:
         str_params = self._get_params_from_function()
-        return ", ".join(str_params) + " | " + self.meta
+        return self.keywords, str_params

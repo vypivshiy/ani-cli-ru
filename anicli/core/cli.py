@@ -22,27 +22,29 @@ from prompt_toolkit.validation import Validator
 from anicli.core.base import BaseDispatcher
 
 
-def _exit(_):  # ctx dispatcher
+def _exit(ctx):
     if confirm():
         exit(1)
 
 
 def _help(ctx: BaseDispatcher, command: Optional[str] = None):
     if command:
-        for cls_command in ctx.list_commands:
+        for i, cls_command in enumerate(ctx.list_commands, 1):
             if command in cls_command:
-                print(f"{cls_command.keywords} - {cls_command.help}")
+                keywords, params = cls_command.help
+                print(f"[{i}] {' | '.join(keywords)} params:\n\t{', '.join(params)} - {cls_command.meta}")
                 return
         print("command", command, "not found.\n\tusage `help` for get list available commands")
     else:
-        for cls_command in ctx.list_commands:
-            print(f"{cls_command.keywords} {cls_command.help}")
+        for i, cls_command in enumerate(ctx.list_commands):
+            keywords, params = cls_command.help
+            print(f"[{i}] {' | '.join(keywords)} params:\n\t{', '.join(params)} - {cls_command.meta}")
 
 
 class CliApp(BaseDispatcher):
     def __init__(self,
                  message: AnyFormattedText = "> ",
-                 description: str = "Press <tab> or type help for get commands",
+                 description: AnyFormattedText = "Press <tab> or type help for get commands",
                  *,
                  is_password: FilterOrBool = False,
                  complete_while_typing: FilterOrBool = True,
@@ -119,4 +121,5 @@ class CliApp(BaseDispatcher):
         )
 
         self.add_command(_exit, keywords=["exit"], help_meta="exit this app")
-        self.add_command(_help, keywords=["help"], help_meta="show help message")
+        self.add_command(_help, keywords=["help"], help_meta="show help message. "
+                                                             "if no argument is passed, print all")
