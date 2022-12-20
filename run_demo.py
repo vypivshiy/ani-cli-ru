@@ -1,4 +1,7 @@
-from demo.main import app
+from demo import app
+
+
+
 
 if __name__ == '__main__':
     app.run()

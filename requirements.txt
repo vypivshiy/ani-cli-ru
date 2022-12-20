@@ -1,1 +1,2 @@
 prompt-toolkit
+anicli-api

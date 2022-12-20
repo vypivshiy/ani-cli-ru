@@ -1,3 +1,3 @@
-from anicli.main import app
+from anicli import app
 
 app.run()
