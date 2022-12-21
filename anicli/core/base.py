@@ -99,7 +99,7 @@ class BaseDispatcher(ABCDispatcher):
         self.description = description
         self._commands: list[Command] = []
         # {func_name: {error_name_1: func, error_name_2: func_2, ...}}
-        self.error_handlers: dict[str, Callable[[ABCDispatcher, BaseException, tuple[Any, ...]], ...]] = {}
+        self.error_handlers: dict[str, Callable[[BaseException, tuple[Any, ...]], ...]] = {}
 
         self.session: PromptSession = PromptSession(
             message=message,
@@ -350,10 +350,8 @@ class BaseDispatcher(ABCDispatcher):
                     else:
                         cls_command(self)
                 except BaseException as e:
-                    print(e.__class__.__name__)
-                    print(self.error_handlers)
                     if error_handler := self.error_handlers.get(cls_command.func.__name__):
-                        error_handler(self, e, *args)
+                        error_handler(e, *args)
                     else:
                         raise e
                 return True
