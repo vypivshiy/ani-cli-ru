@@ -33,7 +33,7 @@ def sum_interactive():
 
 
 @app.on_command_error()
-def sum_interactive(ctx: BaseDispatcher, error: Exception):
+def sum_interactive(error: Exception):
     if isinstance(error, KeyboardInterrupt):
         print("KeyboardInterrupt, Exit")
     elif isinstance(error, EOFError):

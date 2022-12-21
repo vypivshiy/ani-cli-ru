@@ -1,6 +1,5 @@
 import subprocess
 
-from prompt_toolkit.completion import NestedCompleter
 
 from anicli.core import BaseDispatcher
 from demo.config import app

@@ -1,53 +1,43 @@
 import subprocess
-from functools import partial
-from typing import Callable
 
 from prompt_toolkit import PromptSession
-from prompt_toolkit.validation import Validator
 
-from anicli_api.base import BaseAnimeInfo, MetaVideo
+from anicli_api.base import MetaVideo
 from anicli_api.extractors import animego
 from anicli.config import app
-
+from anicli.utils import number_validator
 
 EXTRACTOR = animego.Extractor()
 PLAYER = "mpv"
 
 
-def make_validator(function: Callable[..., bool], *args, **keywords) -> Validator:
-    function = partial(function, *args, **keywords)
-    return Validator.from_callable(function)
-
-
-def _number_func(digit: str, max_len: int):
-    return digit.isdigit() and 0 <= int(digit) < max_len
-
-
-def number_validator(max_len: int) -> Validator:
-    func = partial(_number_func, max_len=max_len)
-    return Validator.from_callable(func, error_message=f"Should be integer and (0<=n<{max_len})")
+def mpv_attrs(video: MetaVideo) -> list[str]:
+    if video.extra_headers:
+        # --http-header-fields='Field1: value1','Field2: value2'
+        headers = [f"{k}: {v}" for k, v in video.extra_headers.items()]
+        headers = ",".join(headers)
+        param = f'-http-header-fields="{headers}"'
+        return [PLAYER, video.url, param]
+    return [PLAYER, video.url]
 
 
 def get_video(session: PromptSession, anime_info: animego.AnimeInfo):
     episodes = anime_info.get_episodes()
-    print(*[f"{i} - {e.num} {e.name}" for i, e in enumerate(episodes)], sep="\n")
+    print(*[f"[{i}] {e}" for i, e in enumerate(episodes)], sep="\n")
     num = int(session.prompt("[EPISODE] > ", validator=number_validator(len(episodes))))
-    episode = episodes[num]
-    videos = episode.get_videos()
+
+    videos = episodes[num].get_videos()
     print("choose video host:")
-    print(*[f"{i} {v.url}" for i, v in enumerate(videos)], sep="\n")
+    print(*[f"{i} {v}" for i, v in enumerate(videos)], sep="\n")
     num = int(session.prompt("[VIDEO] > ", validator=number_validator(len(videos))))
-    sources: list[MetaVideo] = videos[num].get_source()
+
+    sources = videos[num].get_source()
     print("Quality:")
-    # print(*[f"{i} {v}" for i, v in sources])
+    print(*[f"{i} {v.type} {v.quality}" for i, v in enumerate(sources)], sep="\n")
     num = int(session.prompt("[QUALITY] > ", validator=number_validator(len(sources))))
-    source = sources[num]
-    print(source.url)
-    if source.extra_headers:
-        print("TODO")
-        return
-    else:
-        subprocess.run([PLAYER, source.url])
+
+    args = mpv_attrs(sources[num])
+    subprocess.run(" ".join(args), shell=True)
 
 
 def _is_not_empty_query(*args: str):
@@ -63,7 +53,7 @@ def _is_not_empty_query(*args: str):
 def search(query: str):
     results = EXTRACTOR.search(query)
     if len(results) > 0:
-        print(*[f"{i} {r.name}" for i, r in enumerate(results)], sep="\n")
+        print(*[f"{i} {r}" for i, r in enumerate(results)], sep="\n")
         print("choose title")
         session = app.new_prompt_session()
         num = int(session.prompt("[SEARCH] > ", validator=number_validator(len(results))))
@@ -78,7 +68,7 @@ def ongoing():
     """Get new ongoings"""
     results = EXTRACTOR.ongoing()
     if len(results) > 0:
-        print(*[f"{i} {r.name}" for i, r in enumerate(results)], sep="\n")
+        print(*[f"{i} {r}" for i, r in enumerate(results)], sep="\n")
         print("choose title")
         session = app.new_prompt_session()
         num = int(session.prompt("[ONGOING] > ", validator=number_validator(len(results))))
@@ -86,3 +76,17 @@ def ongoing():
         get_video(session, anime_info)
     else:
         print("Not found")
+
+
+@app.on_command_error()
+def ongoing(error: Exception):
+    if isinstance(error, (KeyboardInterrupt, EOFError)):
+        print("KeyboardInterrupt, back to menu")
+        return
+
+
+@app.on_command_error()
+def search(error: Exception, query: str):
+    if isinstance(error, (KeyboardInterrupt, EOFError)):
+        print(f"`{query}` KeyboardInterrupt, back to menu")
+        return
