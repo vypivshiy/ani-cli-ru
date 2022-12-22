@@ -172,6 +172,7 @@ class BaseDispatcher(ABCDispatcher):
     def _loop(self) -> None:  # sourcery skip: use-fstring-for-formatting
         print(self.description)
         self._reset_prompt_session()
+        text, command, args = "", "", ()
         while True:
             try:
                 text = self.session.prompt()
@@ -183,15 +184,15 @@ class BaseDispatcher(ABCDispatcher):
                     logging.debug("not found {} {}".format(command, args))
                     print(f"command `{command}` not found")
             except BaseException as e:
-                if error_handler_func := self._loop_error_handler.get(e.__class__.__name__):
+                if error_handler_func := self._loop_error_handler.get(repr(e).split("(")[0]):
                     error_handler_func(e)
                 else:
                     logging.exception("{}\nInput `{}` command `{} args {}`".format(e, text, command, args))
                     raise e
 
     def add_error_handler_loop(self, exception: Type[BaseException], function: Callable[[BaseException], None]):
-        if not self._loop_error_handler.get(exception.__class__.__name__):
-            self._loop_error_handler.update({exception.__class__.__name__: function})
+        if not self._loop_error_handler.get(exception.__name__):
+            self._loop_error_handler.update({exception.__name__: function})
 
     @property
     def commands(self) -> list[Command]:
