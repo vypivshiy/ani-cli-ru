@@ -1,11 +1,12 @@
 """Preconfigured Cli class with help and exit commands"""
+import logging
 from typing import Optional, Union, Callable, List
 
 from prompt_toolkit.shortcuts import confirm
 
 from prompt_toolkit.auto_suggest import AutoSuggest
 from prompt_toolkit.clipboard import Clipboard
-from prompt_toolkit.completion import WordCompleter, Completer
+from prompt_toolkit.completion import Completer
 from prompt_toolkit.cursor_shapes import AnyCursorShapeConfig
 from prompt_toolkit.filters import FilterOrBool
 from prompt_toolkit.formatted_text import AnyFormattedText
@@ -24,27 +25,45 @@ from anicli.core.base import BaseDispatcher
 
 def _exit(ctx):
     if confirm():
-        exit(1)
+        try:
+            exit(1)
+        except ValueError:
+            raise KeyboardInterrupt
 
 
 def _help(ctx: BaseDispatcher, command: Optional[str] = None):
     if command:
-        for i, cls_command in enumerate(ctx.list_commands, 1):
+        for i, cls_command in enumerate(ctx.commands, 1):
             if command in cls_command:
                 keywords, params = cls_command.help
                 if params and params[0] == "ctx":
                     params.pop(0)
-                params = f"\n\tparams {', '.join(params)}" if params else ""
-                print(f"[{i}] {' | '.join(keywords)} - {cls_command.meta}{params}")
+                params_str = f"\n\tparams {', '.join(params)}" if params else ""
+                print(f"[{i}] {' | '.join(keywords)} - {cls_command.meta}{params_str}")
                 return
         print("command", command, "not found.\n\tusage `help` for get list available commands")
     else:
-        for i, cls_command in enumerate(ctx.list_commands):
+        for i, cls_command in enumerate(ctx.commands):
             keywords, params = cls_command.help
             if params and params[0] == "ctx":
                 params.pop(0)
-            params = f"\n\tparams {', '.join(params)}" if params else ""
-            print(f"[{i}] {' | '.join(keywords)} - {cls_command.meta}{params}")
+            params_str = f"\n\tparams {', '.join(params)}" if params else ""
+            print(f"[{i}] {' | '.join(keywords)} - {cls_command.meta}{params_str}")
+
+
+def keyboard_interrupt_handle(error):
+    print("KeyboardInterrupt, exit")
+    exit(1)
+
+
+def eof_handle(error):
+    print("EOF, exit")
+    exit(1)
+
+
+def io_closed_handler(error):
+    logging.exception(error)
+    exit(0)
 
 
 class CliApp(BaseDispatcher):
@@ -129,3 +148,6 @@ class CliApp(BaseDispatcher):
         self.add_command(_exit, keywords=["exit"], help_meta="exit this app")
         self.add_command(_help, keywords=["help"], help_meta="show help message. "
                                                              "if no argument is passed, print all")
+        self.add_error_handler_loop(KeyboardInterrupt, keyboard_interrupt_handle)
+        self.add_error_handler_loop(EOFError, eof_handle)
+        self.add_error_handler_loop(ValueError, io_closed_handler)

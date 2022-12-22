@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Optional, Callable, List, Union, Any, Iterable
+from typing import Optional, Callable, List, Union, Any, Iterable, Dict, Type
 import logging
 
 from prompt_toolkit import PromptSession
@@ -58,7 +58,7 @@ class ABCDispatcher(ABC):
 class BaseDispatcher(ABCDispatcher):
     def __init__(self,
                  message: AnyFormattedText = "> ",
-                 description: str = "",
+                 description: AnyFormattedText = "",
                  *,
                  is_password: FilterOrBool = False,
                  complete_while_typing: FilterOrBool = True,
@@ -99,7 +99,8 @@ class BaseDispatcher(ABCDispatcher):
         self.description = description
         self._commands: list[Command] = []
         # {func_name: {error_name_1: func, error_name_2: func_2, ...}}
-        self.error_handlers: dict[str, Callable[[BaseException, tuple[Any, ...]], ...]] = {}
+
+        self._loop_error_handler: Dict[str, Callable[[BaseException], None]] = {}
 
         self.session: PromptSession = PromptSession(
             message=message,
@@ -142,7 +143,7 @@ class BaseDispatcher(ABCDispatcher):
     def _update_word_completer(self) -> Completer:
         # sourcery skip: assign-if-exp, or-if-exp-identity
         words, meta_dict = [], {}
-        for cls_command in self.list_commands:
+        for cls_command in self.commands:
             _, params = cls_command.help
             for word in cls_command.keywords:
                 words.append(word)
@@ -155,7 +156,7 @@ class BaseDispatcher(ABCDispatcher):
 
     def _has_keywords(self, keywords: list[str]) -> bool:
         words = []
-        for c in self.list_commands:
+        for c in self.commands:
             words.extend(c.keywords)
         return all(k in words for k in keywords)
 
@@ -180,18 +181,20 @@ class BaseDispatcher(ABCDispatcher):
                 logging.debug("GET {} {}".format(command, args))
                 if not self.command_handler(command, *args):
                     logging.debug("not found {} {}".format(command, args))
-                    print("command", command, "not found")
-            except KeyboardInterrupt:
-                logging.debug("KeyboardInterrupt, exit")
-                exit(1)
-            except EOFError:
-                logging.debug("EOFError, exit")
-                exit(1)
-            except Exception as e:
-                logging.exception("{}\nInput `{}` get arguments `{} {}`".format(e, text, command, args))
+                    print(f"command `{command}` not found")
+            except BaseException as e:
+                if error_handler_func := self._loop_error_handler.get(e.__class__.__name__):
+                    error_handler_func(e)
+                else:
+                    logging.exception("{}\nInput `{}` command `{} args {}`".format(e, text, command, args))
+                    raise e
+
+    def add_error_handler_loop(self, exception: Type[BaseException], function: Callable[[BaseException], None]):
+        if not self._loop_error_handler.get(exception.__class__.__name__):
+            self._loop_error_handler.update({exception.__class__.__name__: function})
 
     @property
-    def list_commands(self) -> list[Command]:
+    def commands(self) -> list[Command]:
         return self._commands
 
     def command(self,
@@ -200,29 +203,32 @@ class BaseDispatcher(ABCDispatcher):
                 *,
                 rule: Optional[Callable[..., bool]] = None,
                 args_hook:
-                Optional[Callable[[tuple[str, ...]], tuple[Any, ...]]] = None) -> Callable[[Any], None] | None:
+                Optional[Callable[[tuple[str, ...]], tuple[Any, ...]]] = None) -> Callable[[Any], Command]:
         if isinstance(keywords, str):
             keywords = [keywords]
 
         if self._has_keywords(keywords):
-            logging.warning("command `{}` has already added".format(keywords))
-            return lambda *a: None
+            raise AttributeError(f"command `{keywords}` has already added")
 
         if not help_meta:
             help_meta = ""
 
-        def decorator(func):
+        def decorator(func) -> Command:
             nonlocal help_meta
             logging.debug("register command {} {}".format(keywords, help_meta))
+
             if not help_meta:
                 help_meta = func.__doc__ or ""
-            self._commands.append(Command(func=func,
-                                          meta=help_meta,
-                                          keywords=keywords,
-                                          rule=rule,
-                                          args_hook=args_hook))
+
+            command = Command(ctx=self,
+                              func=func,
+                              meta=help_meta,
+                              keywords=keywords,  # type: ignore
+                              rule=rule,
+                              args_hook=args_hook)
+            self._commands.append(command)
             self._reset_prompt_session()
-            return func
+            return command
         return decorator
 
     @classmethod
@@ -330,7 +336,7 @@ class BaseDispatcher(ABCDispatcher):
         if not help_meta:
             help_meta = function.__doc__ or ""
         logging.debug("Add command {} {}".format(keywords, help_meta))
-        self._commands.append(Command(
+        self._commands.append(Command(ctx=self,
                                       func=function,
                                       meta=help_meta,
                                       keywords=keywords,
@@ -346,22 +352,13 @@ class BaseDispatcher(ABCDispatcher):
                 logging.debug("Found {}".format(cls_command.keywords, ))
                 try:
                     if args:
-                        cls_command(self, *args)
+                        cls_command(*args)
                     else:
-                        cls_command(self)
+                        cls_command()
                 except BaseException as e:
-                    if error_handler := self.error_handlers.get(cls_command.func.__name__):
-                        error_handler(e, *args)
-                    else:
-                        raise e
+                    cls_command.error_handler(e, *args)
                 return True
         return False
-
-    def on_command_error(self) -> Callable:
-        def decorator(func: Callable):
-            if not self.error_handlers.get(func.__name__):
-                self.error_handlers[func.__name__] = func
-        return decorator
 
     def run(self) -> None:
         self._loop()

@@ -8,7 +8,7 @@ from prompt_toolkit import print_formatted_text as print
 
 from anicli.core.defaults import ERROR_FRAGMENT, ERROR_STYLE
 if TYPE_CHECKING:
-    from anicli.core.base import ABCDispatcher
+    from anicli.core.base import BaseDispatcher
 
 
 @dataclass
@@ -16,8 +16,12 @@ class BaseCommand:
     keywords: list[str]
     meta: str
     func: Callable
+    ctx: BaseDispatcher
     rule: Optional[Callable[..., bool]] = None
     args_hook: Optional[Callable[[tuple[str, ...]], tuple[Any, ...]]] = None
+
+    def __post_init__(self):
+        self.error_handler: Callable[[BaseException, tuple[Any]], None] = lambda ex, *args: None
 
     def __contains__(self, item):
         return item in self.keywords
@@ -25,10 +29,12 @@ class BaseCommand:
     def __hash__(self):
         return hash(tuple(self.keywords))
 
-    def __eq__(self, other: BaseCommand):
-        return hash(other) == hash(self)
+    def __eq__(self, other):
+        if isinstance(other, BaseCommand):
+            return hash(other) == hash(self)
+        return NotImplemented
 
-    def __call__(self, ctx: ABCDispatcher, *args):
+    def __call__(self, *args):
         if self.args_hook:
             args = self.args_hook(*args)
 
@@ -43,24 +49,27 @@ class BaseCommand:
         try:
             if self.rule and not self.rule(*args):
                 return
-            # костыль, чтобы через метод добавлять команды до инициализации объекта
+            # костыль, чтобы через метод добавлять команды до инициализации класса приложения
             elif signature and signature[0] == "ctx":
-                self.func(ctx, *typed_args)
+                self.func(self.ctx, *typed_args)
             else:
                 self.func(*typed_args)
         except TypeError as e:
-            if missed_args := [
-                a.replace("'_", "'") for a in re.findall(r"'\w+'", e.args[0])
-            ]:
+            if missed_args := [a.replace("'_", "'") for a in re.findall(r"'\w+'", e.args[0])]:
                 print(ERROR_FRAGMENT, f"Missing {len(missed_args)} arguments: {', '.join(missed_args)}",
                       style=ERROR_STYLE)
             else:
-                print(ERROR_FRAGMENT, "Command does not take arguments",
-                      style=ERROR_STYLE)
+                print(ERROR_FRAGMENT, "Command does not take arguments", style=ERROR_STYLE)
             return
-        except ValueError as e:
-            print(ERROR_FRAGMENT, e, e.args)
-            raise e
+        # except ValueError as e:
+        #     print(ERROR_FRAGMENT, e, e.args)
+        #     raise e
+
+    def on_error(self):
+        def decorator(func):
+            self.error_handler = func
+            return func
+        return decorator
 
 
 class Command(BaseCommand):
