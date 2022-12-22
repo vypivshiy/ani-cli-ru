@@ -1,6 +1,5 @@
 from prompt_toolkit.validation import Validator
 
-from anicli.core import BaseDispatcher
 from demo.config import app
 
 
@@ -9,10 +8,11 @@ def sum_(*digits: int):
     print(" + ".join([str(d) for d in digits]), "=", sum(digits))
 
 
-@app.on_command_error()
-def sum_(ctx: app, error: Exception, *args):
+@sum_.on_error()
+def sum_error(error: Exception, *args):
     if isinstance(error, ValueError):
         print("Error!", *args, "is not integers")
+        return
 
 
 @app.command(["sum-interactive"], help_meta="interactive sum")
@@ -32,8 +32,8 @@ def sum_interactive():
         result += int(text)
 
 
-@app.on_command_error()
-def sum_interactive(error: Exception):
+@sum_interactive.on_error()
+def sum_interactive_error(error: Exception):
     if isinstance(error, KeyboardInterrupt):
         print("KeyboardInterrupt, Exit")
     elif isinstance(error, EOFError):

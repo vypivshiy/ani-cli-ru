@@ -1,3 +1,4 @@
+from __future__ import annotations
 import subprocess
 
 from prompt_toolkit import PromptSession
@@ -5,7 +6,7 @@ from prompt_toolkit import PromptSession
 from anicli_api.base import MetaVideo
 from anicli_api.extractors import animego
 from anicli.config import app
-from anicli.utils import number_validator, make_completer
+from anicli.utils import number_validator, make_completer, CONCATENATE_ARGS
 
 EXTRACTOR = animego.Extractor()
 PLAYER = "mpv"
@@ -14,8 +15,7 @@ PLAYER = "mpv"
 def mpv_attrs(video: MetaVideo) -> list[str]:
     if video.extra_headers:
         # --http-header-fields='Field1: value1','Field2: value2'
-        headers = [f"{k}: {v}" for k, v in video.extra_headers.items()]
-        headers = ",".join(headers)
+        headers = ",".join([f"{k}: {v}" for k, v in video.extra_headers.items()])
         param = f'-http-header-fields="{headers}"'
         return [PLAYER, video.url, param]
     return [PLAYER, video.url]
@@ -46,9 +46,9 @@ def get_video(session: PromptSession, anime_info: animego.AnimeInfo):
     subprocess.run(" ".join(args), shell=True)
 
 
-@app.command(["search", "find"], "search anime titles by query",
-             args_hook=lambda *args: (" ".join(list(args)),))
+@app.command(["search", "find"], args_hook=CONCATENATE_ARGS)
 def search(query: str):
+    """Search anime titles by query"""
     results = EXTRACTOR.search(query)
     if len(results) > 0:
         print(*[f"{i} {r}" for i, r in enumerate(results)], sep="\n")
@@ -63,6 +63,7 @@ def search(query: str):
         get_video(session, anime_info)
     else:
         print("Not found")
+    return
 
 
 @app.command("ongoing")
@@ -83,15 +84,15 @@ def ongoing():
         print("Not found")
 
 
-@app.on_command_error()
-def ongoing(error: Exception):
+@ongoing.on_error()
+def ongoing_err(error: Exception):
     if isinstance(error, (KeyboardInterrupt, EOFError)):
         print("KeyboardInterrupt, back to menu")
         return
 
 
-@app.on_command_error()
-def search(error: Exception, query: str):
+@search.on_error()
+def search_err(error: Exception, query: str):
     if isinstance(error, (KeyboardInterrupt, EOFError)):
         print(f"`{query}` KeyboardInterrupt, back to menu")
         return

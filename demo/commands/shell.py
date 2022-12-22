@@ -32,8 +32,8 @@ def zsh():
     subprocess.run("zsh")
 
 
-@app.on_command_error()
-def zsh(ctx, error: Exception):
+@zsh.on_error()
+def zsh_error(error: Exception):
     if isinstance(error, FileNotFoundError):
         print("not found zsh, run bash")
         app.command_handler("bash")
@@ -45,8 +45,8 @@ def bash():
     subprocess.run("bash")
 
 
-@app.on_command_error()
-def bash(ctx: BaseDispatcher, error):
+@bash.on_error()
+def bash_error(ctx: BaseDispatcher, error):
     if isinstance(error, FileNotFoundError):
         print("not found bash. input available shell")
         text = ctx.session.prompt("> ")

@@ -1,10 +1,10 @@
 from demo.config import app
 
 
-# this command never added
-@app.command(["help"])
-def _help():
-    print("not set")
+# this command never added and throw AttributeError
+# @app.command(["help"])
+# def _help():
+#    print("not set")
 
 
 @app.command(["text-upper"], "print input text to upper case",
