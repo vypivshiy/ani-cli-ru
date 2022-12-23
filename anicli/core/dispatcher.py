@@ -8,6 +8,11 @@ from anicli.core.states import StateDispenser, BaseState
 from anicli.core.command import Command
 
 
+# TODO fix store arguments in states
+# TODO implement states for commands
+# TODO cache result for states (or not?)
+
+
 class ABCDispatcher(ABC):
     @abstractmethod
     def command(self, keywords: Union[list[str], str],
