@@ -8,7 +8,7 @@ from string import hexdigits
 from prompt_toolkit.shortcuts import set_title, CompleteStyle
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import ANSI
-from anicli import CliApp
+from anicli.core import CliApp, Dispatcher
 
 
 def get_prompt():
@@ -38,4 +38,6 @@ app = CliApp(message=get_prompt,
              refresh_interval=0.5,
              style=DEFAULT_STYLE,
              description=ANSI("\x1b[1mSAMPLE START DESCRIPTION\ntype help for get commands"),
-             complete_style=CompleteStyle.MULTI_COLUMN)
+             )
+
+dp = Dispatcher(app)

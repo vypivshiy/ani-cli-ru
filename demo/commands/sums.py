@@ -1,10 +1,12 @@
 from prompt_toolkit.validation import Validator
+from prompt_toolkit import PromptSession
 
-from demo.config import app
+from demo.config import dp
 
 
-@app.command(["sum"], help_meta="output sum arguments")
+@dp.command(["add", "sum"])
 def sum_(*digits: int):
+    """output sum arguments"""
     print(" + ".join([str(d) for d in digits]), "=", sum(digits))
 
 
@@ -15,14 +17,15 @@ def sum_error(error: Exception, *args):
         return
 
 
-@app.command(["sum-interactive"], help_meta="interactive sum")
+@dp.command("sum-interactive", meta="interactive sum")
 def sum_interactive():
     print("Press ctrl+c or ctrl+d for exit")
     result = 0
     validator = Validator.from_callable(lambda s: s.isdigit(),
                                         error_message="Is not digit",
                                         move_cursor_to_end=True)
-    session = app.new_prompt_session(f"[sum {result}] > ",
+    # need to create a new` PromptSession` class to avoid overwriting attrs settings
+    session = PromptSession(f"[sum {result}] > ",
                                      validator=validator,
                                      bottom_toolbar=f"result={result}",
                                      validate_while_typing=True)

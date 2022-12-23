@@ -1,11 +1,9 @@
 import subprocess
 
+from demo.config import dp
 
-from anicli.core import BaseDispatcher
-from demo.config import app
-
-
-@app.command(["echo"], help_meta="print all passed arguments")
+# for add description in completer usage `meta` parameter or pass in docstrings
+@dp.command(["echo", "duplicate"], meta="print all passed arguments")
 def echo(*args):
     print(args)
 
@@ -20,37 +18,20 @@ def ping_rule(count: str, _command: str):
     return True
 
 
-@app.command(["ping"], rule=ping_rule)
+# may not be typed.
+@dp.command("ping", rule=ping_rule)
 def ping(count, domain):
     """DOCSTRING send PING packets"""
     subprocess.run(["ping", f"-c {count}", domain])
 
 
-@app.command("zsh")
-def zsh():
-    """open zsh shell"""
-    subprocess.run("zsh")
-
-
-@zsh.on_error()
-def zsh_error(error: Exception):
-    if isinstance(error, FileNotFoundError):
-        print("not found zsh, run bash")
-        app.command_handler("bash")
-
-
-@app.command("bash")
+@dp.command("bash")
 def bash():
     """open bash shell"""
     subprocess.run("bash")
 
 
 @bash.on_error()
-def bash_error(ctx: BaseDispatcher, error):
+def bash_error(error):
     if isinstance(error, FileNotFoundError):
-        print("not found bash. input available shell")
-        text = ctx.session.prompt("> ")
-        try:
-            subprocess.run(text)
-        except FileNotFoundError:
-            print("error, return to main")
+        print("not found bash =(")

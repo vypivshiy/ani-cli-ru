@@ -1,7 +1,5 @@
-from demo import app
-
-
+from demo import dp
 
 
 if __name__ == '__main__':
-    app.run()
+    dp.run()
