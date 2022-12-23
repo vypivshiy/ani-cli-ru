@@ -11,12 +11,12 @@ def make_validator(function: Callable[..., bool], *args, **keywords) -> Validato
 
 
 def make_completer(results: List[Any]) -> WordCompleter:
-    return WordCompleter(words=[str(i) for i in range(len(results))],
-                         meta_dict={str(i): str(el) for i, el in enumerate(results)})
+    return WordCompleter(words=[str(i) for i in range(len(results))] + [".."],
+                         meta_dict={str(i): str(el) for i, el in enumerate(results)}.update({"..": "back to prev state"}))
 
 
 def _number_func(digit: str, max_len: int):
-    return digit.isdigit() and 0 <= int(digit) < max_len
+    return digit.isdigit() and 0 <= int(digit) < max_len or digit == ".."
 
 
 def number_validator(max_len: Union[int, list]) -> Validator:

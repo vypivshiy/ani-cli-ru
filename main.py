@@ -1,3 +1,4 @@
-from anicli import app
+from anicli.config import dp
 
-app.run()
+
+dp.run()
