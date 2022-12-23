@@ -1,8 +1,10 @@
-"""Preconfigured Cli class with help and exit commands"""
-import logging
-from typing import Optional, Union, Callable, List
+from __future__ import annotations
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Dict, Callable, Optional, List, Union
 
-from prompt_toolkit.shortcuts import confirm
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit import print_formatted_text as print
 
 from prompt_toolkit.auto_suggest import AutoSuggest
 from prompt_toolkit.clipboard import Clipboard
@@ -20,53 +22,19 @@ from prompt_toolkit.shortcuts.prompt import PromptContinuationText
 from prompt_toolkit.styles import BaseStyle, StyleTransformation
 from prompt_toolkit.validation import Validator
 
-from anicli.core.base import BaseDispatcher
+if TYPE_CHECKING:
+    from anicli.core.states import BaseState
+    from anicli.core.command import Command
+    from anicli.core.dispatcher import Dispatcher
 
 
-def _exit(ctx):
-    if confirm():
-        try:
-            exit(1)
-        except ValueError:
-            raise KeyboardInterrupt
+class ABCPromptLoop(ABC):
+    @abstractmethod
+    def loop(self):
+        ...
 
 
-def _help(ctx: BaseDispatcher, command: Optional[str] = None):
-    if command:
-        for i, cls_command in enumerate(ctx.commands, 1):
-            if command in cls_command:
-                keywords, params = cls_command.help
-                if params and params[0] == "ctx":
-                    params.pop(0)
-                params_str = f"\n\tparams {', '.join(params)}" if params else ""
-                print(f"[{i}] {' | '.join(keywords)} - {cls_command.meta}{params_str}")
-                return
-        print("command", command, "not found.\n\tusage `help` for get list available commands")
-    else:
-        for i, cls_command in enumerate(ctx.commands):
-            keywords, params = cls_command.help
-            if params and params[0] == "ctx":
-                params.pop(0)
-            params_str = f"\n\tparams {', '.join(params)}" if params else ""
-            print(f"[{i}] {' | '.join(keywords)} - {cls_command.meta}{params_str}")
-
-
-def keyboard_interrupt_handle(error):
-    print("KeyboardInterrupt, exit")
-    exit(1)
-
-
-def eof_handle(error):
-    print("EOF, exit")
-    exit(1)
-
-
-def io_closed_handler(error):
-    logging.exception(error)
-    exit(0)
-
-
-class CliApp(BaseDispatcher):
+class PromptLoop(ABCPromptLoop):
     def __init__(self,
                  message: AnyFormattedText = "> ",
                  description: AnyFormattedText = "Press <tab> or type help for get commands",
@@ -104,11 +72,10 @@ class CliApp(BaseDispatcher):
                  erase_when_done: bool = False,
                  tempfile_suffix: Optional[Union[str, Callable[[], str]]] = ".txt",
                  tempfile: Optional[Union[str, Callable[[], str]]] = None,
-                 refresh_interval: float = 0,
-                 ):
-        super().__init__(
+                 refresh_interval: float = 0,):
+
+        self.session: PromptSession = PromptSession(
             message=message,
-            description=description,
             is_password=is_password,
             complete_while_typing=complete_while_typing,
             validate_while_typing=validate_while_typing,
@@ -144,10 +111,65 @@ class CliApp(BaseDispatcher):
             tempfile=tempfile,
             refresh_interval=refresh_interval
         )
+        self.description = description
+        self._commands: list[Command] = []
+        self._states: Dict[BaseState, Callable[[], None]] = {}
+        self._dp: Optional[Dispatcher] = None
 
-        self.add_command(_exit, keywords=["exit"], help_meta="exit this app")
-        self.add_command(_help, keywords=["help"], help_meta="show help message. "
-                                                             "if no argument is passed, print all")
-        self.add_error_handler_loop(KeyboardInterrupt, keyboard_interrupt_handle)
-        self.add_error_handler_loop(EOFError, eof_handle)
-        self.add_error_handler_loop(ValueError, io_closed_handler)
+    @property
+    def commands(self):
+        return self._commands
+
+    def set_dispatcher(self, dp: Dispatcher):
+        self._dp = dp
+
+    def command_handler(self, keyword: str, *args: str):
+        for cls_command in self._commands:
+            if keyword in cls_command:
+                try:
+                    cls_command(*args)
+                except BaseException as e:
+                    cls_command.error_handler(e)
+                return
+        print(f"command `{keyword}` not found")
+
+    def state_handler(self):
+        while self._dp.state_dispenser.state:
+            if func := self._states.get(self._dp.state_dispenser.state):
+                func()
+
+    def load_commands(self, commands: list[Command]):
+        for c in commands:
+            if c not in self._commands:
+                self._commands.append(c)
+        self.update_word_completer()
+
+    def load_states(self, states: Dict[BaseState, Callable]):
+        self._states = states
+
+    def update_word_completer(self):
+        words, meta_dict = [], {}
+        for cls_command in self._commands:
+            if cls_command.add_completer:
+                meta = cls_command.help
+                for word in cls_command.keywords:
+                    words.append(word)
+                    meta_dict[word] = meta
+
+        self.session.completer = WordCompleter(
+            words=words, meta_dict=meta_dict, sentence=True, ignore_case=True)
+
+    @staticmethod
+    def _parse_commands(text: str) -> tuple[str, tuple[str, ...]]:
+        command, *args = text.split()
+        return command, tuple(args)
+
+    def loop(self):
+        print(self.description)
+        while True:
+            self.state_handler()
+            text = self.session.prompt()
+            if not text:
+                continue
+            comma, args = self._parse_commands(text)
+            self.command_handler(comma, *args)
