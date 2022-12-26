@@ -38,6 +38,7 @@ class Dispatcher(ABCDispatcher):
         self.loop = loop
         self.state_dispenser = StateDispenser()
         self._states: Dict[BaseState, Callable] = {}
+        self._on_error_states: Dict[BaseState, Callable[[BaseException], None]] = {}
         self._states_cache: Dict[str, Dict] = {}
         self._on_close = on_close
 
@@ -47,12 +48,15 @@ class Dispatcher(ABCDispatcher):
             words.extend(c.keywords)
         return all(k in words for k in keywords)
 
-    def state_handler(self, state: BaseState):
+    def state_handler(self,
+                      state: BaseState,
+                      on_error: Optional[Callable] = None):
         def decorator(func):
             if not self._states.get(state):
                 self._states[state] = func
+            if on_error and not self._on_error_states.get(state):
+                self._on_error_states[state] = on_error
             return func
-        # print(decorator)
         return decorator
 
     def remove_command(self, keyword: str):
@@ -98,6 +102,7 @@ class Dispatcher(ABCDispatcher):
     def run(self):
         self.loop.set_dispatcher(self)
         self.loop.load_states(self._states)
+        self.loop.load_error_states(self._on_error_states)
         self.loop.load_commands(self._commands)
         try:
             self.loop.loop()

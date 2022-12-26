@@ -114,6 +114,7 @@ class PromptLoop(ABCPromptLoop):
         self.description = description
         self._commands: list[Command] = []
         self._states: Dict[BaseState, Callable[..., None]] = {}
+        self._on_error_states: Dict[BaseState, Callable[[BaseException], None]] = {}
         self.dispatcher: Optional[Dispatcher] = None
 
     @property
@@ -136,10 +137,16 @@ class PromptLoop(ABCPromptLoop):
     def state_handler(self):
         while self.dispatcher.state_dispenser.state:
             if func := self._states.get(self.dispatcher.state_dispenser.state):
-                if params := self.dispatcher.state_dispenser.storage_params.get(self.dispatcher.state_dispenser.state):
-                    func(*params)
-                else:
-                    func()
+                try:
+                    if params := self.dispatcher.state_dispenser.storage_params.get(self.dispatcher.state_dispenser.state):
+                        func(*params)
+                    else:
+                        func()
+                except BaseException as e:
+                    if err_func := self._on_error_states.get(self.dispatcher.state_dispenser.state):
+                        err_func(e)
+                    else:
+                        raise e
 
     def load_commands(self, commands: list[Command]):
         for c in commands:
@@ -149,6 +156,9 @@ class PromptLoop(ABCPromptLoop):
 
     def load_states(self, states: Dict[BaseState, Callable]):
         self._states = states
+
+    def load_error_states(self, states: Dict[BaseState, Callable]):
+        self._on_error_states = states
 
     def update_word_completer(self):
         words, meta_dict = [], {}
