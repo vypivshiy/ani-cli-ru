@@ -16,6 +16,9 @@ class BaseStorage:
     def update(self, data: Dict):
         self._data.update(data)
 
+    def items(self):
+        return self._data.items()
+
     def clear(self):
         self._data.clear()
 
