@@ -5,6 +5,7 @@ from anicli_api.extractors import animego
 
 EXTRACTOR = animego.Extractor()
 PLAYER = "mpv"
+EXTRA_ATTRS: List[str] = []
 
 
 def mpv_attrs(video: MetaVideo) -> List[str]:
@@ -12,5 +13,5 @@ def mpv_attrs(video: MetaVideo) -> List[str]:
         # --http-header-fields='Field1: value1','Field2: value2'
         headers = ",".join([f"{k}: {v}" for k, v in video.extra_headers.items()])
         param = f'-http-header-fields="{headers}"'
-        return [PLAYER, video.url, param]
-    return [PLAYER, video.url]
+        return [PLAYER, video.url, param] + EXTRA_ATTRS
+    return [PLAYER, video.url] + EXTRA_ATTRS

@@ -1,11 +1,19 @@
+import re
 from functools import partial
-from typing import Callable, Union, Any, List
+from typing import Callable, Union, Any, List, Optional
 
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.validation import Validator
 
-from anicli.core import BaseState
-from anicli.config import dp
+
+RE_NUM_SLICE = re.compile(r"(\d+)-(\d+)")
+
+__all__ = (
+    "make_validator",
+    "make_completer",
+    "number_validator",
+    "number_slice_validator",
+)
 
 def make_validator(function: Callable[..., bool], *args, **keywords) -> Validator:
     function = partial(function, *args, **keywords)
@@ -31,27 +39,19 @@ def number_validator(max_len: Union[int, list]) -> Validator:
     return Validator.from_callable(func, error_message=f"Should be integer and (0<=n<{max_len})")
 
 
-CONCATENATE_ARGS = lambda *args: (" ".join(list(args)),)  # noqa
+def _number_slice_func(digit:str, max_len:int):
+    return RE_NUM_SLICE.match(digit) or _number_func(digit, max_len)
 
 
-def on_exit_state(exc: BaseException):
-    if isinstance(exc, (KeyboardInterrupt, EOFError)):
-        print("KeyboardInterrupt, exit FROM State")
-        dp.state_dispenser.finish()
+def slice_digit(digit: str) -> Optional[slice]:
+    if result := RE_NUM_SLICE.match(digit):
+        return slice(*map(int, result.groups()))
+    return None
+    # raise TypeError(f"{digit} must me match `\d+-\d+` pattern")
 
 
-def state_back(command: str, new_state: BaseState):
-    if command == "..":
-        dp.state_dispenser.set(new_state)
-        return True
-    return False
-
-
-def state_main_loop(command: str):
-    if command == "~":
-        dp.state_dispenser.finish()
-        return True
-    return False
-
-STATE_BACK = state_back
-STATE_MAIN_LOOP = state_main_loop
+def number_slice_validator(max_len: Union[int, list]) -> Validator:
+    if isinstance(max_len, list):
+        max_len = len(max_len)
+    func = partial(_number_slice_func, max_len=max_len)
+    return Validator.from_callable(func, error_message=f"Should be integer and (0<=n<={max_len}) or `\d+-\d+`")
