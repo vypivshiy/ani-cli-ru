@@ -1,6 +1,8 @@
 from __future__ import annotations
 from enum import Enum
-from typing import Any, Dict, Optional, Tuple, Hashable, Sequence
+from typing import Any, Dict, Optional, Tuple, Hashable, Sequence, TypeVar, Callable
+
+T = TypeVar("T")
 
 
 class BaseStorage:
@@ -84,6 +86,11 @@ class StateDispenser:
         key = self._create_hash_key(key)
         return self.storage.get(key)
 
+    def from_cache(self, key: T, function: Callable[[], T]) -> T:
+        if not (results := self.get_cache(key)):
+            results = function()
+            self.cache_object(key, results)
+        return results
 
     def update(self, data: Dict):
         self.storage.update(data)
