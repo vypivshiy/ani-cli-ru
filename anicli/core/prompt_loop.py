@@ -114,14 +114,14 @@ class PromptLoop(ABCPromptLoop):
         self.description = description
         self._commands: list[Command] = []
         self._states: Dict[BaseState, Callable[..., None]] = {}
-        self._dp: Optional[Dispatcher] = None
+        self.dispatcher: Optional[Dispatcher] = None
 
     @property
     def commands(self):
         return self._commands
 
     def set_dispatcher(self, dp: Dispatcher):
-        self._dp = dp
+        self.dispatcher = dp
 
     def command_handler(self, keyword: str, *args: str):
         for cls_command in self._commands:
@@ -134,9 +134,9 @@ class PromptLoop(ABCPromptLoop):
         print(f"command `{keyword}` not found")
 
     def state_handler(self):
-        while self._dp.state_dispenser.state:
-            if func := self._states.get(self._dp.state_dispenser.state):
-                if params := self._dp.state_dispenser.get_stored_params(self._dp.state_dispenser.state):
+        while self.dispatcher.state_dispenser.state:
+            if func := self._states.get(self.dispatcher.state_dispenser.state):
+                if params := self.dispatcher.state_dispenser.storage_params.get(self.dispatcher.state_dispenser.state):
                     func(*params)
                 else:
                     func()
