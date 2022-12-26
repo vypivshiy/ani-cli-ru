@@ -63,10 +63,12 @@ def search_episodes():
     dp.state_dispenser.set(SearchStates.VIDEO)
 
 
-@dp.command("search", args_hook=CONCATENATE_ARGS)
-@dp.state_handler(SearchStates.SEARCH)
+@dp.command("search",
+            args_hook=CONCATENATE_ARGS,
+            state=SearchStates.SEARCH)
 def search(query: str):
     """search title by query"""
+    dp.state_dispenser.store_params(SearchStates.SEARCH, query=query)
     results = EXTRACTOR.search(query)
     if len(results) > 0:
         print(*[f"[{i}] {o}" for i, o in enumerate(results)], sep="\n")

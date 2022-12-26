@@ -61,8 +61,7 @@ def ongoing_episodes():
     dp.state_dispenser.set(OngoingStates.VIDEO)
 
 
-@dp.command("ongoing")
-@dp.state_handler(OngoingStates.ONGOING)
+@dp.command("ongoing", state=OngoingStates.ONGOING)
 def ongoing():
     """search last published titles"""
     ongoings = EXTRACTOR.ongoing()

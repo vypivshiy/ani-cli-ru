@@ -6,13 +6,23 @@ from typing import Any, Dict, Optional
 class StateDispenser:
     def __init__(self):
         self.state: Optional[BaseState] = None
+        self._stored_params: Dict[BaseState, Dict[str, Any]] = {}
         self.data = {}
+
+    def store_params(self, state: BaseState, **params):
+        self._stored_params.update({state: params})
+
+    def get_stored_params(self, state: BaseState) -> tuple[Any, ...]:
+        if params := self._stored_params.get(state):
+            return tuple(params.values())
+        return ()
 
     def set(self, state: BaseState):
         self.state = state
 
     def finish(self):
         self.clear()
+        self._stored_params.clear()
         self.state = None
 
     def clear(self):

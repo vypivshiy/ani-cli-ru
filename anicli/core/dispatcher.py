@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Union, Optional, Callable, Dict
+from typing import Union, Optional, Callable, Dict, Type
 
 from anicli.core.prompt_loop import PromptLoop
 from anicli.core.states import StateDispenser, BaseState
 from anicli.core.command import Command
+from functools import wraps
 
 
 # TODO fix store arguments in states
@@ -19,6 +20,7 @@ class ABCDispatcher(ABC):
                 meta: Optional[str] = ...,
                 *,
                 rule: Optional[Callable[..., bool]] = ...,
+                state: Optional[BaseState] = ...,
                 args_hook: Optional[Callable[[tuple[str, ...]], tuple[str, ...]]] = ...,
                 ):
         ...
@@ -31,11 +33,12 @@ class ABCDispatcher(ABC):
 class Dispatcher(ABCDispatcher):
     def __init__(self,
                  loop: PromptLoop,
-                 on_close: Callable = lambda: print("goodbye!")):
+                 on_close: Callable = lambda: print("Goodbye!")):
         self._commands: list[Command] = []
         self.loop = loop
         self.state_dispenser = StateDispenser()
         self._states: Dict[BaseState, Callable] = {}
+        self._states_cache: Dict[str, Dict] = {}
         self._on_close = on_close
 
     def _has_keywords(self, keywords: list[str]) -> bool:
@@ -49,6 +52,7 @@ class Dispatcher(ABCDispatcher):
             if not self._states.get(state):
                 self._states[state] = func
             return func
+        # print(decorator)
         return decorator
 
     def remove_command(self, keyword: str):
@@ -62,6 +66,7 @@ class Dispatcher(ABCDispatcher):
                 meta: Optional[str] = None,
                 *,
                 rule: Optional[Callable[..., bool]] = None,
+                state: Optional[BaseState] = None,
                 args_hook: Optional[Callable[[tuple[str, ...]], tuple[str, ...]]] = None):
         keywords = [keywords] if isinstance(keywords, str) else keywords
 
@@ -80,10 +85,12 @@ class Dispatcher(ABCDispatcher):
             command = Command(loop=self.loop,
                               func=func,
                               meta=meta,
+                              state=state,
                               keywords=keywords,  # type: ignore
                               rule=rule,
                               args_hook=args_hook)
-
+            if state:
+                self._states[state] = command
             self._commands.append(command)
             return command
         return decorator

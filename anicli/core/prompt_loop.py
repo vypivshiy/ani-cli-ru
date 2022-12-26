@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Dict, Callable, Optional, List, Union
+from typing import TYPE_CHECKING, Dict, Callable, Optional, List, Union, Any
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
@@ -113,7 +113,7 @@ class PromptLoop(ABCPromptLoop):
         )
         self.description = description
         self._commands: list[Command] = []
-        self._states: Dict[BaseState, Callable[[], None]] = {}
+        self._states: Dict[BaseState, Callable[..., None]] = {}
         self._dp: Optional[Dispatcher] = None
 
     @property
@@ -136,7 +136,10 @@ class PromptLoop(ABCPromptLoop):
     def state_handler(self):
         while self._dp.state_dispenser.state:
             if func := self._states.get(self._dp.state_dispenser.state):
-                func()
+                if params := self._dp.state_dispenser.get_stored_params(self._dp.state_dispenser.state):
+                    func(*params)
+                else:
+                    func()
 
     def load_commands(self, commands: list[Command]):
         for c in commands:
