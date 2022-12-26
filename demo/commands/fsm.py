@@ -22,29 +22,29 @@ def start_fsm():
 @dp.state_handler(State.FIRST_NAME)
 def state_1():
     first_name = prompt("Enter your first name > ")
-    dp.state_dispenser.update_data({"first_name": first_name})
+    dp.state_dispenser.update({"first_name": first_name})
     dp.state_dispenser.set(State.LAST_NAME)
 
 @dp.state_handler(State.LAST_NAME)
 def state_2():
     last_name = prompt("Enter your last name > ")
-    dp.state_dispenser.update_data({"last_name": last_name})
+    dp.state_dispenser.update({"last_name": last_name})
     dp.state_dispenser.set(State.AGE)
 
 
 @dp.state_handler(State.AGE)
 def state_3():
     age = prompt("Enter your age > ", validator=Validator.from_callable(lambda s: s.isdigit(),
-                                                                        error_message="Is not integer"))
-    dp.state_dispenser.update_data({"age": int(age)})
+                                                                        error_message="Is not positive integer"))
+    dp.state_dispenser.update({"age": int(age)})
     dp.state_dispenser.set(State.HOBBIES)
 
 
 @dp.state_handler(State.HOBBIES)
 def state_4():
     hobbies = prompt("Enter your hobbies > ")
-    dp.state_dispenser.update_data({"hobbies": hobbies})
+    dp.state_dispenser.update({"hobbies": hobbies})
     print("Your inputs: ")
-    print(*[f"{k} {v}" for k,v in dp.state_dispenser.data.items()], sep="\n")
+    print(*[f"{k} {v}" for k,v in dp.state_dispenser.storage.items()], sep="\n")
     # !!!! DON'T FORGET TO CLOSE THE FSM
     dp.state_dispenser.finish()
