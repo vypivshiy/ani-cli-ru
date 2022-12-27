@@ -169,7 +169,7 @@ class PromptLoop(ABCPromptLoop):
             if cls_command.add_completer:
                 for word in cls_command.keywords:
                     words.append(word)
-                    meta_dict[word] = cls_command.help
+                    meta_dict[word] = cls_command.meta_completer
 
         self.session.completer = WordCompleter(
             words=words, meta_dict=meta_dict, sentence=True, ignore_case=True)

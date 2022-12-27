@@ -25,7 +25,7 @@ class CliApp(PromptLoop):
     def __init__(self,
                  message: AnyFormattedText = "> ",
                  description: AnyFormattedText = "Press <tab> or type help for get commands. "
-                                                 "Press ctrl+c or ctrl+d for exit app",
+                                                 "Press <CTRL+C> or <CTRL+D> to exit",
                  *,
                  is_password: FilterOrBool = False,
                  complete_while_typing: FilterOrBool = True,
@@ -100,8 +100,8 @@ class CliApp(PromptLoop):
             tempfile=tempfile,
             refresh_interval=refresh_interval
         )
-        self.load_commands([
-            Command(keywords=["help"],
+        self._load_commands([
+            Command(keywords=["help", "?"],
                     meta="show help command. if not passed arg - print all",
                     loop=self,
                     func=self._help
@@ -110,13 +110,12 @@ class CliApp(PromptLoop):
 
     def _help(self, command: Optional[str]=None):
         if command:
-            for i, cls_command in enumerate(self.commands, 1):
+            for cls_command in self.commands:
                 if command in cls_command:
-                    print(command)
-                    print(f"[{i}] {cls_command.help}")
+                    print(cls_command.help)
                     return
 
-            print("command", command, "not found.\n\tusage `help` or press <tab> for get list available commands")
+            print("command", f"`{command}`", "not found.\nusage `help` or press <tab> for get list available commands")
         else:
-            for i, cls_command in enumerate(self.commands):
-                print(f"[{i}] {cls_command.help}")
+            for cls_command in self.commands:
+                print(cls_command.help)

@@ -17,7 +17,7 @@ from functools import wraps
 class ABCDispatcher(ABC):
     @abstractmethod
     def command(self, keywords: Union[list[str], str],
-                meta: Optional[str] = ...,
+                meta: str = ...,
                 *,
                 rule: Optional[Callable[..., bool]] = ...,
                 state: Optional[BaseState] = ...,
@@ -68,7 +68,7 @@ class Dispatcher(ABCDispatcher):
 
     def command(self,
                 keywords: Union[list[str], str],
-                meta: Optional[str] = None,
+                meta: str = "",
                 *,
                 rule: Optional[Callable[..., bool]] = None,
                 state: Optional[BaseState] = None,
@@ -76,17 +76,9 @@ class Dispatcher(ABCDispatcher):
         keywords = [keywords] if isinstance(keywords, str) else keywords
 
         if self._has_keywords(keywords):
-            raise AttributeError(f"command `{keywords}` has already added")
-
-        if not meta:
-            meta = ""
+            raise AttributeError(f"command `{keywords}` has already registered")
 
         def decorator(func) -> Command:
-            nonlocal meta
-
-            if not meta:
-                meta = func.__doc__ or ""
-
             command = Command(loop=self.loop,
                               func=func,
                               meta=meta,

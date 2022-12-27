@@ -1,6 +1,6 @@
 from __future__ import annotations
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import inspect
 from typing import Callable, TYPE_CHECKING, Optional, Any, get_type_hints, List, Type, get_args, TypeVar
 
@@ -13,19 +13,21 @@ T = TypeVar("T")
 @dataclass
 class BaseCommand:
     keywords: list[str]
-    meta: str
     func: Callable
     loop: PromptLoop
+    meta: str = ""
     rule: Optional[Callable[..., bool]] = None
     args_hook: Optional[Callable[[tuple[str, ...]], tuple[Any, ...]]] = None
     state: Optional[BaseState] = None
     add_completer: bool = True
 
+    def __post_init__(self):
+        if not self.meta:
+            self.meta = self.func.__doc__ or ""
+        self.error_handler: Callable[[BaseException], None] = self._default_error_handler
+
     def _default_error_handler(self, ex: BaseException):
         raise ex
-
-    def __post_init__(self):
-        self.error_handler: Callable[[BaseException], None] = self._default_error_handler
 
     @property
     def types(self) -> List[Type]:
@@ -44,7 +46,7 @@ class BaseCommand:
     def __eq__(self, other):
         if isinstance(other, BaseCommand):
             return hash(other) == hash(self)
-        raise TypeError(f"{repr(other)} is not Command")
+        raise TypeError(f"{other.__name__} should be 'Command', not {type(other).__name__}")
 
     def _typing_args(self, *args):
         t_hints, signature = self.types, self.signature
@@ -104,7 +106,22 @@ class Command(BaseCommand):
                 if self._is_valid_help_argument(str(param))]
 
     @property
+    def meta_completer(self):
+        if str_params:=self._get_params_from_function():
+            return f"{', '.join(self.keywords)} - {self.meta}; Params: {', '.join(str_params)}"
+        return f"{', '.join(self.keywords)} - {self.meta}"
+
+    @property
     def help(self) -> str:
+        msg = f"{', '.join(self.keywords)} - {self.meta}"
         if str_params := self._get_params_from_function():
-            return f'{", ".join(self.keywords)} params: {", ".join(str_params)} - {self.meta}'
-        return f'{", ".join(self.keywords)} - {self.meta}'
+            msg+="\nParams:\n\t"
+            for name_a_param in str_params:
+                if len((args := name_a_param.split(":"))) == 2:
+                    msg+= f"{args[0]}: [{args[1].strip()}]\n\t"
+                else:
+                    msg+= f"[{args[0]}]\n\t"
+            return msg
+        msg+="\n"
+            # return f'{", ".join(self.keywords)}; params: {", ".join([p.split(":") for p in str_params])} - {self.meta}'
+        return msg
