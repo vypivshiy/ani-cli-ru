@@ -121,8 +121,11 @@ class PromptLoop(ABCPromptLoop):
     def commands(self):
         return self._commands
 
-    def set_dispatcher(self, dp: Dispatcher):
+    def load_dispatcher(self, dp: Dispatcher):
         self.dispatcher = dp
+        self._load_commands(self.dispatcher.commands)
+        self._load_states(self.dispatcher.states)
+        self._load_error_states(self.dispatcher.on_error_states)
 
     def command_handler(self, keyword: str, *args: str):
         for cls_command in self._commands:
@@ -148,26 +151,25 @@ class PromptLoop(ABCPromptLoop):
                     else:
                         raise e
 
-    def load_commands(self, commands: list[Command]):
+    def _load_commands(self, commands: list[Command]):
         for c in commands:
             if c not in self._commands:
                 self._commands.append(c)
         self.update_word_completer()
 
-    def load_states(self, states: Dict[BaseState, Callable]):
+    def _load_states(self, states: Dict[BaseState, Callable]):
         self._states = states
 
-    def load_error_states(self, states: Dict[BaseState, Callable]):
+    def _load_error_states(self, states: Dict[BaseState, Callable]):
         self._on_error_states = states
 
     def update_word_completer(self):
         words, meta_dict = [], {}
         for cls_command in self._commands:
             if cls_command.add_completer:
-                meta = cls_command.help
                 for word in cls_command.keywords:
                     words.append(word)
-                    meta_dict[word] = meta
+                    meta_dict[word] = cls_command.help
 
         self.session.completer = WordCompleter(
             words=words, meta_dict=meta_dict, sentence=True, ignore_case=True)

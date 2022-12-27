@@ -2,12 +2,13 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 import inspect
-from typing import Callable, TYPE_CHECKING, Optional, Any, get_type_hints, List, Type, get_args
+from typing import Callable, TYPE_CHECKING, Optional, Any, get_type_hints, List, Type, get_args, TypeVar
 
 if TYPE_CHECKING:
     from anicli.core.states import BaseState
     from anicli.core.prompt_loop import PromptLoop
 
+T = TypeVar("T")
 
 @dataclass
 class BaseCommand:
@@ -45,10 +46,7 @@ class BaseCommand:
             return hash(other) == hash(self)
         raise TypeError(f"{repr(other)} is not Command")
 
-    def __call__(self, *args):
-        if self.args_hook:
-            args = self.args_hook(*args)
-
+    def _typing_args(self, *args):
         t_hints, signature = self.types, self.signature
 
         if len(t_hints) == 1 and len(signature) == 1:
@@ -69,6 +67,13 @@ class BaseCommand:
                 typed_args.append(arg)
         else:
             typed_args = list(args)
+        return typed_args
+
+    def __call__(self, *args):
+        if self.args_hook:
+            args = self.args_hook(*args)
+
+        typed_args = self._typing_args(*args)
 
         try:
             if self.rule and not self.rule(*args):

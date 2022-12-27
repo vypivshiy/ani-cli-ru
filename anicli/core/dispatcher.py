@@ -33,18 +33,17 @@ class ABCDispatcher(ABC):
 class Dispatcher(ABCDispatcher):
     def __init__(self,
                  loop: PromptLoop,
-                 on_close: Callable = lambda: print("Goodbye!")):
-        self._commands: list[Command] = []
+                 on_close: Callable[[], None] = lambda: print("Goodbye!")):
+        self.commands: list[Command] = []
         self.loop = loop
         self.state_dispenser = StateDispenser()
-        self._states: Dict[BaseState, Callable] = {}
-        self._on_error_states: Dict[BaseState, Callable[[BaseException], None]] = {}
-        self._states_cache: Dict[str, Dict] = {}
+        self.states: Dict[BaseState, Callable] = {}
+        self.on_error_states: Dict[BaseState, Callable[[BaseException], None]] = {}
         self._on_close = on_close
 
     def _has_keywords(self, keywords: list[str]) -> bool:
         words = []
-        for c in self._commands:
+        for c in self.commands:
             words.extend(c.keywords)
         return all(k in words for k in keywords)
 
@@ -52,17 +51,19 @@ class Dispatcher(ABCDispatcher):
                       state: BaseState,
                       on_error: Optional[Callable] = None):
         def decorator(func):
-            if not self._states.get(state):
-                self._states[state] = func
-            if on_error and not self._on_error_states.get(state):
-                self._on_error_states[state] = on_error
+            if not self.states.get(state):
+                self.states[state] = func
+
+            if on_error and not self.on_error_states.get(state):
+                self.on_error_states[state] = on_error
+
             return func
         return decorator
 
     def remove_command(self, keyword: str):
-        for i, cls_command in enumerate(self._commands):
+        for i, cls_command in enumerate(self.commands):
             if keyword in cls_command:
-                self._commands.pop(i)
+                self.commands.pop(i)
                 return
 
     def command(self,
@@ -94,16 +95,13 @@ class Dispatcher(ABCDispatcher):
                               rule=rule,
                               args_hook=args_hook)
             if state:
-                self._states[state] = command
-            self._commands.append(command)
+                self.states[state] = command
+            self.commands.append(command)
             return command
         return decorator
 
     def run(self):
-        self.loop.set_dispatcher(self)
-        self.loop.load_states(self._states)
-        self.loop.load_error_states(self._on_error_states)
-        self.loop.load_commands(self._commands)
+        self.loop.load_dispatcher(self)
         try:
             self.loop.loop()
         except (KeyboardInterrupt, EOFError):
