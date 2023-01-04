@@ -1,17 +1,17 @@
 from __future__ import annotations
+
+import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Dict, Callable, Optional, List, Union, Any
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
 from prompt_toolkit import PromptSession
-from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit import print_formatted_text as print
-
 from prompt_toolkit.auto_suggest import AutoSuggest
 from prompt_toolkit.clipboard import Clipboard
-from prompt_toolkit.completion import Completer
+from prompt_toolkit.completion import Completer, WordCompleter
 from prompt_toolkit.cursor_shapes import AnyCursorShapeConfig
 from prompt_toolkit.filters import FilterOrBool
-from prompt_toolkit.formatted_text import AnyFormattedText
+from prompt_toolkit.formatted_text import AnyFormattedText, FormattedText
 from prompt_toolkit.history import History
 from prompt_toolkit.key_binding import KeyBindingsBase
 from prompt_toolkit.layout.processors import Processor
@@ -23,9 +23,9 @@ from prompt_toolkit.styles import BaseStyle, StyleTransformation
 from prompt_toolkit.validation import Validator
 
 if TYPE_CHECKING:
-    from anicli.core.states import BaseState
     from anicli.core.command import Command
     from anicli.core.dispatcher import Dispatcher
+    from anicli.core.states import BaseState
 
 
 class ABCPromptLoop(ABC):
@@ -35,44 +35,46 @@ class ABCPromptLoop(ABC):
 
 
 class PromptLoop(ABCPromptLoop):
-    def __init__(self,
-                 message: AnyFormattedText = "> ",
-                 description: AnyFormattedText = "Press <tab> or type help for get commands",
-                 *,
-                 is_password: FilterOrBool = False,
-                 complete_while_typing: FilterOrBool = True,
-                 validate_while_typing: FilterOrBool = True,
-                 enable_history_search: FilterOrBool = False,
-                 search_ignore_case: FilterOrBool = False,
-                 lexer: Optional[Lexer] = None,
-                 enable_system_prompt: FilterOrBool = False,
-                 enable_suspend: FilterOrBool = False,
-                 enable_open_in_editor: FilterOrBool = False,
-                 validator: Optional[Validator] = None,
-                 completer: Optional[Completer] = None,
-                 complete_in_thread: bool = False,
-                 reserve_space_for_menu: int = 8,
-                 complete_style: CompleteStyle = CompleteStyle.COLUMN,
-                 auto_suggest: Optional[AutoSuggest] = None,
-                 style: Optional[BaseStyle] = None,
-                 style_transformation: Optional[StyleTransformation] = None,
-                 swap_light_and_dark_colors: FilterOrBool = False,
-                 color_depth: Optional[ColorDepth] = None,
-                 cursor: AnyCursorShapeConfig = None,
-                 include_default_pygments_style: FilterOrBool = True,
-                 history: Optional[History] = None,
-                 clipboard: Optional[Clipboard] = None,
-                 prompt_continuation: Optional[PromptContinuationText] = None,
-                 rprompt: AnyFormattedText = None,
-                 bottom_toolbar: AnyFormattedText = None,
-                 mouse_support: FilterOrBool = False,
-                 input_processors: Optional[List[Processor]] = None,
-                 placeholder: Optional[AnyFormattedText] = None,
-                 key_bindings: Optional[KeyBindingsBase] = None,
-                 erase_when_done: bool = False,
-                 tempfile_suffix: Optional[Union[str, Callable[[], str]]] = ".txt",
-                 tempfile: Optional[Union[str, Callable[[], str]]] = None,
-                 refresh_interval: float = 0,):
+    def __init__(
+        self,
+        message: AnyFormattedText = "> ",
+        description: AnyFormattedText = "Press <tab> or type help for get commands",
+        *,
+        is_password: FilterOrBool = False,
+        complete_while_typing: FilterOrBool = True,
+        validate_while_typing: FilterOrBool = True,
+        enable_history_search: FilterOrBool = False,
+        search_ignore_case: FilterOrBool = False,
+        lexer: Optional[Lexer] = None,
+        enable_system_prompt: FilterOrBool = False,
+        enable_suspend: FilterOrBool = False,
+        enable_open_in_editor: FilterOrBool = False,
+        validator: Optional[Validator] = None,
+        completer: Optional[Completer] = None,
+        complete_in_thread: bool = False,
+        reserve_space_for_menu: int = 8,
+        complete_style: CompleteStyle = CompleteStyle.COLUMN,
+        auto_suggest: Optional[AutoSuggest] = None,
+        style: Optional[BaseStyle] = None,
+        style_transformation: Optional[StyleTransformation] = None,
+        swap_light_and_dark_colors: FilterOrBool = False,
+        color_depth: Optional[ColorDepth] = None,
+        cursor: AnyCursorShapeConfig = None,
+        include_default_pygments_style: FilterOrBool = True,
+        history: Optional[History] = None,
+        clipboard: Optional[Clipboard] = None,
+        prompt_continuation: Optional[PromptContinuationText] = None,
+        rprompt: AnyFormattedText = None,
+        bottom_toolbar: AnyFormattedText = None,
+        mouse_support: FilterOrBool = False,
+        input_processors: Optional[List[Processor]] = None,
+        placeholder: Optional[AnyFormattedText] = None,
+        key_bindings: Optional[KeyBindingsBase] = None,
+        erase_when_done: bool = False,
+        tempfile_suffix: Optional[Union[str, Callable[[], str]]] = ".txt",
+        tempfile: Optional[Union[str, Callable[[], str]]] = None,
+        refresh_interval: float = 0,
+    ):
 
         self.session: PromptSession = PromptSession(
             message=message,
@@ -109,13 +111,24 @@ class PromptLoop(ABCPromptLoop):
             erase_when_done=erase_when_done,
             tempfile_suffix=tempfile_suffix,
             tempfile=tempfile,
-            refresh_interval=refresh_interval
+            refresh_interval=refresh_interval,
         )
         self.description = description
         self._commands: list[Command] = []
         self._states: Dict[BaseState, Callable[..., None]] = {}
         self._on_error_states: Dict[BaseState, Callable[[BaseException], None]] = {}
         self.dispatcher: Optional[Dispatcher] = None
+        self._on_not_found_command: AnyFormattedText = FormattedText(
+            [("ansired", "ERROR!"), ("", " Command not found.")]
+        )
+
+    @property
+    def msg_not_found_command(self):
+        return self._on_not_found_command
+
+    @msg_not_found_command.setter
+    def msg_not_found_command(self, msg: AnyFormattedText):
+        self._on_not_found_command = msg
 
     @property
     def commands(self):
@@ -127,34 +140,48 @@ class PromptLoop(ABCPromptLoop):
         self._load_states(self.dispatcher.states)
         self._load_error_states(self.dispatcher.on_error_states)
 
-    def command_handler(self, keyword: str, *args: str):
+    @staticmethod
+    def _handle_command(cls_command: Command, *args: str):
+        try:
+            cls_command(*args)
+        except BaseException as e:
+            cls_command.error_handler(e)
+        return
+
+    def _handler_commands(self, keyword: str, *args: str):
         for cls_command in self._commands:
             if keyword in cls_command:
-                try:
-                    cls_command(*args)
-                except BaseException as e:
-                    cls_command.error_handler(e)
+                self._handle_command(cls_command, *args)
                 return
-        print(f"command `{keyword}` not found")
+        print(self.msg_not_found_command)
 
-    def state_handler(self):
+    def _handle_state(self, func: Callable):
+        try:
+            if params := self.dispatcher.state_dispenser.storage_params.get(
+                self.dispatcher.state_dispenser.state
+            ):
+                func(*params)
+            else:
+                func()
+        except BaseException as e:
+            if err_func := self._on_error_states.get(
+                self.dispatcher.state_dispenser.state
+            ):
+                err_func(e)
+            else:
+                raise e
+
+    def _handler_states(self):
         while self.dispatcher.state_dispenser.state:
             if func := self._states.get(self.dispatcher.state_dispenser.state):
-                try:
-                    if params := self.dispatcher.state_dispenser.storage_params.get(self.dispatcher.state_dispenser.state):
-                        func(*params)
-                    else:
-                        func()
-                except BaseException as e:
-                    if err_func := self._on_error_states.get(self.dispatcher.state_dispenser.state):
-                        err_func(e)
-                    else:
-                        raise e
+                self._handle_state(func)
 
     def _load_commands(self, commands: list[Command]):
         for c in commands:
             if c not in self._commands:
                 self._commands.append(c)
+            else:
+                warnings.warn(f"Command `{c}` has already added", stacklevel=2)
         self.update_word_completer()
 
     def _load_states(self, states: Dict[BaseState, Callable]):
@@ -172,7 +199,8 @@ class PromptLoop(ABCPromptLoop):
                     meta_dict[word] = cls_command.meta_completer
 
         self.session.completer = WordCompleter(
-            words=words, meta_dict=meta_dict, sentence=True, ignore_case=True)
+            words=words, meta_dict=meta_dict, sentence=True, ignore_case=True
+        )
 
     @staticmethod
     def _parse_commands(text: str) -> tuple[str, tuple[str, ...]]:
@@ -182,9 +210,9 @@ class PromptLoop(ABCPromptLoop):
     def loop(self):
         print(self.description)
         while True:
-            self.state_handler()
+            self._handler_states()
             text = self.session.prompt()
             if not text:
                 continue
             comma, args = self._parse_commands(text)
-            self.command_handler(comma, *args)
+            self._handler_commands(comma, *args)

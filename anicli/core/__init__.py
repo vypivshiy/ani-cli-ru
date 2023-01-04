@@ -1,6 +1,5 @@
-from typing import Optional, Union, List, Callable
+from typing import Callable, List, Optional, Union
 
-from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.auto_suggest import AutoSuggest
 from prompt_toolkit.clipboard import Clipboard
 from prompt_toolkit.completion import Completer
@@ -12,56 +11,58 @@ from prompt_toolkit.key_binding import KeyBindingsBase
 from prompt_toolkit.layout.processors import Processor
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.output import ColorDepth
+from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.shortcuts.prompt import PromptContinuationText
 from prompt_toolkit.styles import BaseStyle, StyleTransformation
 from prompt_toolkit.validation import Validator
 
-from anicli.core.states import BaseState, StateDispenser
+from anicli.core.dispatcher import Command, Dispatcher
 from anicli.core.prompt_loop import PromptLoop
-from anicli.core.dispatcher import Dispatcher, Command
+from anicli.core.states import BaseState, StateDispenser
 
 
 class CliApp(PromptLoop):
-    def __init__(self,
-                 message: AnyFormattedText = "> ",
-                 description: AnyFormattedText = "Press <tab> or type help for get commands. "
-                                                 "Press <CTRL+C> or <CTRL+D> to exit",
-                 *,
-                 is_password: FilterOrBool = False,
-                 complete_while_typing: FilterOrBool = True,
-                 validate_while_typing: FilterOrBool = True,
-                 enable_history_search: FilterOrBool = False,
-                 search_ignore_case: FilterOrBool = False,
-                 lexer: Optional[Lexer] = None,
-                 enable_system_prompt: FilterOrBool = False,
-                 enable_suspend: FilterOrBool = False,
-                 enable_open_in_editor: FilterOrBool = False,
-                 validator: Optional[Validator] = None,
-                 completer: Optional[Completer] = None,
-                 complete_in_thread: bool = False,
-                 reserve_space_for_menu: int = 8,
-                 complete_style: CompleteStyle = CompleteStyle.MULTI_COLUMN,
-                 auto_suggest: Optional[AutoSuggest] = None,
-                 style: Optional[BaseStyle] = None,
-                 style_transformation: Optional[StyleTransformation] = None,
-                 swap_light_and_dark_colors: FilterOrBool = False,
-                 color_depth: Optional[ColorDepth] = None,
-                 cursor: AnyCursorShapeConfig = None,
-                 include_default_pygments_style: FilterOrBool = True,
-                 history: Optional[History] = None,
-                 clipboard: Optional[Clipboard] = None,
-                 prompt_continuation: Optional[PromptContinuationText] = None,
-                 rprompt: AnyFormattedText = None,
-                 bottom_toolbar: AnyFormattedText = None,
-                 mouse_support: FilterOrBool = False,
-                 input_processors: Optional[List[Processor]] = None,
-                 placeholder: Optional[AnyFormattedText] = None,
-                 key_bindings: Optional[KeyBindingsBase] = None,
-                 erase_when_done: bool = False,
-                 tempfile_suffix: Optional[Union[str, Callable[[], str]]] = ".txt",
-                 tempfile: Optional[Union[str, Callable[[], str]]] = None,
-                 refresh_interval: float = 0,
-                 ):
+    def __init__(
+        self,
+        message: AnyFormattedText = "> ",
+        description: AnyFormattedText = "Press <tab> or type help for get commands. "
+        "Press <CTRL+C> or <CTRL+D> to exit",
+        *,
+        is_password: FilterOrBool = False,
+        complete_while_typing: FilterOrBool = True,
+        validate_while_typing: FilterOrBool = True,
+        enable_history_search: FilterOrBool = False,
+        search_ignore_case: FilterOrBool = False,
+        lexer: Optional[Lexer] = None,
+        enable_system_prompt: FilterOrBool = False,
+        enable_suspend: FilterOrBool = False,
+        enable_open_in_editor: FilterOrBool = False,
+        validator: Optional[Validator] = None,
+        completer: Optional[Completer] = None,
+        complete_in_thread: bool = False,
+        reserve_space_for_menu: int = 8,
+        complete_style: CompleteStyle = CompleteStyle.MULTI_COLUMN,
+        auto_suggest: Optional[AutoSuggest] = None,
+        style: Optional[BaseStyle] = None,
+        style_transformation: Optional[StyleTransformation] = None,
+        swap_light_and_dark_colors: FilterOrBool = False,
+        color_depth: Optional[ColorDepth] = None,
+        cursor: AnyCursorShapeConfig = None,
+        include_default_pygments_style: FilterOrBool = True,
+        history: Optional[History] = None,
+        clipboard: Optional[Clipboard] = None,
+        prompt_continuation: Optional[PromptContinuationText] = None,
+        rprompt: AnyFormattedText = None,
+        bottom_toolbar: AnyFormattedText = None,
+        mouse_support: FilterOrBool = False,
+        input_processors: Optional[List[Processor]] = None,
+        placeholder: Optional[AnyFormattedText] = None,
+        key_bindings: Optional[KeyBindingsBase] = None,
+        erase_when_done: bool = False,
+        tempfile_suffix: Optional[Union[str, Callable[[], str]]] = ".txt",
+        tempfile: Optional[Union[str, Callable[[], str]]] = None,
+        refresh_interval: float = 0,
+    ):
         super().__init__(
             message=message,
             description=description,
@@ -98,24 +99,31 @@ class CliApp(PromptLoop):
             erase_when_done=erase_when_done,
             tempfile_suffix=tempfile_suffix,
             tempfile=tempfile,
-            refresh_interval=refresh_interval
+            refresh_interval=refresh_interval,
         )
-        self._load_commands([
-            Command(keywords=["help", "?"],
+        self._load_commands(
+            [
+                Command(
+                    keywords=["help", "?"],
                     meta="show help command. if not passed arg - print all",
                     loop=self,
-                    func=self._help
-                    )
-        ])
+                    func=self._help,
+                )
+            ]
+        )
 
-    def _help(self, command: Optional[str]=None):
+    def _help(self, command: Optional[str] = None):
         if command:
             for cls_command in self.commands:
                 if command in cls_command:
                     print(cls_command.help)
                     return
 
-            print("command", f"`{command}`", "not found.\nusage `help` or press <tab> for get list available commands")
+            print(
+                "command",
+                f"`{command}`",
+                "not found.\nusage `help` or press <tab> for get list available commands",
+            )
         else:
             for cls_command in self.commands:
                 print(cls_command.help)

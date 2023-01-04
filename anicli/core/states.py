@@ -1,6 +1,7 @@
 from __future__ import annotations
+
 from enum import Enum
-from typing import Any, Dict, Optional, Tuple, Hashable, Sequence, TypeVar, Callable
+from typing import Any, Callable, Dict, Hashable, Optional, Sequence, Tuple, TypeVar
 
 T = TypeVar("T")
 
@@ -50,15 +51,19 @@ class StorageParams(BaseStorage):
 
 
 class StateDispenser:
+    """Standard FSM class"""
+
     def __init__(self):
         self.state: Optional[BaseState] = None
         self.storage = Storage()
         self.storage_params = StorageParams()
 
     def set(self, state: BaseState):
+        """Set state"""
         self.state = state
 
     def finish(self):
+        """finish state and clear all storage data"""
         self.storage.clear()
         self.storage_params.clear()
         self.state = None
@@ -76,18 +81,19 @@ class StateDispenser:
         return key
 
     def cache_object(self, key: Any, obj: Any):
+        """Cache object to FSM storage"""
         key = self._create_hash_key(key)
         if self.storage.get(key):
-            return True
+            return
         self.storage[key] = obj
-        return False
 
-    def get_cache(self, key: Any):
+    def _get_cache(self, key: Any):
         key = self._create_hash_key(key)
         return self.storage.get(key)
 
-    def from_cache(self, key: T, function: Callable[[], T]) -> T:
-        if not (results := self.get_cache(key)):
+    def get_from_cache(self, key: T, function: Callable[[], T]) -> T:
+        """get values from cache. if not get, cache objects and return values"""
+        if not (results := self._get_cache(key)):
             results = function()
             self.cache_object(key, results)
         return results
@@ -97,6 +103,9 @@ class StateDispenser:
 
     def get(self, key):
         return self.storage.get(key)
+
+    def __repr__(self):
+        return f"State={self.state} which {self.storage}"
 
     def __getitem__(self, item):
         return self.storage[item]

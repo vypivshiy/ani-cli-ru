@@ -1,14 +1,26 @@
 from __future__ import annotations
-import re
-from dataclasses import dataclass, field
+
 import inspect
-from typing import Callable, TYPE_CHECKING, Optional, Any, get_type_hints, List, Type, get_args, TypeVar
+import re
+from dataclasses import dataclass
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    get_args,
+    get_type_hints,
+)
 
 if TYPE_CHECKING:
-    from anicli.core.states import BaseState
     from anicli.core.prompt_loop import PromptLoop
+    from anicli.core.states import BaseState
 
 T = TypeVar("T")
+
 
 @dataclass
 class BaseCommand:
@@ -24,7 +36,9 @@ class BaseCommand:
     def __post_init__(self):
         if not self.meta:
             self.meta = self.func.__doc__ or ""
-        self.error_handler: Callable[[BaseException], None] = self._default_error_handler
+        self.error_handler: Callable[
+            [BaseException], None
+        ] = self._default_error_handler
 
     def _default_error_handler(self, ex: BaseException):
         raise ex
@@ -35,7 +49,11 @@ class BaseCommand:
 
     @property
     def signature(self) -> List[str]:
-        return [p for p in inspect.signature(self.func).parameters.keys() if not p.startswith("_")]
+        return [
+            p
+            for p in inspect.signature(self.func).parameters.keys()
+            if not p.startswith("_")
+        ]
 
     def __contains__(self, item):
         return item in self.keywords
@@ -46,7 +64,7 @@ class BaseCommand:
     def __eq__(self, other):
         if isinstance(other, BaseCommand):
             return hash(other) == hash(self)
-        raise TypeError(f"{other.__name__} should be 'Command', not {type(other).__name__}")
+        raise TypeError(f"{other.__name__} should be 'Command', not {type(other)}")
 
     def _typing_args(self, *args):
         t_hints, signature = self.types, self.signature
@@ -62,7 +80,10 @@ class BaseCommand:
 
         elif len(t_hints) == len(signature):
             typed_args = []
-            for arg, type_, in zip(args, t_hints):
+            for (
+                arg,
+                type_,
+            ) in zip(args, t_hints):
                 if len(get_args(type_)) > 1:
                     type_ = get_args(type_)[0]
                 arg = type_(arg)
@@ -82,7 +103,9 @@ class BaseCommand:
                 return
             self.func(*typed_args)
         except TypeError as e:
-            if missed_args := [a.replace("'_", "'") for a in re.findall(r"'\w+'", e.args[0])]:
+            if missed_args := [
+                a.replace("'_", "'") for a in re.findall(r"'\w+'", e.args[0])
+            ]:
                 print(f"Missing {len(missed_args)} arguments: {', '.join(missed_args)}")
             else:
                 print("Command does not take arguments")
@@ -92,22 +115,29 @@ class BaseCommand:
         def decorator(function: Callable):
             self.error_handler = function
             return function
+
         return decorator
 
 
 class Command(BaseCommand):
     @staticmethod
     def _is_valid_help_argument(param: str) -> bool:
-        return not param.startswith("_") and not param.endswith("_") and ".base." not in param
+        return (
+            not param.startswith("_")
+            and not param.endswith("_")
+            and ".base." not in param
+        )
 
     def _get_params_from_function(self) -> list[str]:
-        return [str(param).split("=")[0].strip()
-                for param in inspect.signature(self.func).parameters.values()
-                if self._is_valid_help_argument(str(param))]
+        return [
+            str(param).split("=")[0].strip()
+            for param in inspect.signature(self.func).parameters.values()
+            if self._is_valid_help_argument(str(param))
+        ]
 
     @property
     def meta_completer(self):
-        if str_params:=self._get_params_from_function():
+        if str_params := self._get_params_from_function():
             return f"{', '.join(self.keywords)} - {self.meta}; Params: {', '.join(str_params)}"
         return f"{', '.join(self.keywords)} - {self.meta}"
 
@@ -115,13 +145,13 @@ class Command(BaseCommand):
     def help(self) -> str:
         msg = f"{', '.join(self.keywords)} - {self.meta}"
         if str_params := self._get_params_from_function():
-            msg+="\nParams:\n\t"
+            msg += "\nParams:\n\t"
             for name_a_param in str_params:
                 if len((args := name_a_param.split(":"))) == 2:
-                    msg+= f"{args[0]}: [{args[1].strip()}]\n\t"
+                    msg += f"{args[0]}: [{args[1].strip()}]\n\t"
                 else:
-                    msg+= f"[{args[0]}]\n\t"
+                    msg += f"[{args[0]}]\n\t"
             return msg
-        msg+="\n"
-            # return f'{", ".join(self.keywords)}; params: {", ".join([p.split(":") for p in str_params])} - {self.meta}'
+        msg += "\n"
+        # return f'{", ".join(self.keywords)}; params: {", ".join([p.split(":") for p in str_params])} - {self.meta}'
         return msg

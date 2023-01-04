@@ -12,27 +12,27 @@ class State(BaseState):
     HOBBIES = 4
 
 
-@dp.command("fsm-example")
+@dp.on_command("fsm-example")
 def start_fsm():
     """mini FSM questionnaire example"""
     print("ENTER TO FSM STATE EXAMPLE")
     dp.state_dispenser.set(State.FIRST_NAME)
 
 
-@dp.state_handler(State.FIRST_NAME)
+@dp.on_state_handler(State.FIRST_NAME)
 def state_1():
     first_name = prompt("Enter your first name > ")
     dp.state_dispenser.update({"first_name": first_name})
     dp.state_dispenser.set(State.LAST_NAME)
 
-@dp.state_handler(State.LAST_NAME)
+@dp.on_state_handler(State.LAST_NAME)
 def state_2():
     last_name = prompt("Enter your last name > ")
     dp.state_dispenser.update({"last_name": last_name})
     dp.state_dispenser.set(State.AGE)
 
 
-@dp.state_handler(State.AGE)
+@dp.on_state_handler(State.AGE)
 def state_3():
     age = prompt("Enter your age > ", validator=Validator.from_callable(lambda s: s.isdigit(),
                                                                         error_message="Is not positive integer"))
@@ -40,7 +40,7 @@ def state_3():
     dp.state_dispenser.set(State.HOBBIES)
 
 
-@dp.state_handler(State.HOBBIES)
+@dp.on_state_handler(State.HOBBIES)
 def state_4():
     hobbies = prompt("Enter your hobbies > ")
     dp.state_dispenser.update({"hobbies": hobbies})

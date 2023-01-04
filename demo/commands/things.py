@@ -10,14 +10,14 @@ from demo.config import dp
 #    print("not set")
 
 
-@dp.command(["text-upper"], "print input text to upper case",
-             # join all arguments to one
-             args_hook=lambda *args: (" ".join(args),))
+@dp.on_command(["text-upper"], "print input text to upper case",
+               # join all arguments to one
+               args_hook=lambda *args: (" ".join(args),))
 def upper(text: str):
     print(text.upper())
 
 
-@dp.command("about")
+@dp.on_command("about")
 def about():
     """render prompt_toolkit.shortcuts.dialogs.message_dialog"""
     message_dialog(title="anicli.core DEMO",
@@ -36,9 +36,9 @@ def message_dialog_rule(*text: str):
     print("Example: title test|okay good nice|lorem upsum dolor volor molor")
 
 
-@dp.command("message-dialog",
-            rule=message_dialog_rule,
-            args_hook=message_dialog_hook)
+@dp.on_command("message-dialog",
+               rule=message_dialog_rule,
+               args_hook=message_dialog_hook)
 def message(title: str, ok_text: str, text: str):
     """construct and render message dialog. split with `|` symbol"""
     # title test123|a b c|any_text

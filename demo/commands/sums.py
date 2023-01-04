@@ -4,7 +4,7 @@ from prompt_toolkit import PromptSession
 from demo.config import dp
 
 
-@dp.command(["add", "sum"])
+@dp.on_command(["add", "sum"])
 def sum_(*digits: int):
     """output sum arguments"""
     print(" + ".join([str(d) for d in digits]), "=", sum(digits))
@@ -17,7 +17,7 @@ def sum_error(error: Exception, *args):
         return
 
 
-@dp.command("sum-interactive", meta="interactive sum")
+@dp.on_command("sum-interactive", meta="interactive sum")
 def sum_interactive():
     print("Press ctrl+c or ctrl+d for exit")
     result = 0

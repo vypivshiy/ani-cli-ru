@@ -3,7 +3,7 @@ import subprocess
 from demo.config import dp
 
 # for add description in completer usage `meta` parameter or pass in docstrings
-@dp.command(["echo", "duplicate"], meta="print all passed arguments")
+@dp.on_command(["echo", "duplicate"], meta="print all passed arguments")
 def echo(*args):
     print(args)
 
@@ -19,13 +19,13 @@ def ping_rule(count: str, _command: str):
 
 
 # may not be typed.
-@dp.command("ping", rule=ping_rule)
+@dp.on_command("ping", rule=ping_rule)
 def ping(count, domain):
     """DOCSTRING send PING packets"""
     subprocess.run(["ping", f"-c {count}", domain])
 
 
-@dp.command("bash")
+@dp.on_command("bash")
 def bash():
     """open bash shell"""
     subprocess.run("bash")
