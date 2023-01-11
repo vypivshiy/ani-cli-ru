@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Callable, Dict, Hashable, Optional, Sequence, Tuple, TypeVar
+from typing import Any, Dict, Hashable, Optional, Sequence, Tuple, TypeVar
 
 T = TypeVar("T")
 
@@ -50,13 +50,48 @@ class StorageParams(BaseStorage):
         self._data: Dict[BaseState, Tuple]
 
 
+class MemoryCacheStorage(BaseStorage):
+    @staticmethod
+    def _create_hash_key(obj: T) -> int:
+        if isinstance(obj, Hashable):
+            key = hash(obj)
+        elif isinstance(obj, dict):
+            key = hash(obj.keys())
+        elif isinstance(obj, Sequence):
+            key = hash(tuple(obj))
+        else:
+            raise TypeError(f"`{obj}` `{type(obj)}` failed create hash key")
+        return key
+
+    def __setitem__(self, key: Any, value: Any):
+        """Cache object in FSM storage without return"""
+        key = self._create_hash_key(key)
+        self._data[key] = value
+
+    def __getitem__(self, item):
+        item = self._create_hash_key(item)
+        return self._data[item]
+
+    def get(self, key) -> T:
+        """get value from cache."""
+        key = self._create_hash_key(key)
+        return self._data.get(key, None)
+
+
 class StateDispenser:
     """Standard FSM class"""
+    _instance = None
+
+    def __new__(cls):
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     def __init__(self):
         self.state: Optional[BaseState] = None
         self.storage = Storage()
         self.storage_params = StorageParams()
+        self.cache = MemoryCacheStorage()
 
     def set(self, state: BaseState):
         """Set state"""
@@ -66,37 +101,8 @@ class StateDispenser:
         """finish state and clear all storage data"""
         self.storage.clear()
         self.storage_params.clear()
+        self.cache.clear()
         self.state = None
-
-    @staticmethod
-    def _create_hash_key(obj: Any) -> int:
-        if isinstance(obj, Hashable):
-            key = hash(obj)
-        elif isinstance(obj, dict):
-            key = hash(obj.keys())
-        elif isinstance(obj, Sequence):
-            key = hash(tuple(obj))
-        else:
-            raise TypeError(f"`{obj}` failed create hash key")
-        return key
-
-    def cache_object(self, key: Any, obj: Any):
-        """Cache object to FSM storage"""
-        key = self._create_hash_key(key)
-        if self.storage.get(key):
-            return
-        self.storage[key] = obj
-
-    def _get_cache(self, key: Any):
-        key = self._create_hash_key(key)
-        return self.storage.get(key)
-
-    def get_from_cache(self, key: T, function: Callable[[], T]) -> T:
-        """get values from cache. if not get, cache objects and return values"""
-        if not (results := self._get_cache(key)):
-            results = function()
-            self.cache_object(key, results)
-        return results
 
     def update(self, data: Dict):
         self.storage.update(data)
@@ -105,7 +111,7 @@ class StateDispenser:
         return self.storage.get(key)
 
     def __repr__(self):
-        return f"State={self.state} which {self.storage}"
+        return f"State={self.state} Cache={self.cache} Storage={self.storage} StorageParams={self.storage_params}"
 
     def __getitem__(self, item):
         return self.storage[item]
