@@ -31,7 +31,6 @@ class BaseCommand:
     rule: Optional[Callable[..., bool]] = None
     args_hook: Optional[Callable[[tuple[str, ...]], tuple[Any, ...]]] = None
     state: Optional[BaseState] = None
-    add_completer: bool = True
 
     def __post_init__(self):
         if not self.meta:
