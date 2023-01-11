@@ -11,8 +11,8 @@ from anicli.commands.buildin import (
     OPTIONAL_COMMANDS,
 )
 
-from anicli.commands.options import EXTRACTOR, animego, mpv_attrs
-from anicli.commands.tools import CONCATENATE_ARGS, print_enumerate
+from anicli.commands.options import mpv_attrs
+from anicli.commands.tools import CONCATENATE_ARGS, print_enumerate, SingletonStorage
 from anicli.commands.validators import (
     enumerate_completer,
     number_slice_validator,
@@ -48,7 +48,7 @@ def info_pager():
 def slice_play():
     """Play all slice of episodes"""
     video_, source_ = None, None
-    episodes: list[animego.Episode] = dp.state_dispenser["episodes"]
+    episodes: list = dp.state_dispenser["episodes"]
     for episode in episodes:
         videos = episode.get_videos()
         # choose video dub
@@ -94,7 +94,7 @@ def slice_play():
 
 @dp.on_state_handler(SearchStates.PLAY, on_error=ON_ERROR_STATE)
 def play():
-    video: animego.Video = dp.state_dispenser["video"]
+    video = dp.state_dispenser["video"]
     if not(sources := dp.state_dispenser.cache.get(video)):
         dp.state_dispenser.cache[video] = video.get_source()
         sources = dp.state_dispenser.cache[video]
@@ -115,7 +115,7 @@ def play():
 
 @dp.on_state_handler(SearchStates.VIDEO, on_error=ON_ERROR_STATE)
 def search_video():
-    episode: animego.Episode = dp.state_dispenser["episode"]
+    episode = dp.state_dispenser["episode"]
     if not (videos := dp.state_dispenser.cache.get(episode)):
         dp.state_dispenser.cache[episode] = episode.get_videos()
         videos = dp.state_dispenser.cache[episode]
@@ -136,7 +136,7 @@ def search_video():
 @dp.on_state_handler(SearchStates.EPISODE, on_error=ON_ERROR_STATE)
 def search_episodes():
     # get calculate result from state_dispenser.storage
-    result: animego.SearchResult = dp.state_dispenser["search"]
+    result = dp.state_dispenser["search"]
 
     # get anime, episodes and cache to state_dispenser.cache storage
     if not (anime := dp.state_dispenser.cache.get(result)):
@@ -186,7 +186,7 @@ def search(query: str):
 
     # search for titles, caching in memory to increase the speed (no need to send http request again!)
     if not (results := dp.state_dispenser.cache.get(query)):
-        results = EXTRACTOR.search(query)
+        results = SingletonStorage().extractor.search(query)
         dp.state_dispenser.cache[query] = results
 
     if len(results) == 0:

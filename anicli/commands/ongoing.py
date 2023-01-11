@@ -10,8 +10,8 @@ from anicli.commands.buildin import (
     ON_STATE_PAGER,
     OPTIONAL_COMMANDS,
 )
-from anicli.commands.options import EXTRACTOR, animego, mpv_attrs
-from anicli.commands.tools import print_enumerate
+from anicli.commands.options import mpv_attrs
+from anicli.commands.tools import print_enumerate, SingletonStorage
 from anicli.commands.validators import (
     enumerate_completer,
     number_slice_validator,
@@ -43,7 +43,7 @@ def info_pager():
 @dp.on_state_handler(OngoingStates.SLICE_PLAY, on_error=ON_ERROR_STATE)
 def slice_play():
     video_, source_ = None, None
-    episodes: list[animego.Episode] = dp.state_dispenser["episodes"]
+    episodes: list = dp.state_dispenser["episodes"]
     for episode in episodes:
         videos = episode.get_videos()
         if not video_:
@@ -94,7 +94,7 @@ def slice_play():
 
 @dp.on_state_handler(OngoingStates.PLAY, on_error=ON_ERROR_STATE)
 def play():
-    video: animego.Video = dp.state_dispenser["video"]
+    video = dp.state_dispenser["video"]
     if not (sources := dp.state_dispenser.cache.get(video)):
         dp.state_dispenser.cache[video] = video.get_source()
         sources = dp.state_dispenser.cache[video]
@@ -117,7 +117,7 @@ def play():
 
 @dp.on_state_handler(OngoingStates.VIDEO, on_error=ON_ERROR_STATE)
 def ongoing_video():
-    episode: animego.Episode = dp.state_dispenser["episode"]
+    episode = dp.state_dispenser["episode"]
     if not (videos := dp.state_dispenser.cache.get(episode)):
         dp.state_dispenser.cache[episode] = episode.get_videos()
         videos = dp.state_dispenser.cache[episode]
@@ -140,7 +140,7 @@ def ongoing_video():
 
 @dp.on_state_handler(OngoingStates.EPISODE, on_error=ON_ERROR_STATE)
 def ongoing_episodes():
-    ongoing: animego.Ongoing = dp.state_dispenser["result"]
+    ongoing = dp.state_dispenser["result"]
 
     if not (anime := dp.state_dispenser.cache.get(ongoing)):
         dp.state_dispenser.cache[ongoing] = ongoing.get_anime()
@@ -188,7 +188,7 @@ def ongoing():
     """search last published titles"""
     # cache ongoings result
     if not (ongoings := dp.state_dispenser.cache.get("ongoings")):
-        dp.state_dispenser.cache["ongoings"] = EXTRACTOR.ongoing()
+        dp.state_dispenser.cache["ongoings"] = SingletonStorage().extractor.ongoing()
         ongoings = dp.state_dispenser.cache["ongoings"]
 
     if len(ongoings) == 0:

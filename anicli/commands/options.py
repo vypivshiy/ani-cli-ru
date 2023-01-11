@@ -1,11 +1,15 @@
 from typing import List
 
 from anicli_api.base_decoder import MetaVideo
-from anicli_api.extractors import animego
+from anicli_api.loader import ExtractorLoader
 
-EXTRACTOR = animego.Extractor()
+def get_extractor(module):
+    return module.Extractor()
+
+
 PLAYER = "mpv"
 EXTRA_ATTRS: List[str] = []
+EXTRACTOR = NotImplemented
 
 
 def mpv_attrs(video: MetaVideo) -> List[str]:

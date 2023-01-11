@@ -12,3 +12,12 @@ def print_enumerate(things: List[Any]) -> None:
             [("", "["), ("ansigreen", f"{i}"), ("", "] "), ("ansiyellow", str(thing))]
         )
         print_f(text)
+
+
+class SingletonStorage:
+    _instance = None
+    extractor = NotImplemented
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+        return cls._instance
