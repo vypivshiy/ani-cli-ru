@@ -28,14 +28,15 @@ class ABCDispatcher(ABC):
 
 class Dispatcher(ABCDispatcher):
     def __init__(
-        self, loop: PromptLoop, on_close: Callable[[], None] = lambda: print("Goodbye!")
+        self,
+        loop: PromptLoop,
+        on_close: Callable[[], None] = lambda: print("Goodbye!")
     ):
         self.commands: list[Command] = []
         self.loop = loop
         self.state_dispenser = StateDispenser()
         self.states: Dict[BaseState, Callable] = {}
-        self.on_error_states: Dict[BaseState, Callable[[BaseException], None]] = {}
-        self.states_binds: Dict[BaseState, BaseState] = {}
+        self.states_errors: Dict[BaseState, Callable[[BaseException], None]] = {}
         self._on_close = on_close
 
     def _has_keywords(self, keywords: list[str]) -> bool:
@@ -49,8 +50,8 @@ class Dispatcher(ABCDispatcher):
             if not self.states.get(state):
                 self.states[state] = func
 
-            if on_error and not self.on_error_states.get(state):
-                self.on_error_states[state] = on_error
+            if on_error and not self.states_errors.get(state):
+                self.states_errors[state] = on_error
             return func
 
         return decorator
@@ -73,7 +74,7 @@ class Dispatcher(ABCDispatcher):
         keywords = [keywords] if isinstance(keywords, str) else keywords
 
         if self._has_keywords(keywords):
-            raise AttributeError(f"command `{keywords}` has already registered")
+            raise AttributeError(f"command with `{keywords}` has already registered")
 
         def decorator(func) -> Command:
             command = Command(
