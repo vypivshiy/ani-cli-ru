@@ -38,7 +38,7 @@ class PromptLoop(ABCPromptLoop):
     def __init__(
         self,
         message: AnyFormattedText = "> ",
-        description: AnyFormattedText = "Press <tab> or type help for get commands",
+        description: AnyFormattedText = "Press <tab> or type help for get commands\nPress <CTRL+C> <CTRL+D> for exit",
         *,
         is_password: FilterOrBool = False,
         complete_while_typing: FilterOrBool = True,
@@ -118,17 +118,17 @@ class PromptLoop(ABCPromptLoop):
         self._states: Dict[BaseState, Callable[..., None]] = {}
         self._on_error_states: Dict[BaseState, Callable[[BaseException], None]] = {}
         self.dispatcher: Optional[Dispatcher] = None
-        self._on_not_found_command: AnyFormattedText = FormattedText(
+        self._msg_not_found_command: AnyFormattedText = FormattedText(
             [("ansired", "ERROR!"), ("", " Command not found.")]
         )
 
     @property
     def msg_not_found_command(self):
-        return self._on_not_found_command
+        return self._msg_not_found_command
 
     @msg_not_found_command.setter
     def msg_not_found_command(self, msg: AnyFormattedText):
-        self._on_not_found_command = msg
+        self._msg_not_found_command = msg
 
     @property
     def commands(self):
@@ -138,7 +138,7 @@ class PromptLoop(ABCPromptLoop):
         self.dispatcher = dp
         self._load_commands(self.dispatcher.commands)
         self._load_states(self.dispatcher.states)
-        self._load_error_states(self.dispatcher.on_error_states)
+        self._load_error_states(self.dispatcher.states_errors)
 
     @staticmethod
     def _handle_command(cls_command: Command, *args: str):
@@ -158,15 +158,13 @@ class PromptLoop(ABCPromptLoop):
     def _handle_state(self, func: Callable):
         try:
             if params := self.dispatcher.state_dispenser.storage_params.get(
-                self.dispatcher.state_dispenser.state
-            ):
+                self.dispatcher.state_dispenser.state):
                 func(*params)
             else:
                 func()
         except BaseException as e:
             if err_func := self._on_error_states.get(
-                self.dispatcher.state_dispenser.state
-            ):
+                self.dispatcher.state_dispenser.state):
                 err_func(e)
             else:
                 raise e
@@ -193,10 +191,9 @@ class PromptLoop(ABCPromptLoop):
     def update_word_completer(self):
         words, meta_dict = [], {}
         for cls_command in self._commands:
-            if cls_command.add_completer:
-                for word in cls_command.keywords:
-                    words.append(word)
-                    meta_dict[word] = cls_command.meta_completer
+            for word in cls_command.keywords:
+                words.append(word)
+                meta_dict[word] = cls_command.meta_completer
 
         self.session.completer = WordCompleter(
             words=words, meta_dict=meta_dict, sentence=True, ignore_case=True
