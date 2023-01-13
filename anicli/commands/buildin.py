@@ -12,7 +12,6 @@ __all__ = (
 )
 
 BUILDIN_COMMANDS = {"..": "back to previous step", "~": "return to main REPL menu"}
-
 OPTIONAL_COMMANDS = {"show": "Show detail information"}
 
 

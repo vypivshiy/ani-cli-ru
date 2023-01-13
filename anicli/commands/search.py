@@ -78,9 +78,7 @@ def slice_play():
 
         # compare previous chooses and play all slice of episodes
         for video in videos:
-            # TODO make checks more reliable, like hash comparison...
-            if (video.dict()["dub_id"] == video_.dict()["dub_id"]
-                and video.dict()["name"] == video_.dict()["name"]):
+            if video == video_:
                 for source in video.get_source():
                     if (source_.quality == source.quality
                         and source.type == source_.type):
@@ -186,7 +184,7 @@ def search(query: str):
 
     # search for titles, caching in memory to increase the speed (no need to send http request again!)
     if not (results := dp.state_dispenser.cache.get(query)):
-        results = SingletonStorage().extractor.search(query)
+        results = SingletonStorage().extractor_module.Extractor().search(query)
         dp.state_dispenser.cache[query] = results
 
     if len(results) == 0:

@@ -16,7 +16,7 @@ def print_enumerate(things: List[Any]) -> None:
 
 class SingletonStorage:
     _instance = None
-    extractor = NotImplemented
+    extractor_module = NotImplemented
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super().__new__(cls)

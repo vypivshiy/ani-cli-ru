@@ -1,7 +1,7 @@
 from typing import List
 
 from anicli_api.base_decoder import MetaVideo
-from anicli_api.loader import ExtractorLoader
+
 
 def get_extractor(module):
     return module.Extractor()

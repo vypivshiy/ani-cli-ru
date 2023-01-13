@@ -79,9 +79,7 @@ def slice_play():
             source_ = sources[int(num)]
         for video in videos:
             # TODO make checks more reliable, like hash comparison...
-            if (video.dict()["dub_id"] == video_.dict()["dub_id"]
-                and video.dict()["name"] == video_.dict()["name"]):
-
+            if video == video_:
                 for source in video.get_source():
                     if (source_.quality == source.quality
                         and source.type == source_.type):
@@ -188,13 +186,14 @@ def ongoing():
     """search last published titles"""
     # cache ongoings result
     if not (ongoings := dp.state_dispenser.cache.get("ongoings")):
-        dp.state_dispenser.cache["ongoings"] = SingletonStorage().extractor.ongoing()
+        dp.state_dispenser.cache["ongoings"] = SingletonStorage().extractor_module.Extractor().ongoing()
         ongoings = dp.state_dispenser.cache["ongoings"]
 
     if len(ongoings) == 0:
         print("Not found")
         dp.state_dispenser.finish()
         return
+
     print_enumerate(ongoings)
     num = prompt(
         "~/ongoing ",
