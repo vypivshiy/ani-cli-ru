@@ -25,6 +25,8 @@ def _dict_meta_to_text(meta_dict: Dict[str, Any]) -> str:
             text += f"{k}:\n"
             for i, el in enumerate(v, 1):
                 text += f"  * {i}] {el}\n"
+        elif isinstance(v, dict):
+            text+=_dict_meta_to_text(v)
         else:
             text += f"{k}\n    {v}\n"
     return text

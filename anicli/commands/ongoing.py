@@ -12,12 +12,7 @@ from anicli.commands.buildin import (
 )
 from anicli.commands.options import mpv_attrs
 from anicli.commands.tools import print_enumerate, SingletonStorage
-from anicli.commands.validators import (
-    enumerate_completer,
-    number_slice_validator,
-    number_validator,
-    slice_digit,
-)
+from anicli.commands.validators import enumerate_completer, EnumerateValidator, input_to_slice
 from anicli.commands.widgets.pager import spawn_pager
 from anicli.config import dp
 from anicli.core import BaseState
@@ -52,8 +47,8 @@ def slice_play():
                 completer=enumerate_completer(
                     videos, whitelist_commands=BUILDIN_COMMANDS
                 ),
-                validator=number_validator(
-                    videos, whitelist_commands=set(BUILDIN_COMMANDS.keys())
+                validator=EnumerateValidator(
+                    videos, allowed_commands=BUILDIN_COMMANDS.keys()
                 ),
             )
             if ON_STATE_BACK(num, OngoingStates.EPISODE):
@@ -68,9 +63,8 @@ def slice_play():
                 completer=enumerate_completer(
                     sources, whitelist_commands=BUILDIN_COMMANDS
                 ),
-                validator=number_validator(
-                    sources, whitelist_commands=set(BUILDIN_COMMANDS.keys())
-                ),
+                validator=EnumerateValidator(
+                    sources, allowed_commands=BUILDIN_COMMANDS.keys()),
             )
             if ON_STATE_BACK(num, OngoingStates.EPISODE):
                 return
@@ -78,7 +72,6 @@ def slice_play():
                 return
             source_ = sources[int(num)]
         for video in videos:
-            # TODO make checks more reliable, like hash comparison...
             if video == video_:
                 for source in video.get_source():
                     if (source_.quality == source.quality
@@ -100,7 +93,7 @@ def play():
     num = prompt(
         "~/ongoing/episode/video/quality ",
         completer=enumerate_completer(sources, whitelist_commands=BUILDIN_COMMANDS),
-        validator=number_validator(sources, whitelist_commands=set(BUILDIN_COMMANDS.keys()))
+        validator=EnumerateValidator(sources, allowed_commands=BUILDIN_COMMANDS.keys())
     )
 
     if ON_STATE_BACK(num, OngoingStates.VIDEO):
@@ -124,7 +117,7 @@ def ongoing_video():
     num = prompt(
         "~/ongoing/episode/video ",
         completer=enumerate_completer(videos, whitelist_commands=BUILDIN_COMMANDS),
-        validator=number_validator(videos, whitelist_commands=set(BUILDIN_COMMANDS.keys()))
+        validator=EnumerateValidator(videos, allowed_commands=BUILDIN_COMMANDS.keys())
     )
     if ON_STATE_BACK(num, OngoingStates.EPISODE):
         return
@@ -143,11 +136,12 @@ def ongoing_episodes():
     if not (anime := dp.state_dispenser.cache.get(ongoing)):
         dp.state_dispenser.cache[ongoing] = ongoing.get_anime()
         anime = dp.state_dispenser.cache[ongoing]
-
     if not(episodes := dp.state_dispenser.cache.get(anime)):
         dp.state_dispenser.cache[anime] = anime.get_episodes()
         episodes = dp.state_dispenser.cache[anime]
+
     print_enumerate(episodes)
+
     extra_commands = {}
     extra_commands.update(BUILDIN_COMMANDS)
     extra_commands.update(OPTIONAL_COMMANDS)
@@ -156,7 +150,9 @@ def ongoing_episodes():
     num = prompt(
         "~/ongoing/episode ",
         completer=enumerate_completer(episodes, whitelist_commands=extra_commands),
-        validator=number_slice_validator(episodes, whitelist_commands=set(extra_commands.keys()))
+        validator=EnumerateValidator(episodes,
+                                     allowed_commands=extra_commands.keys(),
+                                     allow_slice=True)
     )
     # `..`
     if ON_STATE_BACK(num, OngoingStates.ONGOING):
@@ -173,8 +169,7 @@ def ongoing_episodes():
         # goto OngoingStates.VIDEO state
         dp.state_dispenser.set(OngoingStates.VIDEO)
         return
-    # \d+-\d+
-    elif slice_episodes := slice_digit(num):
+    elif slice_episodes := input_to_slice(num):
         dp.state_dispenser.update({"episodes": episodes[slice_episodes]})
         # go to OngoingStates.SLICE_PLAY state
         dp.state_dispenser.set(OngoingStates.SLICE_PLAY)
@@ -198,8 +193,7 @@ def ongoing():
     num = prompt(
         "~/ongoing ",
         completer=enumerate_completer(ongoings, whitelist_commands=BUILDIN_COMMANDS),
-        validator=number_validator(ongoings, whitelist_commands=set(BUILDIN_COMMANDS.keys()))
-    )
+        validator=EnumerateValidator(ongoings, allowed_commands=BUILDIN_COMMANDS.keys()))
     # check ".." "~" output
     if ON_STATE_BACK(num, OngoingStates.ONGOING) or ON_STATE_MAIN(num):
         dp.state_dispenser.finish()

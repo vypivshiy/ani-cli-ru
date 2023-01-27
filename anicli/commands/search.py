@@ -13,12 +13,7 @@ from anicli.commands.buildin import (
 
 from anicli.commands.options import mpv_attrs
 from anicli.commands.tools import CONCATENATE_ARGS, print_enumerate, SingletonStorage
-from anicli.commands.validators import (
-    enumerate_completer,
-    number_slice_validator,
-    number_validator,
-    slice_digit,
-)
+from anicli.commands.validators import EnumerateValidator, input_to_slice, enumerate_completer
 
 from anicli.commands.widgets.pager import spawn_pager
 from anicli.config import dp
@@ -56,7 +51,7 @@ def slice_play():
             num = prompt(
                 "~/search/slice_play/video ",
                 completer=enumerate_completer(videos, whitelist_commands=BUILDIN_COMMANDS),
-                validator=number_validator(videos, whitelist_commands=set(BUILDIN_COMMANDS.keys())),
+                validator=EnumerateValidator(videos, allowed_commands=BUILDIN_COMMANDS.keys()),
             )
             if ON_STATE_BACK(num, SearchStates.EPISODE):
                 return
@@ -69,7 +64,7 @@ def slice_play():
             num = prompt(
                 "~/search/slice_play/quality ",
                 completer=enumerate_completer(sources, whitelist_commands=BUILDIN_COMMANDS),
-                validator=number_validator(sources, whitelist_commands=set(BUILDIN_COMMANDS.keys())))
+                validator=EnumerateValidator(sources, allowed_commands=BUILDIN_COMMANDS.keys()))
             if ON_STATE_BACK(num, SearchStates.EPISODE):
                 return
             elif ON_STATE_MAIN(num):
@@ -80,8 +75,7 @@ def slice_play():
         for video in videos:
             if video == video_:
                 for source in video.get_source():
-                    if (source_.quality == source.quality
-                        and source.type == source_.type):
+                    if source_.quality == source.quality and source.type == source_.type:
                         attrs = mpv_attrs(source)
                         subprocess.run(" ".join(attrs), shell=True)
                         break
@@ -101,7 +95,7 @@ def play():
     num = prompt(
         "~/search/episode/quality ",
         completer=enumerate_completer(sources, whitelist_commands=BUILDIN_COMMANDS),
-        validator=number_validator(sources, whitelist_commands=set(BUILDIN_COMMANDS.keys())))
+        validator=EnumerateValidator(sources, allowed_commands=BUILDIN_COMMANDS.keys()))
     if ON_STATE_BACK(num, SearchStates.VIDEO):
         return
     elif ON_STATE_MAIN(num):
@@ -121,7 +115,7 @@ def search_video():
     num = prompt(
         "~/search/episode/video ",
         completer=enumerate_completer(videos, whitelist_commands=BUILDIN_COMMANDS),
-        validator=number_validator(videos, whitelist_commands=set(BUILDIN_COMMANDS.keys())
+        validator=EnumerateValidator(videos, allowed_commands=set(BUILDIN_COMMANDS.keys())
         ))
     if ON_STATE_BACK(num, SearchStates.EPISODE):
         return
@@ -147,14 +141,15 @@ def search_episodes():
     print_enumerate(episodes)
     print("type `show` for get more title information")
     extra_commands = {}
-    extra_commands.update()
+    extra_commands.update(BUILDIN_COMMANDS)
     extra_commands.update(OPTIONAL_COMMANDS)
 
     num = prompt(
         "~/search/episode ",
         completer=enumerate_completer(episodes, whitelist_commands=extra_commands),
-        validator=number_slice_validator(episodes, whitelist_commands=list(extra_commands.keys())
-        ),
+        validator=EnumerateValidator(episodes,
+                                     allowed_commands=list(extra_commands.keys()),
+                                     allow_slice=True),
     )
     # check `..` output
     if ON_STATE_BACK(num, SearchStates.SEARCH):
@@ -163,14 +158,14 @@ def search_episodes():
     elif ON_STATE_MAIN(num):
         return
     # check `show output` and spawn pager with all metadata
-    elif ON_STATE_PAGER(num, anime.dict(), SearchStates.EPISODE, SearchStates.INFO):
+    elif ON_STATE_PAGER(num, anime.dict(), prev_state=SearchStates.EPISODE, info_state=SearchStates.INFO):
         return
     elif num.isdigit():
         dp.state_dispenser.update({"episode": episodes[int(num)]})
         dp.state_dispenser.set(SearchStates.VIDEO)
         return
-    # check slice output \d+-\d+ pattern. Example: 1-3, 5-9 ...
-    elif slice_episodes := slice_digit(num):
+    # check slice output. Example: 1-3, 5-9 ...
+    elif slice_episodes := input_to_slice(num):
         dp.state_dispenser.update({"episodes": episodes[slice_episodes]})
         dp.state_dispenser.set(SearchStates.SLICE_PLAY)
         return
@@ -199,7 +194,7 @@ def search(query: str):
     num = prompt(
         "~/search ",
         completer=enumerate_completer(results, whitelist_commands=BUILDIN_COMMANDS),  # type: ignore
-        validator=number_validator(results, whitelist_commands=set(BUILDIN_COMMANDS.keys())))  # type: ignore
+        validator=EnumerateValidator(results, allowed_commands=BUILDIN_COMMANDS.keys()))  # type: ignore
     # check `..` and `~` inputs
     if ON_STATE_BACK(num, SearchStates.SEARCH) or ON_STATE_MAIN(num):
         dp.state_dispenser.finish()
@@ -207,7 +202,6 @@ def search(query: str):
     # set chosen title, push to storage and jump to `SearchStates.EPISODE` state
     dp.state_dispenser.update({"search": results[int(num)]})
     dp.state_dispenser.set(SearchStates.EPISODE)
-
 
 
 @search.on_error()

@@ -1,3 +1,5 @@
+import logging
+
 from anicli_api.loader import ExtractorLoader
 import click
 
@@ -5,6 +7,8 @@ import click
 from anicli.config import dp
 from anicli.commands.tools import SingletonStorage
 
+loger = logging.getLogger()
+loger.setLevel(logging.ERROR)
 
 @click.command()
 @click.option("-s", "--source", "source",
