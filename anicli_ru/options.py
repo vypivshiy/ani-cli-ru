@@ -43,6 +43,12 @@ def setup_arguments() -> argparse.Namespace:
                         default=False,
                         action="store_true",
                         help="Print available source parsers")
+    parser.add_argument("-P", "--video-player",
+                        dest="VIDEOPLAYER",
+                        type=str,
+                        default="mpv",
+                        help="Video player. DEFAULT: mpv. "
+                             "EXAMPLE: anicli-ru -P 'mpv --vo=gpu --hwdec=vaapi-copy'")
 
     parser.add_argument("-V", "--version",
                         dest="PRINT_VERSION",

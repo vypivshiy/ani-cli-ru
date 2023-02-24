@@ -18,7 +18,6 @@ from anicli_ru import Aniboom
 
 args = setup_arguments()
 
-PLAYER = "mpv"
 OS_HEADERS_COMMAND = "http-header-fields"
 
 # load chosen extractor
@@ -256,11 +255,13 @@ class Menu:
 
 def run_player(url: str, player: str = None, commands: tuple[Optional[str], ...] = ()) -> None:
     if not player:
-        player = PLAYER
-    if commands:
-        subprocess.run([player, url, *commands])  # type: ignore
+        player, *player_args = args.VIDEOPLAYER.split()
     else:
-        subprocess.run([player, url])
+        player_args = []
+    if commands:
+        subprocess.run([player, *player_args, url, *commands])  # type: ignore
+    else:
+        subprocess.run([player, *player_args, url])
 
 
 def main():
