@@ -12,7 +12,7 @@ setup(
     license='GPL-3',
     author='Georgiy aka Vypivshiy',
     author_email='',
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     description='anime grabber video api and cli tool',
     long_description=long_description,
     long_description_content_type='text/markdown',
