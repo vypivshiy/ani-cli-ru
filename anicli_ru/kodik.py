@@ -1,9 +1,9 @@
 """Kodik module utils"""
+import re
 import warnings
 from base64 import b64decode
 from typing import Optional, Pattern, Tuple, Dict, List
 from urllib.parse import urlparse
-
 
 from anicli_ru._http import client
 from anicli_ru.defaults import KodikDefaults
@@ -50,6 +50,24 @@ class Kodik:
         if not link.startswith("https"):
             link = f"https:{link}"
         return link
+
+    @staticmethod
+    def decode_2(url_encoded: str) -> str:
+        # 30.03.23
+        # This code replaces all alphabetical characters in a base64 encoded string
+        # with characters that are shifted 13 places in the alphabetical order,
+        # wrapping around to the beginning or end of the alphabet as necessary.
+        # This is a basic form of a Caesar cipher, a type of substitution cipher.
+
+        # Note: this solution write by chatgpt, I don't know how this work :D
+        def char_wrapper(e):
+            return chr((ord(e.group(0)) + 13 - (65 if e.group(0) <= "Z" else 97))
+                       % 26 + (65 if e.group(0) <= "Z" else 97))
+
+        base64_url = re.sub(r"[a-zA-Z]", char_wrapper, url_encoded)
+        if not base64_url.endswith("=="):
+            base64_url += "=="
+        return f"https:{b64decode(base64_url).decode()}"
 
     @staticmethod
     def is_kodik(url: str) -> bool:
@@ -132,7 +150,8 @@ class Kodik:
 
     def _get_video_quality(self, video_url: str, quality: int) -> str:
         quality = 720 if quality not in self.QUALITY else quality
-        video_url = self.decode(video_url)
+        # video_url = self.decode(video_url)  # outdated
+        video_url = self.decode_2(video_url)
         video_url = video_url.replace("360.mp4", f"{quality}.mp4")
         # issue 8, video_url maybe return 404 code
         if self._is_not_404_code(video_url):
