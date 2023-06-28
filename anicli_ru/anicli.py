@@ -182,10 +182,11 @@ class Menu:
         if self.DOWNLOAD:
             self._run_download(url)
 
-        elif Aniboom.is_aniboom(url):
+        elif Aniboom.is_aniboom(player.url):
             # Экспериментально выявлено одним из пользователей,
             # что заголовок Accept-Language увеличивает скорость загрузки в MPV плеере в данном балансере
-            run_player(url, commands= (f"-{OS_HEADERS_COMMAND}", "Referer: https://aniboom.one,Accept-Language: ru-RU, User-Agent:{self.anime.USER_AGENT['user-agent']}"))
+            run_player(url, commands=('--referrer="https://aniboom.one/"',
+                                      '--http-header-fields="Accept-Language: ru-RU,ru"'))
         else:
             run_player(url)
 
@@ -258,7 +259,7 @@ def run_player(url: str, player: str = None, commands: tuple[Optional[str], ...]
     if not player:
         player = PLAYER
     if commands:
-        subprocess.run([player, url, *commands])  # type: ignore
+        subprocess.run([player, *commands, url])  # type: ignore
     else:
         subprocess.run([player, url])
 
