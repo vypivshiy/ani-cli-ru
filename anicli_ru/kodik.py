@@ -67,7 +67,10 @@ class Kodik:
         base64_url = re.sub(r"[a-zA-Z]", char_wrapper, url_encoded)
         if not base64_url.endswith("=="):
             base64_url += "=="
-        return f"https:{b64decode(base64_url).decode()}"
+        decoded_url = b64decode(base64_url).decode()
+        if decoded_url.startswith("https:"):
+            return decoded_url
+        return f"https:{decoded_url}"
 
     @staticmethod
     def is_kodik(url: str) -> bool:
