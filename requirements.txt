@@ -1,4 +1,2 @@
-prompt-toolkit
 anicli-api
-requests
-click
+eggella
