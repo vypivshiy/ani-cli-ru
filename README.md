@@ -1,95 +1,30 @@
 # anicli-ru
-[![CI](https://github.com/vypivshiy/ani-cli-ru/actions/workflows/ci.yml/badge.svg)](https://github.com/vypivshiy/ani-cli-ru/actions/workflows/ci.yml)
+
 ___
 Скрипт для поиска и просмотра аниме из терминала с русской озвучкой или субтитрами для linux систем, 
 написанный на python.
 
-Парсит видео со сторонних сайтов, **как youtube-dl**.
-___
-# Supported video hostings:
-* sibnet
-* aniboom
-* kodik
----
-# Dependencies:
-* python 3.7+
-* mpv
-* ffmpeg (опционально, для скачивания видео через аргумент "**-d**")
-___
-# Install:
-```
-# Если у вас установлен скрипт версией ниже 4.0.0, то перед обновлением удалите старый файл запуска командой:
-sudo rm /usr/local/bin/anicli-ru
-
-# установка 
-python3 -m pip install anicli-ru
-
-# или клонировать и установить вручную:
-
-git clone https://github.com/vypivshiy/ani-cli-ru && cd ani-cli-ru
-pip install .
-```
-___
-# Usage:
-`anicli-ru`
-___
-# CLI Commands:
-```
-q [q]uit - выход из программы
-e [e]xit - alias q
-b [b]ack to the previous step - возвратиться на предыдущий шаг
-h [h]elp - вывод списка доступных команд
-c [c]lear - очистить консоль
-o [o]ngoing - напечатать недавно вышедшие онгоинги
-```
-# FAQ
-**Q**: У меня скрипт ничего не находит
-
-**A**: Возможно сайт с которого хотите достать видео включили cloudflare или не работает. 
-Используйте сторонние источники через аргумент `-s {число}`. 
-
-Все доступные источники для парсинга можно получить через команду 
-`anicli-ru --print-sources`
-
-**Q**: Трейсбеки при получении данных.
-
-**A**: Попробуйте обновить модуль через команду `anicli-ru -U -F` или эквивалентную команду `pip3 install -U anicli-ru`. 
-Если это не помогло, то пишите в **issue**
-
-**Q**: Скрипт не запускается из терминала.
-
-**A**: Добавьте в настройки терминала следующую строку:
-```sh
-# shell type - config file
-# bash - ~/.bashrc
-# zsh ~/.zshrc
-# fish ~/.config/fish/config.fish 
-export PATH="$HOME/.local/bin:$PATH"
-```
+> Этот dev проект в стадии разработки, стабильность не гарантируется
 
 ---
-# Program Api usage
-Если вам нужен программный интерфейс для своих проектов, то можете импортировать любой доступный 
-парсер из директории anicli_ru.extractors.* или вывести все доступные и импортировать через метод __import\__
-```python
-# quick example
-from anicli_ru.extractors.animania import *
-from anicli_ru.loader import all_extractors
+Какие будут отличия от старой версии:
 
-print(all_extractors())  # вывод всех доступных парсеров из директории extractors
-a = Anime()
-ongoings = a.ongoing()  # получить онгоинги
-results = a.search("experiments lain")  # поиск тайтла по названию
-episodes = results[0].episodes()  # получить эпизоды с первого найденного тайтла
-players = episodes[0].player()  # получить сырые ссылки на видеохостниги (не прямую ссылку на видео)
-print(players[0].get_video())  # получить прямую ссылку на видео с видеохостинга для плеера
-```
----
-# Contributing
+- Проект полностью переписан
+- Api интерфейс парсера и Cli клиента разделены в отдельные репозитории
+- парсеры работают в связке `httpx`, `parsel`, `chompjs`, умеет работать в sync и async, 
+использует экспериментальную обёртку `scrape-schema` для повышения ремонтопригодности, консинстентности, 
+читабельности и переиспользуемости кода
+- Клиент написан на `eggella` - обёртка над prompt-toolkit для реализации prompt-line приложений 
+(архитектура схожа с flask и актуальными фреймворк чат ботами (aiogram, discord.py, ...))
 
-[DEV GUIDE](DEV.md)
-# TODO
-* ~~dev guide~~
-* ~~CI/CD github actions: add autotest utils (without test parser), pylance, etc~~
-* ~~mypy fix typing~~
 
+## Roadmap
+-[ ] выбор источника
+-[ ] http сервер-прослойка для передачи видео в плееры отличные от mpv (обход дополнительных аргументов 
+headers для vlc плеера и других, например)
+-[ ] поиск по нескольким источникам в одной сессии
+-[ ] конфигурация приложения
+-[ ] конфигурация http клиента (прокси, таймаут)
+-[ ] кеширование
+-[ ] синхронизация с shikimori
+-[ ] система плагинов, частичная кастомизация
