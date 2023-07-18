@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "anicli-ru"
+dynamic = ["version"]
+description = "anime grabber video api and cli tool"
+readme = "README.md"
+license = "gpl-3.0"
+requires-python = ">=3.8"
+authors = [
+    { name = "Georgiy aka Vypivshiy", email = "" },
+]
+dependencies = [
+    "requests",
+]
+
+[project.scripts]
+anicli-ru = "anicli_ru.anicli:main"
+
+[project.urls]
+Homepage = "https://github.com/vypivshiy/ani-cli-ru"
+
+[tool.hatch.version]
+path = "anicli_ru/__version__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/anicli_ru",
+]
