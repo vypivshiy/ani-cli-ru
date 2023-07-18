@@ -9,12 +9,12 @@ from anicli_api.source import animego
 from prompt_toolkit.styles.pygments import style_from_pygments_cls
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 
-logger = logging.getLogger("scrape_schema")
-logger.setLevel(logging.DEBUG)
-print(logger.handlers.pop(0))
-logger.addHandler(
-    logging.FileHandler("logs.log")
-)
+# logger = logging.getLogger("scrape_schema")
+# logger.setLevel(logging.DEBUG)
+# print(logger.handlers.pop(0))
+# logger.addHandler(
+#     logging.FileHandler("logs.log")
+# )
 
 app = Eggella("anicli", "~ ")
 app.session = PromptSession("~ ", history=FileHistory(".anicli_history"), auto_suggest=AutoSuggestFromHistory())
