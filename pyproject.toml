@@ -54,7 +54,7 @@ cov = [
 ]
 
 [project.scripts]
-anicli-ru = "anicli:__init__"
+anicli-ru = "anicli:run_cli"
 
 
 [[tool.hatch.envs.all.matrix]]
@@ -148,11 +148,11 @@ source_pkgs = ["anicli", "tests"]
 branch = true
 parallel = true
 omit = [
-  "temporary/__about__.py",
+  "anicli/__about__.py",
 ]
 
 [tool.coverage.paths]
-temporary = ["temporary", "*/temporary/temporary"]
+temporary = ["anicli", "*/anicli/anicli"]
 tests = ["tests", "*/temporary/tests"]
 
 [tool.coverage.report]
