@@ -47,10 +47,11 @@ def choose_episode():
     result: "BaseSearch" = app.CTX["result"]
     anime: "BaseAnime" = result.get_anime()
     episodes: List["BaseEpisode"] = anime.get_episodes()
-
     if not episodes:
         views.Message.not_found_episodes()
         return app.fsm.finish()
+
+    views.Message.show_results(episodes)
     choose = app.cmd.prompt("~/search/episode ",
                             completer=anime_word_completer(episodes),
                             validator=AnimePromptValidator(episodes))
