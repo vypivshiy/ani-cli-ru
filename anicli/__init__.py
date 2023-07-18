@@ -1,1 +1,1 @@
-from anicli.cli import app
+from anicli.cli import APP
