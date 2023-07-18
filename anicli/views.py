@@ -9,7 +9,7 @@ from prompt_toolkit.layout.dimension import LayoutDimension as D
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.styles import Style
 from prompt_toolkit.widgets import SearchToolbar, TextArea
-
+from prompt_toolkit.formatted_text import FormattedText
 if TYPE_CHECKING:
     from anicli_api.base import BaseAnime
 
@@ -23,10 +23,26 @@ class Message:
 
     @staticmethod
     def show_results(items_list: List[Any]):
-        print_formatted_text(*[
-            HTML(f"[<ansiyellow>{i}</ansiyellow>] {item}")
-            for i, item in enumerate(items_list)
-        ], sep="\n")
+        for i, item in enumerate(items_list[:20]):
+            print_formatted_text(
+                FormattedText([
+                    ("", "["),
+                    ("#F7FF00", str(i)),
+                    ("", "] "),
+                    ("", str(item))
+                ])
+            )
+        if len(items_list) > 20:
+            print_formatted_text(f"... + {len(items_list) - 20 - 5}")
+            for i, item in enumerate(items_list[-5:]):
+                print_formatted_text(
+                    FormattedText([
+                        ("", "["),
+                        ("#F7FF00", str(len(items_list)-(5-i))),
+                        ("", "] "),
+                        ("", str(item))
+                    ])
+                )
 
     @staticmethod
     def not_found_episodes():
