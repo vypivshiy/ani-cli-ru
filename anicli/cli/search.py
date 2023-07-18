@@ -151,19 +151,22 @@ def choose_quality_slice():
     else:
         video = videos[int(choose)]
         visited = set()
-        key = (urlsplit(video.url).netloc, video.type, video.quality, first_source.dub)  # TODO fix annotation
-
+        key = hash((urlsplit(video.url).netloc, video.type, video.quality, first_source.dub))
+        app.cmd.print_ft("Press CTRL+C for exit")
         for episode in episodes:
-            if episode.num not in visited:
-                for source in episode.get_sources():
-                    for video in source.get_videos():
-                        if key == (urlsplit(video.url).netloc, video.type, video.quality, source.dub):
-                            visited.add(episode.num)
-                            MpvPlayer.play(video, f"{episode.num} {episode.title} - {source.dub} "
-                                                  f"[{urlsplit(video.url).netloc}]")
+            try:
+                if episode.num not in visited:
+                    for source in episode.get_sources():
+                        for video in source.get_videos():
+                            if key == hash((urlsplit(video.url).netloc, video.type, video.quality, source.dub)):
+                                visited.add(episode.num)
+                                MpvPlayer.play(video, f"{episode.num} {episode.title} - {source.dub} "
+                                                      f"[{urlsplit(video.url).netloc}]")
+                                break
+                        if episode.num in visited:
                             break
-                    if episode.num in visited:
-                        break
+            except KeyboardInterrupt:
+                return app.fsm.set(SearchStates.EPISODE)
     app.fsm.set(SearchStates.EPISODE)
 
 
