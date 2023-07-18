@@ -40,6 +40,7 @@ dependencies = [
   "coverage[toml]>=6.5",
   "pytest",
 ]
+
 [tool.hatch.envs.default.scripts]
 test = "pytest {args:tests}"
 test-cov = "coverage run -m pytest {args:tests}"
@@ -51,6 +52,10 @@ cov = [
   "test-cov",
   "cov-report",
 ]
+
+[project.scripts]
+anicli-ru = "anicli:__init__"
+
 
 [[tool.hatch.envs.all.matrix]]
 python = ["3.8", "3.9", "3.10", "3.11"]
