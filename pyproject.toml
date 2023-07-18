@@ -33,7 +33,7 @@ Issues = "https://github.com/unknown/temporary/issues"
 Source = "https://github.com/unknown/temporary"
 
 [tool.hatch.version]
-path = "temporary/__about__.py"
+path = "anicli/__init__.py"
 
 [tool.hatch.envs.default]
 dependencies = [
