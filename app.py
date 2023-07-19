@@ -1,4 +1,4 @@
-from anicli import APP
+from anicli import run_cli
 
 if __name__ == '__main__':
-    APP.loop()
+    run_cli()

@@ -7,7 +7,7 @@ from eggella.command import RawCommandHandler
 from anicli import views
 from anicli._validator import NumPromptValidator, AnimePromptValidator
 from anicli._completion import word_completer, anime_word_completer
-from anicli.cli.config import app, EXTRACTOR
+from anicli.cli.config import app
 from anicli.cli.player import MpvPlayer
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ app.register_states(SearchStates)
 @app.on_command("search", cmd_handler=RawCommandHandler())
 def search(query: str):
     """find anime titles by query string"""
-    results = EXTRACTOR.search(query)
+    results = app.CTX["EXTRACTOR"].search(query)
     if not results:
         views.Message.not_found()
         return

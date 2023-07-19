@@ -6,7 +6,7 @@ from eggella.fsm import IntStateGroup
 from anicli import views
 from anicli._validator import NumPromptValidator, AnimePromptValidator
 from anicli._completion import word_completer, anime_word_completer
-from anicli.cli.config import app, EXTRACTOR
+from anicli.cli.config import app
 from anicli.cli.player import MpvPlayer
 
 if TYPE_CHECKING:
@@ -28,7 +28,7 @@ app.register_states(OngoingStates)
 @app.on_command("ongoing")
 def ongoing():
     """get all available ongoing titles"""
-    results = EXTRACTOR.ongoing()
+    results = app.CTX["EXTRACTOR"].ongoing()
     if not results:
         views.Message.not_found()
         return

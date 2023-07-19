@@ -22,7 +22,6 @@ app.documentation = """Anicli
 
 This is a TUI client for watching anime.
 """
-EXTRACTOR = animego.Extractor()
 PLAYER = "mpv"
 # TODO add vlc and implement simple proxy server for redirects
 
