@@ -1,9 +1,9 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
+from prompt_toolkit.shortcuts.prompt import CompleteStyle
 from eggella import Eggella
-
 
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 
@@ -18,6 +18,12 @@ class Config:
     MIN_QUALITY: int = 0
     USE_FFMPEG_ROUTE: bool = False
     _CONFIG_PATH: str = "~/.config/ruanicli"
+    PROXY: Optional[str] = None
+    TIMEOUT: Optional[float] = None
+
+    @classmethod
+    def httpx_kwargs(cls):
+        return {"proxies": cls.PROXY, "timeout": cls.TIMEOUT}
 
 
 class AnicliApp(Eggella):
@@ -25,7 +31,8 @@ class AnicliApp(Eggella):
 
 
 app = AnicliApp("anicli", "~ ")
-app.session = PromptSession("~ ", history=FileHistory(".anicli_history"), auto_suggest=AutoSuggestFromHistory())
+app.session = PromptSession("~ ", history=FileHistory(".anicli_history"), auto_suggest=AutoSuggestFromHistory(),
+                            complete_style=CompleteStyle.MULTI_COLUMN)
 
 app.documentation = """Anicli
 
