@@ -4,6 +4,7 @@ from urllib.parse import urlsplit
 if TYPE_CHECKING:
     from anicli_api.base import BaseSource, BaseEpisode
     from anicli_api.player.base import Video
+    from anicli.cli.config import Config
 
 __all__ = ["slice_play_hash", "slice_playlist_iter", "sort_video_by_quality"]
 
@@ -13,14 +14,14 @@ def slice_play_hash(video: "Video", source: "BaseSource"):
     return hash((urlsplit(video.url).netloc, video.type, video.quality, source.dub))
 
 
-def slice_playlist_iter(episodes: List["BaseEpisode"], cmp_key_hash: int
+def slice_playlist_iter(episodes: List["BaseEpisode"], cmp_key_hash: int, config: "Config"
                         ) -> Generator[Tuple["Video", "BaseEpisode"], None, None]:
     """Compare video by video url netloc, video type, quality and dubber name"""
     visited = set()
     for episode in episodes:
         if episode.num not in visited:
             for source in episode.get_sources():
-                for video in source.get_videos():
+                for video in source.get_videos(**app.CFG.httpx_kwargs()):
                     if cmp_key_hash == slice_play_hash(video, source):
                         visited.add(episode.num)
                         yield video, episode

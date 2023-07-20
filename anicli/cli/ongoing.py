@@ -92,7 +92,7 @@ def choose_source():
 @app.on_state(OngoingStates.VIDEO)
 def choose_quality():
     source: "BaseSource" = app.fsm["ongoing"]["source"]
-    videos = source.get_videos()
+    videos = source.get_videos(**app.CFG.httpx_kwargs())
     videos = sort_video_by_quality(videos, app.CFG.MIN_QUALITY)
     if not videos:
         views.Message.not_found()
@@ -136,7 +136,7 @@ def play_slice():
 def choose_quality_slice():
     first_source: "BaseSource" = app.fsm["ongoing"]["source_slice"]
     episodes: List["BaseEpisode"] = app.fsm["ongoing"]["episode_slice"]
-    videos: List["Video"] = first_source.get_videos()
+    videos: List["Video"] = first_source.get_videos(**app.CFG.httpx_kwargs())
     videos = sort_video_by_quality(videos, app.CFG.MIN_QUALITY)
 
     views.Message.show_results(videos)
@@ -152,7 +152,7 @@ def choose_quality_slice():
 
         cmp_key_hash = slice_play_hash(video, first_source)
         app.cmd.print_ft("Press CTRL + C for exit")
-        for video, episode in slice_playlist_iter(episodes, cmp_key_hash):
+        for video, episode in slice_playlist_iter(episodes, cmp_key_hash, app.CFG):
             try:
                 run_video(video, str(episode), player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
             except KeyboardInterrupt:
