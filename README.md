@@ -18,7 +18,7 @@ pipx install -U git+https://github.com/vypivshiy/ani-cli-ru.git@dev
 ```shell
 Поддерживаемые плееры
 - mpv
-- vlc \(мало протестировано)
+- vlc (мало тестов)
 ```
 
 ## Опционально
@@ -43,6 +43,8 @@ anicli-ru
 ---
 Отличия от старой версии:
 
+- Клиент основан на prompt-toolkit, реализована надстройка [eggella](https://github.com/vypivshiy/eggella) - 
+архитектура схожа с flask и фреймворками чат ботов (aiogram, discord.py, ...))
 - [Api интерфейс парсера](https://github.com/vypivshiy/anicli-api/tree/dev) и Cli клиента 
 разделены в отдельные репозитории. Также, API интерфейс поддерживает asyncio!
 - http клиент заменен с `requests` на `httpx` с включенным по умолчанию **http2** протоколом.
@@ -50,8 +52,7 @@ anicli-ru
 - Использует экспериментальную обёртку [scrape-schema](https://github.com/vypivshiy/scrape-schema) для 
 повышения ремонтопригодности, консистентности, читабельности и переиспользуемости кода 
 ~~если вы знаете что такое css, xpath серекторы и parsel~~.
-- Клиент основан на prompt-toolkit, реализована надстройка [eggella](https://github.com/vypivshiy/eggella) - 
-архитектура схожа с flask и фреймворками чат ботов (aiogram, discord.py, ...))
+
 
 
 ## Roadmap
