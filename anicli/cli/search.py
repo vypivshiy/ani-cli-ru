@@ -8,7 +8,9 @@ from anicli import views
 from anicli._validator import NumPromptValidator, AnimePromptValidator
 from anicli._completion import word_completer, anime_word_completer
 from anicli.cli.config import app
-from anicli.cli.player import MpvPlayer
+from anicli.cli.player import MpvPlayer, FFMPEGRouter
+from anicli.cli.utils import slice_play_hash, slice_playlist_iter
+
 
 if TYPE_CHECKING:
     from anicli_api.base import BaseAnime, BaseSearch, BaseSource, BaseEpisode
@@ -29,7 +31,7 @@ app.register_states(SearchStates)
 @app.on_command("search", cmd_handler=RawCommandHandler())
 def search(query: str):
     """find anime titles by query string"""
-    results = app.CTX["EXTRACTOR"].search(query)
+    results = app.CFG.EXTRACTOR.search(query)
     if not results:
         views.Message.not_found()
         return
@@ -110,7 +112,10 @@ def choose_quality():
     video = videos[int(choose)]
     app.fsm["search"]["video"] = video
     episode: "BaseEpisode" = app.fsm["search"]["episode"]
-    MpvPlayer.play(video, title=episode.title)
+    if app.CFG.USE_FFMPEG_ROUTE:
+        FFMPEGRouter.play(video, app.CFG.PLAYER)
+    else:
+        MpvPlayer.play(video, title=episode.title)
     return app.fsm.set(SearchStates.EPISODE)
 
 
@@ -133,7 +138,6 @@ def play_slice():
         return app.fsm.set(SearchStates.VIDEO_SLICE)
 
 
-
 @app.on_state(SearchStates.VIDEO_SLICE)
 def choose_quality_slice():
     first_source: "BaseSource" = app.fsm["search"]["source_slice"]
@@ -150,25 +154,14 @@ def choose_quality_slice():
         return app.fsm.set(SearchStates.SOURCE_SLICE)
     else:
         video = videos[int(choose)]
-        visited = set()
-        key = hash((urlsplit(video.url).netloc, video.type, video.quality, first_source.dub))
         app.cmd.print_ft("Press CTRL+C for exit")
-        for episode in episodes:
+        cmp_key_hash = slice_play_hash(video, first_source)
+        for video, episode in slice_playlist_iter(episodes, cmp_key_hash):
             try:
-                if episode.num not in visited:
-                    for source in episode.get_sources():
-                        for video in source.get_videos():
-                            if key == hash((urlsplit(video.url).netloc, video.type, video.quality, source.dub)):
-                                visited.add(episode.num)
-                                MpvPlayer.play(video, f"{episode.num} {episode.title} - {source.dub} "
-                                                      f"[{urlsplit(video.url).netloc}]")
-                                break
-                        if episode.num in visited:
-                            break
+                if app.CFG.USE_FFMPEG_ROUTE:
+                    FFMPEGRouter.play(video, app.CFG.PLAYER)
+                else:
+                    MpvPlayer.play(video, str(episode))
             except KeyboardInterrupt:
                 return app.fsm.set(SearchStates.EPISODE)
     app.fsm.set(SearchStates.EPISODE)
-
-
-if __name__ == '__main__':
-    app.loop()
