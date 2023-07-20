@@ -1,5 +1,4 @@
 from typing import TYPE_CHECKING, List
-from urllib.parse import urlsplit
 
 from eggella.fsm import IntStateGroup
 
@@ -8,8 +7,7 @@ from anicli._validator import NumPromptValidator, AnimePromptValidator
 from anicli._completion import word_completer, anime_word_completer
 from anicli.cli.config import app
 from anicli.cli.utils import slice_playlist_iter, slice_play_hash
-
-from anicli.cli.player import MpvPlayer, FFMPEGRouter
+from anicli.cli.player import run_video
 
 if TYPE_CHECKING:
     from anicli_api.base import BaseAnime, BaseOngoing, BaseSource, BaseEpisode
@@ -110,10 +108,7 @@ def choose_quality():
     video = videos[int(choose)]
     app.fsm["ongoing"]["video"] = video
     episode: "BaseEpisode" = app.fsm["ongoing"]["episode"]
-    if app.CFG.USE_FFMPEG_ROUTE:
-        FFMPEGRouter.play(video, app.CFG.PLAYER)
-    else:
-        MpvPlayer.play(video, title=episode.title)
+    run_video(video, str(episode), player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
     return app.fsm.set(OngoingStates.EPISODE)
 
 
@@ -157,10 +152,7 @@ def choose_quality_slice():
         app.cmd.print_ft("Press CTRL + C for exit")
         for video, episode in slice_playlist_iter(episodes, cmp_key_hash):
             try:
-                if app.CFG.USE_FFMPEG_ROUTE:
-                    FFMPEGRouter.play(video, app.CFG.PLAYER)
-                else:
-                    MpvPlayer.play(video, str(episode))
+                run_video(video, str(episode), player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
             except KeyboardInterrupt:
                 return app.fsm.set(OngoingStates.EPISODE)
     app.fsm.set(OngoingStates.EPISODE)

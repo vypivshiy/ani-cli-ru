@@ -1,5 +1,4 @@
 from typing import TYPE_CHECKING, List
-from urllib.parse import urlsplit
 
 from eggella.fsm import IntStateGroup
 from eggella.command import RawCommandHandler
@@ -8,7 +7,8 @@ from anicli import views
 from anicli._validator import NumPromptValidator, AnimePromptValidator
 from anicli._completion import word_completer, anime_word_completer
 from anicli.cli.config import app
-from anicli.cli.player import MpvPlayer, FFMPEGRouter
+from anicli.cli.player import run_video
+
 from anicli.cli.utils import slice_play_hash, slice_playlist_iter
 
 
@@ -112,10 +112,7 @@ def choose_quality():
     video = videos[int(choose)]
     app.fsm["search"]["video"] = video
     episode: "BaseEpisode" = app.fsm["search"]["episode"]
-    if app.CFG.USE_FFMPEG_ROUTE:
-        FFMPEGRouter.play(video, app.CFG.PLAYER)
-    else:
-        MpvPlayer.play(video, title=episode.title)
+    run_video(video, str(episode), player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
     return app.fsm.set(SearchStates.EPISODE)
 
 
@@ -158,10 +155,7 @@ def choose_quality_slice():
         cmp_key_hash = slice_play_hash(video, first_source)
         for video, episode in slice_playlist_iter(episodes, cmp_key_hash):
             try:
-                if app.CFG.USE_FFMPEG_ROUTE:
-                    FFMPEGRouter.play(video, app.CFG.PLAYER)
-                else:
-                    MpvPlayer.play(video, str(episode))
+                run_video(video, str(episode), player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
             except KeyboardInterrupt:
                 return app.fsm.set(SearchStates.EPISODE)
     app.fsm.set(SearchStates.EPISODE)
