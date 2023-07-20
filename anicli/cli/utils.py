@@ -5,7 +5,7 @@ if TYPE_CHECKING:
     from anicli_api.base import BaseSource, BaseEpisode
     from anicli_api.player.base import Video
 
-__all__ = ["slice_play_hash", "slice_playlist_iter"]
+__all__ = ["slice_play_hash", "slice_playlist_iter", "sort_video_by_quality"]
 
 
 def slice_play_hash(video: "Video", source: "BaseSource"):
@@ -29,3 +29,8 @@ def slice_playlist_iter(episodes: List["BaseEpisode"], cmp_key_hash: int
                     break
 
 
+def sort_video_by_quality(videos: List["Video"], quality: int) -> List["Video"]:
+    if result := [video for video in videos if video.quality >= quality]:
+        return result
+    # not founded, get maximum value
+    return [max(videos, key=lambda v: v.quality)]

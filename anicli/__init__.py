@@ -15,13 +15,15 @@ def run_cli():
                         type=int,
                         default=0,
                         choices=[0, 144, 240, 360, 480, 720, 1080],
-                        help="Set minimal video output. If there is no maximum, it will display the closest value"
+                        help="Set minimal video quality output. "
+                             "If there is no maximum, it will display the closest value"
                         )
     parser.add_argument("-p", "--player",
                         type=str,
                         default="mpv",
                         choices=["mpv", "vlc"],
-                        help="Set videoplayer target. Default mpv")
+                        help="Set videoplayer target. Default mpv"
+                        )
 
     parser.add_argument("--ffmpeg",
                         action="store_true",
@@ -34,6 +36,7 @@ def run_cli():
     APP.CFG.EXTRACTOR = getattr(module, "Extractor")()
     APP.CFG.USE_FFMPEG_ROUTE = namespaces.ffmpeg
     APP.CFG.PLAYER = namespaces.player
+    APP.CFG.MIN_QUALITY = namespaces.quality
     APP.loop()
 
 

@@ -6,7 +6,7 @@ from anicli import views
 from anicli._validator import NumPromptValidator, AnimePromptValidator
 from anicli._completion import word_completer, anime_word_completer
 from anicli.cli.config import app
-from anicli.cli.utils import slice_playlist_iter, slice_play_hash
+from anicli.cli.utils import slice_playlist_iter, slice_play_hash, sort_video_by_quality
 from anicli.cli.player import run_video
 
 if TYPE_CHECKING:
@@ -93,6 +93,7 @@ def choose_source():
 def choose_quality():
     source: "BaseSource" = app.fsm["ongoing"]["source"]
     videos = source.get_videos()
+    videos = sort_video_by_quality(videos, app.CFG.MIN_QUALITY)
     if not videos:
         views.Message.not_found()
         return app.fsm.prev()
@@ -136,6 +137,7 @@ def choose_quality_slice():
     first_source: "BaseSource" = app.fsm["ongoing"]["source_slice"]
     episodes: List["BaseEpisode"] = app.fsm["ongoing"]["episode_slice"]
     videos: List["Video"] = first_source.get_videos()
+    videos = sort_video_by_quality(videos, app.CFG.MIN_QUALITY)
 
     views.Message.show_results(videos)
     choose = app.cmd.prompt("~/ongoing/episode/videoS/quality ",
