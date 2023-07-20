@@ -3,6 +3,7 @@ import importlib
 __version__ = "5.0.1"
 
 
+
 def run_cli():
     import argparse
     parser = argparse.ArgumentParser(description="anicli-ru")
@@ -31,12 +32,23 @@ def run_cli():
                         help="usage ffmpeg backend for redirect video to player. "
                              "Enable, if your player cannot accept headers params"
                         )
+    parser.add_argument("--proxy",
+                        type=str,
+                        default=None,
+                        help="Setup proxy")
+    parser.add_argument("--timeout",
+                        type=float,
+                        default=None,
+                        help="Setup timeout")
+
     namespaces = parser.parse_args()
     module = importlib.import_module(f"anicli_api.source.{namespaces.source}")
     APP.CFG.EXTRACTOR = getattr(module, "Extractor")()
     APP.CFG.USE_FFMPEG_ROUTE = namespaces.ffmpeg
     APP.CFG.PLAYER = namespaces.player
     APP.CFG.MIN_QUALITY = namespaces.quality
+    APP.CFG.TIMEOUT = namespaces.timeout
+    APP.CFG.PROXY = namespaces.proxy
     APP.loop()
 
 
