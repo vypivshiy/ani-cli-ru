@@ -1,2 +1,0 @@
-anicli-api
-eggella
