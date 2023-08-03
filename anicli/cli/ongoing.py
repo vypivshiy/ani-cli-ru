@@ -1,11 +1,12 @@
 from typing import TYPE_CHECKING, List
 
+
+from anicli.cli.config import AnicliApp
 from eggella.fsm import IntStateGroup
 
 from anicli import views
 from anicli._validator import NumPromptValidator, AnimePromptValidator
 from anicli._completion import word_completer, anime_word_completer
-from anicli.cli.config import app
 from anicli.cli.utils import slice_playlist_iter, slice_play_hash, sort_video_by_quality
 from anicli.cli.player import run_video
 
@@ -15,30 +16,41 @@ if TYPE_CHECKING:
 
 
 class OngoingStates(IntStateGroup):
-    EPISODE = 5
-    SOURCE = 6
-    VIDEO = 7
-    SOURCE_SLICE = 8
-    VIDEO_SLICE = 9
+    START = 0
+    EPISODE = 1
+    SOURCE = 2
+    VIDEO = 3
+    SOURCE_SLICE = 4
+    VIDEO_SLICE = 5
 
 
+app = AnicliApp("ongoing")
 app.register_states(OngoingStates)
 
 
 @app.on_command("ongoing")
 def ongoing():
     """get all available ongoing titles"""
+    app.fsm.run(OngoingStates)
+
+
+@app.on_state(OngoingStates.START)
+def start_ongoing():
     results = app.CFG.EXTRACTOR.ongoing()
     if not results:
         views.Message.not_found()
-        return
+        return app.fsm.finish()
     views.Message.show_results(results)
-    choose = app.cmd.prompt("~/ongoing ", completer=word_completer(results), validator=NumPromptValidator(results))
+    choose = app.cmd.prompt(
+        "~/ongoing ",
+        completer=word_completer(results),
+        validator=NumPromptValidator(results)
+    )
     if choose in ("..", "~"):
-        return
+        return app.fsm.finish()
     choose = int(choose)
     app.CTX["result"] = results[choose]
-    app.fsm.run(OngoingStates)
+    app.fsm.next()
 
 
 @app.on_state(OngoingStates.EPISODE)
@@ -52,12 +64,15 @@ def choose_episode():
         return app.fsm.finish()
     choose = app.cmd.prompt("~/ongoing/episode ",
                             completer=anime_word_completer(episodes),
-                            validator=AnimePromptValidator(episodes))
-    if choose in ("~", ".."):
+                            validator=AnimePromptValidator(episodes)
+                            )
+    if choose == "~":
         return app.fsm.finish()
+    elif choose == "..":
+        return app.fsm.set(OngoingStates.START)
     elif choose == "info":
         views.Message.show_anime_full_description(anime)
-        return app.fsm.set(OngoingStates.EPISODE)
+        return app.fsm.current()
 
     elif (parts := choose.split("-")) and len(parts) == 2 and all([p.isdigit() for p in parts]):
         span = slice(int(parts[0]), int(parts[1]))
@@ -115,7 +130,6 @@ def choose_quality():
 
 @app.on_state(OngoingStates.SOURCE_SLICE)
 def play_slice():
-    # TODO refactoring
     episodes: List["BaseEpisode"] = app.fsm["ongoing"]["episode_slice"]
     episode = episodes[0]
     sources: List["BaseSource"] = episode.get_sources()

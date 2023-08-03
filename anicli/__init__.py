@@ -1,7 +1,6 @@
 from anicli.cli import APP
 import importlib
-__version__ = "5.0.1"
-
+__version__ = "5.0.2"
 
 
 def run_cli():

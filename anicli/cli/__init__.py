@@ -1,7 +1,12 @@
-from anicli.cli.search import *
-from anicli.cli.ongoing import *
-from anicli.cli.events import *
-from anicli.cli.config import app as APP
+from anicli.cli import search
+from anicli.cli import ongoing
+from anicli.cli import events
+from anicli.cli.config import app
 
-__all__ = ["APP"]
+APP = app
+APP.register_blueprint(
+    search.app,
+    ongoing.app,
+    events.app
+)
 
