@@ -1,5 +1,6 @@
 import warnings
 from abc import abstractmethod
+from contextlib import suppress
 
 from typing import TYPE_CHECKING, Any, Optional
 import subprocess
@@ -48,6 +49,17 @@ class VLCPlayer(BasePlayer):
         subprocess.Popen(cmd, shell=True).wait()
 
 
+class CVLCPlayer(VLCPlayer):
+    @classmethod
+    def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None, **kwargs):
+        if video.headers:
+            warnings.warn("vlc player is not support set http headers, usage --ffmpeg key instead", stacklevel=3)
+            return
+        title_arg = cls.TITLE_ARG.format(title) if title else ""
+        cmd = f'cvlc {title_arg} "{video.url}"'
+        subprocess.Popen(cmd, shell=True).wait()
+
+
 class FFMPEGRouter(BasePlayer):
     """ffmpeg router for redirect video to players
 
@@ -57,7 +69,7 @@ class FFMPEGRouter(BasePlayer):
     URL_ARG = '-i "{}"'
     HLS_ARGS = "-c copy -f hls -hls_flags append_list+omit_endlist " \
                "-hls_segment_type mpegts -hls_playlist_type vod pipe:1"
-    PLAYER_ARG = "| {} -"
+    PLAYER_ARG = "| {} {} -"
     HEARERS_ARG = "-headers "
 
     @classmethod
@@ -75,10 +87,10 @@ class FFMPEGRouter(BasePlayer):
         # todo add title argument
         headers_arg = cls._headers(video.headers)
         url = cls.URL_ARG.format(video.url)
-        # title_arg = title_arg.format(title) if title_arg and title else ""
+        title_arg = title_arg.format(title) if title_arg and title else ""
         cmd = f'ffmpeg ' \
-              f'{cls.LOGLEVEL_ARG} {headers_arg} {url} {cls.HLS_ARGS} {cls.PLAYER_ARG.format(player)}'
-        print(cmd)
+              f'{cls.LOGLEVEL_ARG} {headers_arg} {url} {cls.HLS_ARGS} {cls.PLAYER_ARG.format(player, title_arg)}'
+        # print(cmd)
         subprocess.Popen(cmd, shell=True).wait()
 
 
@@ -89,7 +101,7 @@ def run_video(video: "Video",
     if use_ffmpeg:
         if player == "mpv":
             FFMPEGRouter.play(video, title, player=player, title_arg='--title="{}"')
-        elif player == "vlc":
+        elif player in ("vlc", "cvlc"):
             FFMPEGRouter.play(video, title, player=player, title_arg='--meta-title "{}"')
         return
     elif player == "mpv":
