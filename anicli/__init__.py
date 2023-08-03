@@ -21,7 +21,7 @@ def run_cli():
     parser.add_argument("-p", "--player",
                         type=str,
                         default="mpv",
-                        choices=["mpv", "vlc"],
+                        choices=["mpv", "vlc", "cvlc"],
                         help="Set videoplayer target. Default mpv"
                         )
 
