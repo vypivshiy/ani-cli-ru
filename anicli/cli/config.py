@@ -1,10 +1,10 @@
 from typing import TYPE_CHECKING, Optional
+from pathlib import Path
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.shortcuts.prompt import CompleteStyle
 from eggella import Eggella
-
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 
 if TYPE_CHECKING:
@@ -17,7 +17,8 @@ class Config:
     PLAYER_EXTRA_ARGS: str = ""
     MIN_QUALITY: int = 0
     USE_FFMPEG_ROUTE: bool = False
-    _CONFIG_PATH: str = "~/.config/ruanicli"
+    CONFIG_PATH: str = Path.home() / ".config" / "ruanicli"
+
     PROXY: Optional[str] = None
     TIMEOUT: Optional[float] = None
 

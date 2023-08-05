@@ -54,9 +54,13 @@ class Message:
     def show_anime_full_description(anime: "BaseAnime"):
 
         text = f"""{anime.title} [{anime.alt_titles}]
+
 Genres: {anime.genres}
+
 Release: {anime.aired}
+
 Episodes: {anime.episodes_available}/{anime.episodes_total}
+
 Description:
     {anime.description}
 """
@@ -97,7 +101,6 @@ Description:
         @bindings.add("c-c")
         @bindings.add("q")
         def _(event):
-            "Quit."
             event.app.exit()
 
         style = Style.from_dict(

@@ -1,11 +1,8 @@
 import logging
 
-from anicli.cli.config import AnicliApp
+from anicli.cli.config import app
 from urllib.parse import urlsplit
 from anicli_api._http import HTTPSync
-
-
-app = AnicliApp("anicli_events")
 
 
 @app.on_startup()
