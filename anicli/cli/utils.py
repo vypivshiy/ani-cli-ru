@@ -1,5 +1,8 @@
-from typing import TYPE_CHECKING, List, Generator, Tuple
+
+from typing import TYPE_CHECKING, List, Generator, Tuple, cast
 from urllib.parse import urlsplit
+
+from anicli.cli.config import AnicliApp
 
 if TYPE_CHECKING:
     from anicli_api.base import BaseSource, BaseEpisode
@@ -17,6 +20,10 @@ def slice_play_hash(video: "Video", source: "BaseSource"):
 def slice_playlist_iter(episodes: List["BaseEpisode"], cmp_key_hash: int, config: "Config"
                         ) -> Generator[Tuple["Video", "BaseEpisode"], None, None]:
     """Compare video by video url netloc, video type, quality and dubber name"""
+    # get main instance
+    app = AnicliApp.__app_instances__["anicli-main"]
+    app = cast(AnicliApp, app)
+
     visited = set()
     for episode in episodes:
         if episode.num not in visited:
