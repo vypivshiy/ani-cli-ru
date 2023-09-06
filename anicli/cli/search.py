@@ -7,7 +7,7 @@ from anicli import views
 from anicli.cli.config import AnicliApp
 from anicli._validator import NumPromptValidator, AnimePromptValidator
 from anicli._completion import word_completer, anime_word_completer
-from anicli.cli.player import run_video
+from anicli.cli.player import run_video_command
 
 from anicli.cli.utils import slice_play_hash, slice_playlist_iter, sort_video_by_quality
 
@@ -130,7 +130,7 @@ def choose_quality():
     video = videos[int(choose)]
     app.fsm["search"]["video"] = video
     episode: "BaseEpisode" = app.fsm["search"]["episode"]
-    run_video(video, str(episode), player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
+    run_video_command(video=video, title=str(episode), config=app.CFG)
     return app.fsm.set(SearchStates.EPISODE)
 
 
@@ -175,7 +175,8 @@ def choose_quality_slice():
         cmp_key_hash = slice_play_hash(video, first_source)
         for video, episode in slice_playlist_iter(episodes, cmp_key_hash, app.CFG):
             try:
-                run_video(video, str(episode), player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
+                title = str(episode)
+                run_video_command(video=video, title=title, config=app.CFG)
             except KeyboardInterrupt:
                 return app.fsm.set(SearchStates.EPISODE)
     app.fsm.set(SearchStates.EPISODE)

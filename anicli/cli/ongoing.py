@@ -8,7 +8,7 @@ from anicli import views
 from anicli._validator import NumPromptValidator, AnimePromptValidator
 from anicli._completion import word_completer, anime_word_completer
 from anicli.cli.utils import slice_playlist_iter, slice_play_hash, sort_video_by_quality
-from anicli.cli.player import run_video
+from anicli.cli.player import run_video_command
 
 if TYPE_CHECKING:
     from anicli_api.base import BaseAnime, BaseOngoing, BaseSource, BaseEpisode
@@ -124,7 +124,7 @@ def choose_quality():
     video = videos[int(choose)]
     app.fsm["ongoing"]["video"] = video
     episode: "BaseEpisode" = app.fsm["ongoing"]["episode"]
-    run_video(video, str(episode), player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
+    run_video_command(video=video, title=str(episode), config=app.CFG)
     return app.fsm.set(OngoingStates.EPISODE)
 
 
@@ -168,7 +168,8 @@ def choose_quality_slice():
         app.cmd.print_ft("Press CTRL + C for exit")
         for video, episode in slice_playlist_iter(episodes, cmp_key_hash, app.CFG):
             try:
-                run_video(video, str(episode), player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
+                title = str(episode)
+                run_video_command(video=video, title=title, config=app.CFG)
             except KeyboardInterrupt:
                 return app.fsm.set(OngoingStates.EPISODE)
     app.fsm.set(OngoingStates.EPISODE)
