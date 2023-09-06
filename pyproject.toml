@@ -24,7 +24,9 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "anicli-api", "eggella"
+  "anicli-api",
+  "eggella",
+  'toml; python_version < "3.11"'
 ]
 
 [project.urls]
