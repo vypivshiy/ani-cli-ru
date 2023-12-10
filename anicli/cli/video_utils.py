@@ -14,10 +14,12 @@ __all__ = ["slice_play_hash", "slice_playlist_iter", "sort_video_by_quality"]
 
 def slice_play_hash(video: "Video", source: "BaseSource"):
     """generate hash key for slice video play"""
-    return hash((urlsplit(video.url).netloc, video.type, video.quality, source.dub))
+    return hash((urlsplit(video.url).netloc, video.type, video.quality, source.title))
 
 
-def slice_playlist_iter(episodes: List["BaseEpisode"], cmp_key_hash: int, config: "Config"
+def slice_playlist_iter(episodes: List["BaseEpisode"],
+                        cmp_key_hash: int,
+                        config: "Config"
                         ) -> Generator[Tuple["Video", "BaseEpisode"], None, None]:
     """Compare video by video url netloc, video type, quality and dubber name"""
     # get main instance
@@ -28,7 +30,7 @@ def slice_playlist_iter(episodes: List["BaseEpisode"], cmp_key_hash: int, config
     for episode in episodes:
         if episode.num not in visited:
             for source in episode.get_sources():
-                for video in source.get_videos(**app.CFG.httpx_kwargs()):
+                for video in source.get_videos(**config.httpx_kwargs()):
                     if cmp_key_hash == slice_play_hash(video, source):
                         visited.add(episode.num)
                         yield video, episode
