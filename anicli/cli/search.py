@@ -1,3 +1,4 @@
+from contextlib import suppress
 from typing import TYPE_CHECKING, List
 
 from eggella.fsm import IntStateGroup
@@ -9,8 +10,8 @@ from anicli._validator import NumPromptValidator, AnimePromptValidator
 from anicli._completion import word_completer, anime_word_completer
 from anicli.cli.player import run_video
 
-from anicli.cli.utils import slice_play_hash, slice_playlist_iter, sort_video_by_quality
-
+from anicli.cli.video_utils import slice_play_hash, slice_playlist_iter,  is_video_url_valid, \
+    get_preferred_quality_index
 
 if TYPE_CHECKING:
     from anicli_api.base import BaseAnime, BaseSearch, BaseSource, BaseEpisode
@@ -44,6 +45,7 @@ def start_search():
     if not results:
         views.Message.not_found()
         return app.fsm.finish()
+    views.Message.print_bold("[*] Search:")
     views.Message.show_results(results)
     choose = app.cmd.prompt("~/search ",
                             completer=word_completer(results),
@@ -60,11 +62,15 @@ def start_search():
 def choose_episode():
     result: "BaseSearch" = app.CTX["result"]
     anime: "BaseAnime" = result.get_anime()
+
+    if not anime:
+        return app.fsm.prev()
+
     episodes: List["BaseEpisode"] = anime.get_episodes()
     if not episodes:
         views.Message.not_found_episodes()
         return app.fsm.finish()
-
+    views.Message.print_bold("[*] Episodes:")
     views.Message.show_results(episodes)
     choose = app.cmd.prompt("~/search/episode ",
                             completer=anime_word_completer(episodes),
@@ -95,6 +101,8 @@ def choose_source():
     if not sources:
         views.Message.not_found()
         return app.fsm.prev()
+
+    views.Message.print_bold("[*] Sources:")
     views.Message.show_results(sources)
     choose = app.cmd.prompt("~/search/episode/video ",
                             completer=word_completer(sources),
@@ -113,12 +121,16 @@ def choose_source():
 def choose_quality():
     source: "BaseSource" = app.fsm["search"]["source"]
     videos = source.get_videos(**app.CFG.httpx_kwargs())
-    videos = sort_video_by_quality(videos, app.CFG.MIN_QUALITY)
+    preferred_quality = get_preferred_quality_index(videos, app.CFG.MIN_QUALITY)
+
     if not videos:
         views.Message.not_found()
         return app.fsm.prev()
+
+    views.Message.print_bold("[*] Videos:")
     views.Message.show_results(videos)
     choose = app.cmd.prompt("~/search/episode/video/quality ",
+                            default=str(preferred_quality),
                             completer=word_completer(videos),
                             validator=NumPromptValidator(videos)
                             )
@@ -126,8 +138,16 @@ def choose_quality():
         return app.fsm.finish()
     elif choose == "..":
         return app.fsm.prev()
+    while 1:
+        video = videos[int(choose)]
+        if is_video_url_valid(video):
+            break
+        elif int(choose) == 0:
+            views.Message.not_found()
+            return app.fsm.set(SearchStates.VIDEO)
+        views.Message.video_not_found()
+        choose = int(choose) - 1
 
-    video = videos[int(choose)]
     app.fsm["search"]["video"] = video
     episode: "BaseEpisode" = app.fsm["search"]["episode"]
     run_video(video, str(episode), player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
@@ -136,10 +156,10 @@ def choose_quality():
 
 @app.on_state(SearchStates.SOURCE_SLICE)
 def play_slice():
-    # TODO refactoring
     episodes: List["BaseEpisode"] = app.fsm["search"]["episode_slice"]
     episode = episodes[0]
     sources: List["BaseSource"] = episode.get_sources()
+    views.Message.print_bold("[*] Sources <u>slice mode</u>:")
     views.Message.show_results(sources)
     choose = app.cmd.prompt("~/search/episode/videoS ",
                             completer=word_completer(sources),
@@ -158,24 +178,33 @@ def choose_quality_slice():
     first_source: "BaseSource" = app.fsm["search"]["source_slice"]
     episodes: List["BaseEpisode"] = app.fsm["search"]["episode_slice"]
     videos: List["Video"] = first_source.get_videos(**app.CFG.httpx_kwargs())
-    videos = sort_video_by_quality(videos, app.CFG.MIN_QUALITY)
+    preferred_quality = get_preferred_quality_index(videos, app.CFG.MIN_QUALITY)
 
+    views.Message.print_bold("[*] Video <u>slice mode</u>:")
     views.Message.show_results(videos)
     choose = app.cmd.prompt("~/search/episode/videoS/quality ",
+                            default=str(preferred_quality),
                             completer=word_completer(videos),
                             validator=NumPromptValidator(videos)
                             )
+
     if choose == "~":
         return app.fsm.finish()
     elif choose == "..":
         return app.fsm.set(SearchStates.SOURCE_SLICE)
-    else:
+    while 1:
         video = videos[int(choose)]
-        app.cmd.print_ft("Press CTRL+C for exit")
-        cmp_key_hash = slice_play_hash(video, first_source)
+        if is_video_url_valid(video):
+            break
+        elif int(choose) == 0:
+            views.Message.not_found()
+            return app.fsm.set(SearchStates.SOURCE_SLICE)
+        views.Message.video_not_found()
+        choose = int(choose) - 1
+
+    cmp_key_hash = slice_play_hash(video, first_source)
+    with suppress(KeyboardInterrupt):
         for video, episode in slice_playlist_iter(episodes, cmp_key_hash, app.CFG):
-            try:
-                run_video(video, str(episode), player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
-            except KeyboardInterrupt:
-                return app.fsm.set(SearchStates.EPISODE)
-    app.fsm.set(SearchStates.EPISODE)
+            app.cmd.print_ft("SLICE MODE: Press q + CTRL+C for exit")
+            run_video(video, str(episode), player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
+    return app.fsm.set(SearchStates.EPISODE)
