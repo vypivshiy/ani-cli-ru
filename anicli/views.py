@@ -23,6 +23,12 @@ class Message:
         print_formatted_text(HTML(f"<b>{text}</b>"))
 
     @staticmethod
+    def video_not_found():
+        print_formatted_text(
+            HTML("<ascired>Video whis quality not founded, decrease</ascired>")
+        )
+
+    @staticmethod
     def not_found():
         print_formatted_text(
             HTML("<ascired>not found :(</ascired>")
