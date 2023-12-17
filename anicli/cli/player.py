@@ -41,15 +41,16 @@ class MpvPlayer(BasePlayer):
     def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None, **kwargs):
         _args = [cls.PLAYER]
 
-        title_arg = f'{cls.TITLE}="{title}"'  if title else ""
+        title_arg = f'{cls.TITLE}={title!r}'  if title else ""
         headers_arg = cls._parse_headers_args(video.headers)
 
         command = f'{cls.PLAYER} {title_arg} {headers_arg} "{video.url}"'
+        print(command)
         subprocess.Popen(command, shell=True).wait()
 
 
 class VLCPlayer(BasePlayer):
-    TITLE_ARG = '--meta-title "{}"'
+    TITLE_ARG = '--meta-title'
 
     @classmethod
     def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None, **kwargs):
@@ -57,7 +58,7 @@ class VLCPlayer(BasePlayer):
             warnings.warn("vlc player is not support set http headers, usage --ffmpeg proxy instead",
                           category=UserWarning)
             return
-        title_arg = cls.TITLE_ARG.format(title) if title else ""
+        title_arg = f'{cls.TITLE_ARG} {title!r}' if title else ""
 
         cmd = f'vlc {title_arg} "{video.url}"'
         subprocess.Popen(cmd, shell=True).wait()
@@ -69,7 +70,7 @@ class CVLCPlayer(VLCPlayer):
         if video.headers:
             warnings.warn("vlc player is not support set http headers, usage --ffmpeg key instead", stacklevel=3)
             return
-        title_arg = cls.TITLE_ARG.format(title) if title else ""
+        title_arg = f'{cls.TITLE_ARG} {title!r}' if title else ""
 
         cmd = f'cvlc {title_arg} "{video.url}"'
         subprocess.Popen(cmd, shell=True).wait()
