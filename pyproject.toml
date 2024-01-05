@@ -23,17 +23,18 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "anicli-api", "eggella"
+  "anicli-api", "eggella", "setuptools"
 ]
 
 [project.urls]
-Documentation = "https://github.com/unknown/temporary#readme"
-Issues = "https://github.com/unknown/temporary/issues"
-Source = "https://github.com/unknown/temporary"
+Documentation = "https://github.com/vypivshiy/ani-cli-ru#readme"
+Issues = "https://github.com/vypivshiy/ani-cli-ru/issues"
+Source = "https://github.com/vypivshiy/ani-cli-ru"
 
 [tool.hatch.version]
 path = "anicli/__init__.py"
@@ -61,7 +62,7 @@ anicli-ru = "anicli:run_cli"
 
 
 [[tool.hatch.envs.all.matrix]]
-python = ["3.8", "3.9", "3.10", "3.11"]
+python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
 [tool.hatch.envs.lint]
 detached = true
