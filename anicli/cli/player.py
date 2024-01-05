@@ -41,7 +41,7 @@ class MpvPlayer(BasePlayer):
     def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None, **kwargs):
         _args = [cls.PLAYER]
 
-        title_arg = f'{cls.TITLE}={title!r}'  if title else ""
+        title_arg = f'{cls.TITLE}="{repr(title)[1:-1]}"'  if title else ""
         headers_arg = cls._parse_headers_args(video.headers)
 
         command = f'{cls.PLAYER} {title_arg} {headers_arg} "{video.url}"'
@@ -58,7 +58,7 @@ class VLCPlayer(BasePlayer):
             warnings.warn("vlc player is not support set http headers, usage --ffmpeg proxy instead",
                           category=UserWarning)
             return
-        title_arg = f'{cls.TITLE_ARG} {title!r}' if title else ""
+        title_arg = f'{cls.TITLE_ARG} "{repr(title)[1:-1]}"' if title else ""
 
         cmd = f'vlc {title_arg} "{video.url}"'
         subprocess.Popen(cmd, shell=True).wait()
@@ -70,7 +70,7 @@ class CVLCPlayer(VLCPlayer):
         if video.headers:
             warnings.warn("vlc player is not support set http headers, usage --ffmpeg key instead", stacklevel=3)
             return
-        title_arg = f'{cls.TITLE_ARG} {title!r}' if title else ""
+        title_arg = f'{cls.TITLE_ARG} "{repr(title)[1:-1]}"' if title else ""
 
         cmd = f'cvlc {title_arg} "{video.url}"'
         subprocess.Popen(cmd, shell=True).wait()
