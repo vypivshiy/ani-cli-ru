@@ -1,8 +1,8 @@
-
 from typing import TYPE_CHECKING, List, Generator, Tuple, cast
 from urllib.parse import urlsplit
-from httpx import Client
 
+from httpx import Client
+from anicli_api.player.aniboom import Aniboom
 
 from anicli.cli.config import AnicliApp
 
@@ -14,7 +14,15 @@ if TYPE_CHECKING:
 
 def slice_play_hash(video: "Video", source: "BaseSource"):
     """generate hash key for slice video play"""
-    return hash((urlsplit(video.url).netloc, video.type, video.quality, source.title))
+    video_netloc = urlsplit(video.url).netloc
+
+    if source.url == Aniboom():
+        # aniboom return random subdomains in Video objects
+        # examples:
+        # evie.yagami-light.com emily.yagami-light.com
+        # amelia.yagami-light.com calcium.yagami-light.com
+        video_netloc = '.'.join(video_netloc.split('.')[-2:])
+    return hash((video_netloc, video.type, video.quality, source.title))
 
 
 def slice_playlist_iter(episodes: List["BaseEpisode"],
