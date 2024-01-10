@@ -28,7 +28,7 @@ def slice_play_hash(video: "Video", source: "BaseSource"):
 def slice_playlist_iter(episodes: List["BaseEpisode"],
                         cmp_key_hash: int,
                         config: "Config"
-                        ) -> Generator[Tuple["Video", "BaseEpisode"], None, None]:
+                        ) -> Generator[Tuple["BaseEpisode", "BaseSource", "Video"], None, None]:
     """Compare video by video url netloc, video type, quality and dubber name"""
     # get main instance
     app = AnicliApp.__app_instances__["anicli-main"]
@@ -41,7 +41,7 @@ def slice_playlist_iter(episodes: List["BaseEpisode"],
                 for video in source.get_videos(**config.httpx_kwargs()):
                     if cmp_key_hash == slice_play_hash(video, source):
                         visited.add(episode.num)
-                        yield video, episode
+                        yield episode, source, video
                         break
                 if episode.num in visited:
                     break
@@ -62,6 +62,9 @@ def get_preferred_quality_index(videos: List["Video"], quality: int) -> int:
             return i
         max_quality = max(video.quality, max_quality)
     return i
+
+def get_preferred_human_quality_index(videos: List["Video"], quality: int) -> int:
+    return get_preferred_quality_index(videos, quality) + 1
 
 
 def is_video_url_valid(video: "Video") -> bool:
