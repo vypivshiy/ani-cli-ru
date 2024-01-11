@@ -1,21 +1,24 @@
 from contextlib import suppress
 from typing import TYPE_CHECKING, List
 
-from eggella.fsm import IntStateGroup
 from eggella.command import RawCommandHandler
+from eggella.fsm import IntStateGroup
 
 from anicli import views
+from anicli._completion import anime_word_choice_completer, word_choice_completer
+from anicli._validator import AnimePromptValidator, NumPromptValidator
 from anicli.cli.config import AnicliApp
-from anicli._validator import NumPromptValidator, AnimePromptValidator
-from anicli._completion import word_choice_completer, anime_word_choice_completer
 from anicli.cli.player import run_video
+from anicli.cli.video_utils import (
+    get_preferred_human_quality_index,
+    is_video_url_valid,
+    slice_play_hash,
+    slice_playlist_iter,
+)
 from anicli.utils import choice_human_index, choice_human_slice, create_title
 
-from anicli.cli.video_utils import slice_play_hash, slice_playlist_iter,  is_video_url_valid, \
-    get_preferred_human_quality_index
-
 if TYPE_CHECKING:
-    from anicli_api.base import BaseAnime, BaseSearch, BaseSource, BaseEpisode
+    from anicli_api.base import BaseAnime, BaseEpisode, BaseSearch, BaseSource
     from anicli_api.player.base import Video
 
 
@@ -48,10 +51,9 @@ def start_search():
         return app.fsm.finish()
     views.Message.print_bold("[*] Search:")
     views.Message.show_results(results)
-    choose = app.cmd.prompt("~/search ",
-                            completer=word_choice_completer(results),
-                            validator=NumPromptValidator(results)
-                            )
+    choose = app.cmd.prompt(
+        "~/search ", completer=word_choice_completer(results), validator=NumPromptValidator(results)
+    )
     if choose in ("..", "~"):
         return app.fsm.finish()
     app.CTX["result"] = choice_human_index(results, int(choose))
@@ -73,10 +75,9 @@ def choose_episode():
         return app.fsm.finish()
     views.Message.print_bold("[*] Episodes:")
     views.Message.show_results(episodes)
-    choose = app.cmd.prompt("~/search/episode ",
-                            completer=anime_word_choice_completer(episodes),
-                            validator=AnimePromptValidator(episodes)
-                            )
+    choose = app.cmd.prompt(
+        "~/search/episode ", completer=anime_word_choice_completer(episodes), validator=AnimePromptValidator(episodes)
+    )
     if choose == "~":
         return app.fsm.finish()
     elif choose == "..":
@@ -104,10 +105,9 @@ def choose_source():
 
     views.Message.print_bold("[*] Sources:")
     views.Message.show_results(sources)
-    choose = app.cmd.prompt("~/search/episode/video ",
-                            completer=word_choice_completer(sources),
-                            validator=NumPromptValidator(sources)
-                            )
+    choose = app.cmd.prompt(
+        "~/search/episode/video ", completer=word_choice_completer(sources), validator=NumPromptValidator(sources)
+    )
     if choose == "~":
         return app.fsm.finish()
     elif choose == "..":
@@ -128,11 +128,12 @@ def choose_quality():
 
     views.Message.print_bold("[*] Videos:")
     views.Message.show_results(videos)
-    choose = app.cmd.prompt("~/search/episode/video/quality ",
-                            default=str(preferred_quality),
-                            completer=word_choice_completer(videos),
-                            validator=NumPromptValidator(videos)
-                            )
+    choose = app.cmd.prompt(
+        "~/search/episode/video/quality ",
+        default=str(preferred_quality),
+        completer=word_choice_completer(videos),
+        validator=NumPromptValidator(videos),
+    )
     if choose == "~":
         return app.fsm.finish()
     elif choose == "..":
@@ -164,9 +165,9 @@ def play_slice():
     sources: List["BaseSource"] = episode.get_sources()
     views.Message.print_bold("[*] Sources <u>slice mode</u>:")
     views.Message.show_results(sources)
-    choose = app.cmd.prompt("~/search/episode/videoS ",
-                            completer=word_choice_completer(sources),
-                            validator=NumPromptValidator(sources))
+    choose = app.cmd.prompt(
+        "~/search/episode/videoS ", completer=word_choice_completer(sources), validator=NumPromptValidator(sources)
+    )
     if choose == "~":
         return app.fsm.finish()
     elif choose == "..":
@@ -185,11 +186,12 @@ def choose_quality_slice():
 
     views.Message.print_bold("[*] Video <u>slice mode</u>:")
     views.Message.show_results(videos)
-    choose = app.cmd.prompt("~/search/episode/videoS/quality ",
-                            default=str(preferred_quality),
-                            completer=word_choice_completer(videos),
-                            validator=NumPromptValidator(videos)
-                            )
+    choose = app.cmd.prompt(
+        "~/search/episode/videoS/quality ",
+        default=str(preferred_quality),
+        completer=word_choice_completer(videos),
+        validator=NumPromptValidator(videos),
+    )
 
     if choose == "~":
         return app.fsm.finish()

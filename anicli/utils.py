@@ -1,37 +1,54 @@
 import itertools
-import unicodedata
 import re
+import unicodedata
 from typing import Sequence, TypeVar
 
 _T = TypeVar("_T")
 
 
 def choice_human_index(collection: Sequence[_T], index: int) -> _T:
-    return collection[index-1]
+    return collection[index - 1]
 
 
 def choice_human_slice(collection: Sequence[_T], start: int, end: int) -> Sequence[_T]:
-    return collection[start-1: end]
+    return collection[start - 1 : end]
 
-def create_title(anime: "BaseAnime",
-                 episode: "BaseEpisode",
-                 source: "BaseSource"
-                 ) -> str:
+
+def create_title(anime: "BaseAnime", episode: "BaseEpisode", source: "BaseSource") -> str:
     return f"{episode.num} {episode.title} {anime.title} ({source.title})"
 
 
 class _NO_DEFAULT:
     pass
 
+
 # needed for sanitizing filenames in restricted mode
-ACCENT_CHARS = dict(zip('ÂÃÄÀÁÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖŐØŒÙÚÛÜŰÝÞßàáâãäåæçèéêëìíîïðñòóôõöőøœùúûüűýþÿ',
-                        itertools.chain('AAAAAA', ['AE'], 'CEEEEIIIIDNOOOOOOO', ['OE'], 'UUUUUY', ['TH', 'ss'],
-                                        'aaaaaa', ['ae'], 'ceeeeiiiionooooooo', ['oe'], 'uuuuuy', ['th'], 'y')))
+ACCENT_CHARS = dict(
+    zip(
+        'ÂÃÄÀÁÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖŐØŒÙÚÛÜŰÝÞßàáâãäåæçèéêëìíîïðñòóôõöőøœùúûüűýþÿ',
+        itertools.chain(
+            'AAAAAA',
+            ['AE'],
+            'CEEEEIIIIDNOOOOOOO',
+            ['OE'],
+            'UUUUUY',
+            ['TH', 'ss'],
+            'aaaaaa',
+            ['ae'],
+            'ceeeeiiiionooooooo',
+            ['oe'],
+            'uuuuuy',
+            ['th'],
+            'y',
+        ),
+    )
+)
+
+
 # TODO simplify, refactoring
 # STOLEN from yt-dlp
 # https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/utils/_utils.py#L613
-def sanitize_filename(s, restricted=False, is_id=_NO_DEFAULT
-                      ):
+def sanitize_filename(s, restricted=False, is_id=_NO_DEFAULT):
     """Sanitizes a string so it could be used as part of a filename.
     @param restricted   Use a stricter subset of allowed characters
     @param is_id        Whether this is an ID that should be kept unchanged if possible.
@@ -47,7 +64,7 @@ def sanitize_filename(s, restricted=False, is_id=_NO_DEFAULT
             return '\0 '
         elif is_id is _NO_DEFAULT and not restricted and char in '"*:<>?|/\\':
             # Replace with their full-width unicode counterparts
-            return {'/': '\u29F8', '\\': '\u29f9'}.get(char, chr(ord(char) + 0xfee0))
+            return {'/': '\u29F8', '\\': '\u29f9'}.get(char, chr(ord(char) + 0xFEE0))
         elif char == '?' or ord(char) < 32 or ord(char) == 127:
             return ''
         elif char == '"':
@@ -61,6 +78,7 @@ def sanitize_filename(s, restricted=False, is_id=_NO_DEFAULT
         return char
 
         # Replace look-alike Unicode glyphs
+
     if restricted and (is_id is _NO_DEFAULT or not is_id):
         s = unicodedata.normalize('NFKC', s)
     s = re.sub(r'[0-9]+(?::[0-9]+)+', lambda m: m.group(0).replace(':', '_'), s)  # Handle timestamps
@@ -79,7 +97,7 @@ def sanitize_filename(s, restricted=False, is_id=_NO_DEFAULT
         if restricted and result.startswith('-_'):
             result = result[2:]
         if result.startswith('-'):
-            result = '_' + result[len('-'):]
+            result = '_' + result[len('-') :]
         result = result.lstrip('.')
         if not result:
             result = '_'

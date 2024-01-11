@@ -1,19 +1,23 @@
 from contextlib import suppress
 from typing import TYPE_CHECKING, List, Optional
 
-from anicli.cli.config import AnicliApp
 from eggella.fsm import IntStateGroup
 
 from anicli import views
-from anicli._validator import NumPromptValidator, AnimePromptValidator
-from anicli._completion import word_choice_completer, anime_word_choice_completer
-from anicli.cli.video_utils import slice_playlist_iter, slice_play_hash, is_video_url_valid, \
-    get_preferred_human_quality_index
+from anicli._completion import anime_word_choice_completer, word_choice_completer
+from anicli._validator import AnimePromptValidator, NumPromptValidator
+from anicli.cli.config import AnicliApp
 from anicli.cli.player import run_video
+from anicli.cli.video_utils import (
+    get_preferred_human_quality_index,
+    is_video_url_valid,
+    slice_play_hash,
+    slice_playlist_iter,
+)
 from anicli.utils import choice_human_index, choice_human_slice, create_title
 
 if TYPE_CHECKING:
-    from anicli_api.base import BaseAnime, BaseOngoing, BaseSource, BaseEpisode
+    from anicli_api.base import BaseAnime, BaseEpisode, BaseOngoing, BaseSource
     from anicli_api.player.base import Video
 
 
@@ -46,9 +50,7 @@ def start_ongoing():
     views.Message.print_bold("[*] Ongoings:")
     views.Message.show_results(results)
     choose = app.cmd.prompt(
-        "~/ongoing ",
-        completer=word_choice_completer(results),
-        validator=NumPromptValidator(results)
+        "~/ongoing ", completer=word_choice_completer(results), validator=NumPromptValidator(results)
     )
     if choose in ("..", "~"):
         return app.fsm.finish()
@@ -73,10 +75,9 @@ def choose_episode():
         return app.fsm.finish()
     views.Message.print_bold("[*] Episodes:")
     views.Message.show_results(episodes)
-    choose = app.cmd.prompt("~/ongoing/episode ",
-                            completer=anime_word_choice_completer(episodes),
-                            validator=AnimePromptValidator(episodes)
-                            )
+    choose = app.cmd.prompt(
+        "~/ongoing/episode ", completer=anime_word_choice_completer(episodes), validator=AnimePromptValidator(episodes)
+    )
     if choose == "~":
         return app.fsm.finish()
     elif choose == "..":
@@ -104,9 +105,9 @@ def choose_source():
         return app.fsm.prev()
     views.Message.print_bold("[*] Sources:")
     views.Message.show_results(sources)
-    choose = app.cmd.prompt("~/ongoing/episode/video ",
-                            completer=word_choice_completer(sources),
-                            validator=NumPromptValidator(sources))
+    choose = app.cmd.prompt(
+        "~/ongoing/episode/video ", completer=word_choice_completer(sources), validator=NumPromptValidator(sources)
+    )
     if choose == "~":
         return app.fsm.finish()
     elif choose == "..":
@@ -127,10 +128,12 @@ def choose_quality():
         return app.fsm.prev()
     views.Message.print_bold("[*] Videos:")
     views.Message.show_results(videos)
-    choose = app.cmd.prompt("~/ongoing/episode/video/quality ",
-                            default=str(preferred_quality),
-                            completer=word_choice_completer(videos),
-                            validator=NumPromptValidator(videos))
+    choose = app.cmd.prompt(
+        "~/ongoing/episode/video/quality ",
+        default=str(preferred_quality),
+        completer=word_choice_completer(videos),
+        validator=NumPromptValidator(videos),
+    )
     if choose == "~":
         return app.fsm.finish()
     elif choose == "..":
@@ -163,9 +166,9 @@ def play_slice():
     views.Message.print_bold("[*] Sources <u>slice mode</u>:")
     views.Message.show_results(sources)
 
-    choose = app.cmd.prompt("ongoing/episode/videoS ",
-                            completer=word_choice_completer(sources),
-                            validator=NumPromptValidator(sources))
+    choose = app.cmd.prompt(
+        "ongoing/episode/videoS ", completer=word_choice_completer(sources), validator=NumPromptValidator(sources)
+    )
     if choose == "~":
         return app.fsm.finish()
     elif choose == "..":
@@ -185,10 +188,12 @@ def choose_quality_slice():
     views.Message.print_bold("[*] Videos <u>slice mode</u>:")
     views.Message.show_results(videos)
 
-    choose = app.cmd.prompt("~/ongoing/episode/videoS/quality ",
-                            default=str(preferred_quality),
-                            completer=word_choice_completer(videos),
-                            validator=NumPromptValidator(videos))
+    choose = app.cmd.prompt(
+        "~/ongoing/episode/videoS/quality ",
+        default=str(preferred_quality),
+        completer=word_choice_completer(videos),
+        validator=NumPromptValidator(videos),
+    )
     if choose == "~":
         return app.fsm.finish()
     elif choose == "..":

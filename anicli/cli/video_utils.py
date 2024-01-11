@@ -1,14 +1,15 @@
-from typing import TYPE_CHECKING, List, Generator, Tuple, cast
+from typing import TYPE_CHECKING, Generator, List, Tuple, cast
 from urllib.parse import urlsplit
 
-from httpx import Client
 from anicli_api.player.aniboom import Aniboom
+from httpx import Client
 
 from anicli.cli.config import AnicliApp
 
 if TYPE_CHECKING:
-    from anicli_api.base import BaseSource, BaseEpisode
+    from anicli_api.base import BaseEpisode, BaseSource
     from anicli_api.player.base import Video
+
     from anicli.cli.config import Config
 
 
@@ -25,10 +26,9 @@ def slice_play_hash(video: "Video", source: "BaseSource"):
     return hash((video_netloc, video.type, video.quality, source.title))
 
 
-def slice_playlist_iter(episodes: List["BaseEpisode"],
-                        cmp_key_hash: int,
-                        config: "Config"
-                        ) -> Generator[Tuple["BaseEpisode", "BaseSource", "Video"], None, None]:
+def slice_playlist_iter(
+    episodes: List["BaseEpisode"], cmp_key_hash: int, config: "Config"
+) -> Generator[Tuple["BaseEpisode", "BaseSource", "Video"], None, None]:
     """Compare video by video url netloc, video type, quality and dubber name"""
     # get main instance
     app = AnicliApp.__app_instances__["anicli-main"]
@@ -62,6 +62,7 @@ def get_preferred_quality_index(videos: List["Video"], quality: int) -> int:
             return i
         max_quality = max(video.quality, max_quality)
     return i
+
 
 def get_preferred_human_quality_index(videos: List["Video"], quality: int) -> int:
     return get_preferred_quality_index(videos, quality) + 1

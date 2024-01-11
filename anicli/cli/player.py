@@ -1,10 +1,11 @@
 import os
+import subprocess
 import warnings
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, Optional
-import subprocess
-from anicli.utils import sanitize_filename
+
 from anicli.log import logger
+from anicli.utils import sanitize_filename
 
 if TYPE_CHECKING:
     from anicli_api.player.base import Video
@@ -15,7 +16,7 @@ class BasePlayer:
     @abstractmethod
     def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None, **kwargs):
         pass
-    
+
     @staticmethod
     def quote(arg: str) -> str:
         return f'"{sanitize_filename(arg)}"'
@@ -26,8 +27,8 @@ class BasePlayer:
         if os.name == "nt":
             subprocess.Popen(cmd).wait()
         else:
-            subprocess.Popen(cmd, shell=True
-                             ).wait()
+            subprocess.Popen(cmd, shell=True).wait()
+
 
 class MpvPlayer(BasePlayer):
     PLAYER = "mpv"
@@ -47,7 +48,7 @@ class MpvPlayer(BasePlayer):
         comma = f"{cls.HEADERS_KEY}="
 
         for k, v in headers.items():
-            comma+= f'"{k}: {v}",'
+            comma += f'"{k}: {v}",'
 
         return comma.rstrip(',')
 
@@ -67,8 +68,9 @@ class VLCPlayer(BasePlayer):
     @classmethod
     def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None, **kwargs):
         if video.headers:
-            warnings.warn("vlc player is not support set http headers, usage --ffmpeg proxy instead",
-                          category=UserWarning)
+            warnings.warn(
+                "vlc player is not support set http headers, usage --ffmpeg proxy instead", category=UserWarning
+            )
             return
         title_arg = f'{cls.TITLE_ARG} {cls.quote(title)}' if title else ""
 
@@ -93,10 +95,12 @@ class FFMPEGRouter(BasePlayer):
 
     useful, if player not support http headers arguments
     """
+
     LOGLEVEL_ARG = "-loglevel error"
     URL_ARG = '-i "{}"'
-    HLS_ARGS = "-c copy -f hls -hls_flags append_list+omit_endlist " \
-               "-hls_segment_type mpegts -hls_playlist_type vod pipe:1"
+    HLS_ARGS = (
+        "-c copy -f hls -hls_flags append_list+omit_endlist " "-hls_segment_type mpegts -hls_playlist_type vod pipe:1"
+    )
     PLAYER_ARG = "| {} {} -"
     HEARERS_ARG = "-headers "
 
@@ -110,22 +114,27 @@ class FFMPEGRouter(BasePlayer):
         return ""
 
     @classmethod
-    def play(cls, video: "Video", title: Optional[str] = None,
-             player: Optional[str] = None, title_arg: Optional[str] = None, **kwargs):
+    def play(
+        cls,
+        video: "Video",
+        title: Optional[str] = None,
+        player: Optional[str] = None,
+        title_arg: Optional[str] = None,
+        **kwargs,
+    ):
         # todo add title argument
         headers_arg = cls._headers(video.headers)
         url = cls.URL_ARG.format(video.url)
         title_arg = title_arg.format(title) if title_arg and title else ""
 
-        cmd = f'ffmpeg ' \
-              f'{cls.LOGLEVEL_ARG} {headers_arg} {url} {cls.HLS_ARGS} {cls.PLAYER_ARG.format(player, title_arg)}'
+        cmd = (
+            f'ffmpeg '
+            f'{cls.LOGLEVEL_ARG} {headers_arg} {url} {cls.HLS_ARGS} {cls.PLAYER_ARG.format(player, title_arg)}'
+        )
         subprocess.Popen(cmd, shell=True).wait()
 
 
-def run_video(video: "Video",
-              title: Optional[str] = None, *,
-              player: Optional[str] = None,
-              use_ffmpeg: bool = False):
+def run_video(video: "Video", title: Optional[str] = None, *, player: Optional[str] = None, use_ffmpeg: bool = False):
     if use_ffmpeg:
         if player == "mpv":
             FFMPEGRouter.play(video, title, player=player, title_arg='--title="{}"')

@@ -1,8 +1,9 @@
 import logging
+from urllib.parse import urlsplit
+
+from anicli_api.base import HTTPSync
 
 from anicli.cli.config import app
-from urllib.parse import urlsplit
-from anicli_api.base import HTTPSync
 
 
 @app.on_startup()

@@ -1,14 +1,16 @@
-from typing import TYPE_CHECKING, Optional
 from pathlib import Path
+from typing import TYPE_CHECKING, Optional
+
+from eggella import Eggella
+from prompt_toolkit import PromptSession
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit.shortcuts.prompt import CompleteStyle
+
 # import tomli
 
 
-from prompt_toolkit import PromptSession
-from prompt_toolkit.history import FileHistory
-from prompt_toolkit.shortcuts.prompt import CompleteStyle
-from eggella import Eggella
 
-from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 
 if TYPE_CHECKING:
     from anicli_api.base import BaseExtractor
@@ -48,16 +50,17 @@ class Config:
     #             for k,v in cls.__dict__.items():
 
 
-
 class AnicliApp(Eggella):
     CFG = Config()
 
 
 app = AnicliApp("anicli", "~ ")
-app.session = PromptSession("~ ",
-                            history=FileHistory(".anicli_history"),
-                            auto_suggest=AutoSuggestFromHistory(),
-                            complete_style=CompleteStyle.MULTI_COLUMN)
+app.session = PromptSession(
+    "~ ",
+    history=FileHistory(".anicli_history"),
+    auto_suggest=AutoSuggestFromHistory(),
+    complete_style=CompleteStyle.MULTI_COLUMN,
+)
 
 app.documentation = """Anicli
 

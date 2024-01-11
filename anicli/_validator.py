@@ -1,15 +1,14 @@
-from typing import List, Any, Sequence
+from typing import Any, List, Sequence
 
 from prompt_toolkit.document import Document
-from prompt_toolkit.validation import Validator, ValidationError
+from prompt_toolkit.validation import ValidationError, Validator
 
 
 class NumPromptValidator(Validator):
     """Create validation choice from iterable collection"""
-    _ASSIGNED_COMMANDS = {
-        "..",  # back prev step
-        "~"  # back main menu
-        }
+
+    _ASSIGNED_COMMANDS = {"..", "~"}  # back prev step  # back main menu
+
     def __init__(self, items_list: Sequence[Any]):
         self.items_list = items_list
         self.items_len = len(items_list)
@@ -31,18 +30,14 @@ class NumPromptValidator(Validator):
 
 class AnimePromptValidator(NumPromptValidator):
     """validator for choice episode state"""
-    _ASSIGNED_COMMANDS ={
-        "..",
-        "~",
-        "info"  # get title information
-    }
+
+    _ASSIGNED_COMMANDS = {"..", "~", "info"}  # get title information
 
     def _is_valid_slice(self, text: str) -> bool:
-
         def is_digits(start_, end_) -> bool:
             return start_.isdigit() and end_.isdigit()
 
-        def is_not_out_of_range(start_: str , end_: str) -> bool:
+        def is_not_out_of_range(start_: str, end_: str) -> bool:
             return 0 < int(start_) < int(end_) <= self.items_len
 
         if len(text.split("-")) == 2:
