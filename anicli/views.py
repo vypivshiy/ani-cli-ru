@@ -40,7 +40,7 @@ class Message:
             print_formatted_text(
                 FormattedText([
                     ("", "["),
-                    ("#F7FF00", str(i)),
+                    ("#F7FF00", str(i+1)),
                     ("", "] "),
                     ("", str(item))
                 ])
