@@ -1,9 +1,10 @@
+import os
 import warnings
 from abc import abstractmethod
-from contextlib import suppress
-
 from typing import TYPE_CHECKING, Any, Optional
 import subprocess
+from anicli.utils import sanitize_filename
+from anicli.log import logger
 
 if TYPE_CHECKING:
     from anicli_api.player.base import Video
@@ -14,7 +15,19 @@ class BasePlayer:
     @abstractmethod
     def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None, **kwargs):
         pass
+    
+    @staticmethod
+    def quote(arg: str) -> str:
+        return f'"{sanitize_filename(arg)}"'
 
+    @staticmethod
+    def shell_execute(cmd: str):
+        logger.debug("Executing: %s", cmd)
+        if os.name == "nt":
+            subprocess.Popen(cmd).wait()
+        else:
+            subprocess.Popen(cmd, shell=True
+                             ).wait()
 
 class MpvPlayer(BasePlayer):
     PLAYER = "mpv"
@@ -26,6 +39,7 @@ class MpvPlayer(BasePlayer):
         if not headers:
             return ""
         # multiple command key build List Options:
+        # shlex don't support list arguments feature
         # Note:
         #       don't need whitespace see: man mpv, \http-header-fields
         #                                 v
@@ -40,13 +54,11 @@ class MpvPlayer(BasePlayer):
     @classmethod
     def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None, **kwargs):
         _args = [cls.PLAYER]
-
-        title_arg = f'{cls.TITLE}={title!r}'  if title else ""
+        title_arg = f'{cls.TITLE}={cls.quote(title)}' if title else ""
         headers_arg = cls._parse_headers_args(video.headers)
 
         command = f'{cls.PLAYER} {title_arg} {headers_arg} "{video.url}"'
-        print(command)
-        subprocess.Popen(command, shell=True).wait()
+        cls.shell_execute(command)
 
 
 class VLCPlayer(BasePlayer):
@@ -58,10 +70,10 @@ class VLCPlayer(BasePlayer):
             warnings.warn("vlc player is not support set http headers, usage --ffmpeg proxy instead",
                           category=UserWarning)
             return
-        title_arg = f'{cls.TITLE_ARG} {title!r}' if title else ""
+        title_arg = f'{cls.TITLE_ARG} {cls.quote(title)}' if title else ""
 
         cmd = f'vlc {title_arg} "{video.url}"'
-        subprocess.Popen(cmd, shell=True).wait()
+        cls.shell_execute(cmd)
 
 
 class CVLCPlayer(VLCPlayer):
@@ -70,10 +82,10 @@ class CVLCPlayer(VLCPlayer):
         if video.headers:
             warnings.warn("vlc player is not support set http headers, usage --ffmpeg key instead", stacklevel=3)
             return
-        title_arg = f'{cls.TITLE_ARG} {title!r}' if title else ""
+        title_arg = f'{cls.TITLE_ARG} {cls.quote(title)}' if title else ""
 
         cmd = f'cvlc {title_arg} "{video.url}"'
-        subprocess.Popen(cmd, shell=True).wait()
+        cls.shell_execute(cmd)
 
 
 class FFMPEGRouter(BasePlayer):
@@ -116,7 +128,7 @@ def run_video(video: "Video",
               use_ffmpeg: bool = False):
     if use_ffmpeg:
         if player == "mpv":
-            FFMPEGRouter.play(video, title, player=player, title_arg='--tit le="{}"')
+            FFMPEGRouter.play(video, title, player=player, title_arg='--title="{}"')
         elif player in ("vlc", "cvlc"):
             FFMPEGRouter.play(video, title, player=player, title_arg='--meta-title "{}"')
         return
