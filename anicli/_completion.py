@@ -1,15 +1,25 @@
-from typing import List, Any, Dict, Tuple
+from typing import List, Any, Dict, Tuple, Sequence
 
 from prompt_toolkit.completion import WordCompleter
 
+_ASSIGNED_COMMANDS = ("..", "~")
+_ASSIGNED_COMMANDS_META = {"..": "back to prev step", "~": "back to main menu"}
+_ASSIGNED_COMMANDS_EPISODES = ("..", "~", "info")
+_ASSIGNED_COMMANDS_EPISODES_META = {"..": "back to prev step",
+                                    "~": "back to main menu",
+                                    "info": "show full description"}
 
-def _parse_items_completion(items_list: List[Any]) -> Tuple[List[str], Dict[str, str]]:
-    return [str(i) for i in range(len(items_list))], {str(i): str(item) for i, item in enumerate(items_list)}
+_WORDS_T = List[str]
+_META_WORDS_T = Dict[str, str]
+
+def _parse_items_completion(items_list: Sequence[Any]) -> Tuple[_WORDS_T, _META_WORDS_T]:
+    return ([str(i+1) for i in range(len(items_list))],  # words
+            {str(i+1): str(item) for i, item in enumerate(items_list)})  # meta
 
 
-def word_completer(items_list: List[Any]):
-    commands = ["..", "~"]
-    commands_meta = {"..": "back to prev step", "~": "back to main menu"}
+def word_choice_completer(items_list: Sequence[Any]):
+    commands = _ASSIGNED_COMMANDS
+    commands_meta = _ASSIGNED_COMMANDS_META
     words, meta_dict = _parse_items_completion(items_list)
 
     words.extend(commands)
@@ -18,9 +28,9 @@ def word_completer(items_list: List[Any]):
                          meta_dict=meta_dict)
 
 
-def anime_word_completer(items_list: List[Any]):
-    commands = ["..", "~", "info"]
-    commands_meta = {"..": "back to prev step", "~": "back to main menu", "info": "show full description"}
+def anime_word_choice_completer(items_list: Sequence[Any]):
+    commands = _ASSIGNED_COMMANDS_EPISODES
+    commands_meta = _ASSIGNED_COMMANDS_EPISODES_META
     words, meta_dict = _parse_items_completion(items_list)
 
     words.extend(commands)
