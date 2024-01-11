@@ -1,41 +1,65 @@
-from typing import List, Any
+from typing import List, Any, Sequence
 
 from prompt_toolkit.document import Document
 from prompt_toolkit.validation import Validator, ValidationError
 
 
 class NumPromptValidator(Validator):
-    def __init__(self, items_list: List[Any]):
+    """Create validation choice from iterable collection"""
+    _ASSIGNED_COMMANDS = {
+        "..",  # back prev step
+        "~"  # back main menu
+        }
+    def __init__(self, items_list: Sequence[Any]):
         self.items_list = items_list
         self.items_len = len(items_list)
 
-    def validate(self, document: Document) -> None:
-        text = document.text
-        if text.isdigit() and -1 < int(text) < self.items_len:
-            return
-        elif text in ("..", "~"):
-            return
-        raise ValidationError(message="Should be digit, or `..` `~`")
+    def _is_not_out_of_range(self, text: str) -> bool:
+        return text.isdigit() and 0 < int(text) <= self.items_len
 
-
-class AnimePromptValidator(Validator):
-    def __init__(self, items_list: List[Any]):
-        self.items_list = items_list
-        self.items_len = len(items_list)
+    def _in_assigned_commands(self, text: str) -> bool:
+        return text in self._ASSIGNED_COMMANDS
 
     def validate(self, document: Document) -> None:
         text = document.text
-        if text.isdigit() and -1 < int(text) < self.items_len:
+        if self._is_not_out_of_range(text):
             return
-        elif text in ("..", "~", "info"):
+        elif self._in_assigned_commands(text):
             return
-        elif len(text.split("-")) == 2:
+        raise ValidationError(message="Should be digit, or (`..`, `~`)")
+
+
+class AnimePromptValidator(NumPromptValidator):
+    """validator for choice episode state"""
+    _ASSIGNED_COMMANDS ={
+        "..",
+        "~",
+        "info"  # get title information
+    }
+
+    def _is_valid_slice(self, text: str) -> bool:
+
+        def is_digits(start_, end_) -> bool:
+            return start_.isdigit() and end_.isdigit()
+
+        def is_not_out_of_range(start_: str , end_: str) -> bool:
+            return 0 < int(start_) < int(end_) <= self.items_len
+
+        if len(text.split("-")) == 2:
             start, end = text.split("-")
-            if start.isdigit() and end.isdigit() and -1 < int(start) < int(end) <= self.items_len:
-                if int(start) >= int(end):
-                    raise ValidationError(message="Wrong slice range")
-                return
+            if is_digits(start, end) and is_not_out_of_range(start, end):
+                return True
             else:
                 raise ValidationError(message="Wrong slice range")
+        return False
 
-        raise ValidationError(message=f"Should be digit, slice `0-{self.items_len}` or (`..`, `~`, `info`)")
+    def validate(self, document: Document) -> None:
+        text = document.text
+        if self._is_not_out_of_range(text):
+            return
+        elif self._in_assigned_commands(text):
+            return
+        elif self._is_valid_slice(text):
+            return
+
+        raise ValidationError(message=f"Should be digit, slice (1-{self.items_len}) or (`..`, `~`, `info`)")
