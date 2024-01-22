@@ -97,11 +97,16 @@ class Kodik:
             raise TypeError(
                 f"Unknown player balancer. get_video_url method support kodik balancer\nvideo url: {kodik_player_url}")
         if not referer:
-            referer = f"https://{urlparse(kodik_player_url).netloc}/"
+            # 23.01.24 - kodik api accept original URL in referer field
+            referer = kodik_player_url
         if not raw_response:
             raw_response = cls()._get_raw_payload(kodik_player_url, referer)
 
         data, new_referer = cls._parse_payload(raw_response)
+
+        # 23.01.24 - kodik api accept original URL in referer field
+        # https: prefix crop for backport comp
+        new_referer = kodik_player_url.lstrip("https:")
         api_url = cls._get_api_url(kodik_player_url)
         video_url = cls()._get_kodik_video_links(api_url, new_referer, data)["360"][0]["src"]  # type: ignore
         return cls()._get_video_quality(video_url, quality)
@@ -136,7 +141,8 @@ class Kodik:
             player_url = f"https:{player_url}"
 
         url_, = Kodik.KODIK_URL_VALIDATE.findall(player_url)
-        return f"https://{urlparse(url_).netloc}/gvi"
+        # 22.01.24 /vdu new enrtypoint (/gvi - old)
+        return f"https://{urlparse(url_).netloc}/vdu"
 
     def _get_kodik_video_links(self, api_url: str,
                                new_referer: str,
@@ -145,7 +151,7 @@ class Kodik:
         copy_headers.update()
 
         return self.session.post(api_url, data=data,
-                                 headers={"origin": api_url.replace("/gvi", ""), "referer": f"https:{new_referer}",
+                                 headers={"origin": api_url.replace("/vdu", ""), "referer": f"https:{new_referer}",
                                           "accept": "application/json, text/javascript, */*; q=0.01"}).json()["links"]
 
     def _is_not_404_code(self, url) -> bool:
