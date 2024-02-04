@@ -142,7 +142,8 @@ class Kodik:
 
         url_, = Kodik.KODIK_URL_VALIDATE.findall(player_url)
         # 22.01.24 /vdu new enrtypoint (/gvi - old)
-        return f"https://{urlparse(url_).netloc}/vdu"
+        # 25.02.25 /vdu to /tru
+        return f"https://{urlparse(url_).netloc}/tru"
 
     def _get_kodik_video_links(self, api_url: str,
                                new_referer: str,
@@ -151,7 +152,7 @@ class Kodik:
         copy_headers.update()
 
         return self.session.post(api_url, data=data,
-                                 headers={"origin": api_url.replace("/vdu", ""), "referer": f"https:{new_referer}",
+                                 headers={"origin": api_url.replace("/tru", ""), "referer": f"https:{new_referer}",
                                           "accept": "application/json, text/javascript, */*; q=0.01"}).json()["links"]
 
     def _is_not_404_code(self, url) -> bool:
