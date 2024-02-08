@@ -102,12 +102,27 @@ class Kodik:
         if not raw_response:
             raw_response = cls()._get_raw_payload(kodik_player_url, referer)
 
+
+
         data, new_referer = cls._parse_payload(raw_response)
 
-        # 23.01.24 - kodik api accept original URL in referer field
-        # https: prefix crop for backport comp
         new_referer = kodik_player_url.lstrip("https:")
-        api_url = cls._get_api_url(kodik_player_url)
+
+        # dummy get api path fix from anicli-api
+        # https://github.com/vypivshiy/anicli-api/blob/master/anicli_api/player/kodik.py#L96
+        netloc = urlparse(kodik_player_url).netloc
+        js_player_path = re.search(  # type: ignore
+            r'<script\s*type="text/javascript"\s*src="(/assets/js/app\.player_single.*?)">',
+            raw_response)[1]
+        js_player_url = f"https://{netloc}{js_player_path}"
+        response_js_player = cls().session.get(js_player_url).text
+        api_path = re.search(r'\$.ajax\([^>]+,url:\s*atob\("([\w=]+)"\)',  # type: ignore
+                             response_js_player)[1]
+        if not api_path.endswith("=="):
+            api_path += "=="
+        api_path = b64decode(api_path).decode()
+
+        api_url = f"https://{netloc}{api_path}"
         video_url = cls()._get_kodik_video_links(api_url, new_referer, data)["360"][0]["src"]  # type: ignore
         return cls()._get_video_quality(video_url, quality)
 
@@ -134,6 +149,12 @@ class Kodik:
         return data, url_data
 
     @staticmethod
+    def _get_js_player_path(resp: str) -> str:
+        return re.search(  # type: ignore
+            r'<script\s*type="text/javascript"\s*src="(/assets/js/app\.player_single.*?)">',
+            resp)[1]
+
+    @staticmethod
     def _get_api_url(player_url: str):
         if not player_url.startswith("//"):
             player_url = f"//{player_url}"
@@ -141,8 +162,6 @@ class Kodik:
             player_url = f"https:{player_url}"
 
         url_, = Kodik.KODIK_URL_VALIDATE.findall(player_url)
-        # 22.01.24 /vdu new enrtypoint (/gvi - old)
-        # 25.02.25 /vdu to /tru
         return f"https://{urlparse(url_).netloc}/tru"
 
     def _get_kodik_video_links(self, api_url: str,
