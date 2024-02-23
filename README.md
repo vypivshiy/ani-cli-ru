@@ -4,8 +4,6 @@ ___
 Скрипт для поиска и просмотра аниме из терминала с русской озвучкой или субтитрами для linux систем, 
 написанный на python.
 
-> !!! Этот проект в стадии разработки, возможны (будут точно) баги и ошибки
-
 https://github.com/vypivshiy/ani-cli-ru/assets/59173419/bf7e78bd-cdd1-4871-a5b3-f48e6ed7ec28
 
 
@@ -22,8 +20,6 @@ pipx install git+https://github.com/vypivshiy/ani-cli-ru.git@dev
 
 Обновление:
 
-> Релиз на pypi будет позже 
-
 ```shell
 pipx runpip anicli-ru install anicli-api eggella anicli -U
 ```
@@ -31,7 +27,7 @@ pipx runpip anicli-ru install anicli-api eggella anicli -U
 ```shell
 Поддерживаемые плееры
 - mpv (рекомендуется)
-- vlc (мало тестов)
+- vlc (мало тестов, не со всеми источниками работает)
 ```
 
 ## Опционально
@@ -59,8 +55,7 @@ anicli-ru
 ---
 Отличия от старой версии:
 
-- Клиент основан на prompt-toolkit, реализована надстройка [eggella](https://github.com/vypivshiy/eggella) - 
-архитектура схожа с flask и фреймворками чат ботов (aiogram, discord.py, ...))
+- Клиент основан на prompt-toolkit, реализована надстройка [eggella](https://github.com/vypivshiy/eggella)
 - [Api интерфейс парсера](https://github.com/vypivshiy/anicli-api/tree/dev) и Cli клиента 
 разделены в отдельные репозитории. Также, API интерфейс поддерживает asyncio!
 - http клиент заменен с `requests` на `httpx` со следующими модификациями:
