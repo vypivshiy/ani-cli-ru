@@ -12,7 +12,8 @@ def setup_http_config():
         app.cmd.print_ft("Setup proxy")
     if app.CFG.TIMEOUT:
         app.cmd.print_ft("Setup timeout")
-    HTTPSync(**app.CFG.httpx_kwargs())
+    app.CFG.EXTRACTOR.http = HTTPSync(proxies=app.CFG.PROXY, timeout=app.CFG.TIMEOUT)
+    # todo video extractor provide config
 
 
 @app.on_startup()
