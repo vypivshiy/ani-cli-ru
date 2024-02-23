@@ -1,14 +1,24 @@
 import importlib
+import warnings
 
 import pkg_resources
 
 from anicli.cli import APP
 
-__version__ = "5.0.5dev"
+__version__ = "5.0.6"
 
 
 def _get_version():
     return f"""anicli-ru {__version__}; anicli-api {pkg_resources.get_distribution("anicli-api").version}"""
+
+
+def get_modules(package_name='anicli_api.source'):
+    # dynamically get available source extractors
+    import os
+    import importlib.util
+    package_path = importlib.util.find_spec(package_name).submodule_search_locations[0]
+    files = os.listdir(package_path)
+    return [f[:-3] for f in files if f.endswith('.py') and not f.startswith('__') and not f.endswith('__')]
 
 
 def run_cli():
@@ -19,7 +29,7 @@ def run_cli():
         "-s",
         "--source",
         default="animego",
-        choices=["animego", "sovetromantica", "animejoy", "anilibria", "animevost"],
+        choices=get_modules(),
         help="Anime source provider (Default `animego`)",
     )
     parser.add_argument(
@@ -49,10 +59,24 @@ def run_cli():
         "Enable, if your player cannot accept headers params (vlc, for example)",
     )
     parser.add_argument(
+        "--m3u",
+        action="store_true",
+        default=False,
+        help="Generate m3u playlist for slice play mode. "
+             "(default False)",
+    )
+    parser.add_argument(
+        "--m3u-size",
+        type=int,
+        default=12,
+        help="Generate m3u playlist for slice play mode. "
+             "(default 12)",
+    )
+    parser.add_argument(
         "--proxy",
         type=str,
         default=None,
-        help="Make request via proxy e.g. socks5://127.0.0.1:1080, https://user:passwd@127.0.0.1:443",
+        help="Make Extractor request via proxy e.g. socks5://127.0.0.1:1080, http://user:passwd@127.0.0.1:443",
     )
     parser.add_argument("--timeout", type=float, default=None, help="Setup request timeout")
     parser.add_argument("-v", "--version", action="store_true", default=False, help="Print version and exit")
@@ -69,6 +93,8 @@ def run_cli():
     APP.CFG.MIN_QUALITY = namespaces.quality
     APP.CFG.TIMEOUT = namespaces.timeout
     APP.CFG.PROXY = namespaces.proxy
+    APP.CFG.M3U_MAKE = namespaces.m3u
+    APP.CFG.M3U_MAX_SIZE = namespaces.m3u_size
     APP.loop()
 
 

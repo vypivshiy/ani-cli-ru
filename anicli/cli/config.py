@@ -10,8 +10,6 @@ from prompt_toolkit.shortcuts.prompt import CompleteStyle
 # import tomli
 
 
-
-
 if TYPE_CHECKING:
     from anicli_api.base import BaseExtractor
 
@@ -22,12 +20,17 @@ class Config:
     PLAYER_EXTRA_ARGS: str = ""
     MIN_QUALITY: int = 1080
     USE_FFMPEG_ROUTE: bool = False
+    # TODO add config file
     _CONFIG_PATH: str = "~/.config/ruanicli"
     _CONFIG_NAME: str = "config.toml"
     _DB_NAME: str = "anicli.db"
+
     # httpx params
     PROXY: Optional[str] = None
     TIMEOUT: Optional[float] = None
+    # m3u for SLICE play mode
+    M3U_MAKE: bool = True
+    M3U_MAX_SIZE: int = 12
 
     @classmethod
     def httpx_kwargs(cls):
@@ -37,17 +40,6 @@ class Config:
     def exists_config(cls) -> bool:
         cfg_path = Path(cls._CONFIG_PATH) / cls._CONFIG_NAME
         return Path(cls._CONFIG_PATH).exists() and cfg_path.exists()
-
-    # @classmethod
-    # def set_up_config(cls):
-    #     if not cls.exists_config():
-    #         folder = Path(cls._CONFIG_PATH)
-    #         if not folder.exists():
-    #             folder.mkdir()
-    #         cfg_path = folder / cls._CONFIG_NAME
-    #         if not cfg_path.exists():
-    #             cfg_path.touch()
-    #             for k,v in cls.__dict__.items():
 
 
 class AnicliApp(Eggella):
