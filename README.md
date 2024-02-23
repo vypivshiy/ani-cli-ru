@@ -14,31 +14,42 @@ https://github.com/vypivshiy/ani-cli-ru/assets/59173419/bf7e78bd-cdd1-4871-a5b3-
 **Если вам нужен только программный интерфейс парсеров или информация про используемые источники - 
 [anicli-api](https://github.com/vypivshiy/anicli-api)**
 
+### pipx (рекомендуется)
+
 ```shell
-pipx install git+https://github.com/vypivshiy/ani-cli-ru.git@dev 
+pipx install anicli-ru 
 ```
 
 Обновление:
 
 ```shell
-pipx runpip anicli-ru install anicli-api eggella anicli -U
+pipx upgrade anicli-ru
 ```
 
+### pip
+
+```shell
+pip install anicli-ru
+```
+
+## Usage:
+```shell
+anicli-ru
+```
+
+
+## players support
 ```shell
 Поддерживаемые плееры
 - mpv (рекомендуется)
 - vlc (мало тестов, не со всеми источниками работает)
 ```
 
-## Опционально
+## optional
 
 Если вы будете использовать плеер без поддержки настройки http заголовков - рекомендуется 
 дополнительно установить `ffmpeg` для перенаправления видео потока.
 
-## Usage:
-```shell
-anicli-ru
-```
 
 Ключи запуска
 
