@@ -1,8 +1,11 @@
 import os
 import subprocess
+import tempfile
 import warnings
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, List
+
+from anicli_api.tools import generate_playlist
 
 from anicli.log import logger
 from anicli.utils import sanitize_filename
@@ -14,7 +17,14 @@ if TYPE_CHECKING:
 class BasePlayer:
     @classmethod
     @abstractmethod
-    def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None, **kwargs):
+    def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None,
+             **kwargs):
+        pass
+
+    @classmethod
+    @abstractmethod
+    def play_from_playlist(cls, videos: List["Video"], names: List[str], headers: Optional[dict] = None,
+                           quality: int = 1080):
         pass
 
     @staticmethod
@@ -25,9 +35,10 @@ class BasePlayer:
     def shell_execute(cmd: str):
         logger.debug("Executing: %s", cmd)
         if os.name == "nt":
-            subprocess.Popen(cmd).wait()
+            proc = subprocess.Popen(cmd)
         else:
-            subprocess.Popen(cmd, shell=True).wait()
+            proc = subprocess.Popen(cmd, shell=True)
+        proc.wait()
 
 
 class MpvPlayer(BasePlayer):
@@ -36,11 +47,28 @@ class MpvPlayer(BasePlayer):
     HEADERS_KEY = '--http-header-fields'
 
     @classmethod
+    def play_from_playlist(cls,
+                           videos: List["Video"],
+                           names: List[str],
+                           headers: Optional[dict] = None,
+                           quality: int = 1080):
+        # make temp playlist and delete
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.m3u') as temp_file:
+            playlist = generate_playlist(videos, names, quality=quality)
+            temp_file.write(playlist)
+        header_args = cls._parse_headers_args(headers) if headers else ""
+        command = f'{cls.PLAYER} "{temp_file.name}" {header_args}'
+        try:
+            cls.shell_execute(command)
+        finally:
+            temp_file.close()
+
+    @classmethod
     def _parse_headers_args(cls, headers: dict[str, Any]):
         if not headers:
             return ""
         # multiple command key build List Options:
-        # shlex don't support list arguments feature
+        # shlex don't support mpv list arguments feature
         # Note:
         #       don't need whitespace see: man mpv, \http-header-fields
         #                                 v
@@ -53,20 +81,39 @@ class MpvPlayer(BasePlayer):
         return comma.rstrip(',')
 
     @classmethod
-    def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None, **kwargs):
-        _args = [cls.PLAYER]
+    def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None,
+             **kwargs):
         title_arg = f'{cls.TITLE}={cls.quote(title)}' if title else ""
         headers_arg = cls._parse_headers_args(video.headers)
-
         command = f'{cls.PLAYER} {title_arg} {headers_arg} "{video.url}"'
         cls.shell_execute(command)
 
 
 class VLCPlayer(BasePlayer):
     TITLE_ARG = '--meta-title'
+    PLAYER = "vlc"
 
     @classmethod
-    def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None, **kwargs):
+    def play_from_playlist(cls, videos: List["Video"], names: List[str], headers: Optional[dict] = None,
+                           quality: int = 1080):
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.m3u') as temp_file:
+            if videos[0].headers:
+                warnings.warn(
+                    "vlc player is not support set http headers", category=UserWarning
+                )
+                return
+            playlist = generate_playlist(videos, names, quality=quality)
+            temp_file.write(playlist)
+            command = f'{cls.PLAYER} "{temp_file.name}"'
+
+        try:
+            cls.shell_execute(command)
+        finally:
+            temp_file.close()
+
+    @classmethod
+    def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None,
+             stdin: Optional[str] = None, **kwargs):
         if video.headers:
             warnings.warn(
                 "vlc player is not support set http headers, usage --ffmpeg proxy instead", category=UserWarning
@@ -79,15 +126,7 @@ class VLCPlayer(BasePlayer):
 
 
 class CVLCPlayer(VLCPlayer):
-    @classmethod
-    def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None, **kwargs):
-        if video.headers:
-            warnings.warn("vlc player is not support set http headers, usage --ffmpeg key instead", stacklevel=3)
-            return
-        title_arg = f'{cls.TITLE_ARG} {cls.quote(title)}' if title else ""
-
-        cmd = f'cvlc {title_arg} "{video.url}"'
-        cls.shell_execute(cmd)
+    PLAYER = "cvlc"
 
 
 class FFMPEGRouter(BasePlayer):
@@ -97,12 +136,18 @@ class FFMPEGRouter(BasePlayer):
     """
 
     LOGLEVEL_ARG = "-loglevel error"
+
     URL_ARG = '-i "{}"'
     HLS_ARGS = (
         "-c copy -f hls -hls_flags append_list+omit_endlist " "-hls_segment_type mpegts -hls_playlist_type vod pipe:1"
     )
     PLAYER_ARG = "| {} {} -"
     HEARERS_ARG = "-headers "
+
+    @classmethod
+    def play_from_playlist(cls, videos: List["Video"], names: List[str], headers: Optional[dict] = None,
+                           quality: int = 1080):
+        raise NotImplementedError("Not supported m3u playlist")
 
     @classmethod
     def _headers(cls, headers: dict):
@@ -115,12 +160,12 @@ class FFMPEGRouter(BasePlayer):
 
     @classmethod
     def play(
-        cls,
-        video: "Video",
-        title: Optional[str] = None,
-        player: Optional[str] = None,
-        title_arg: Optional[str] = None,
-        **kwargs,
+            cls,
+            video: "Video",
+            title: Optional[str] = None,
+            player: Optional[str] = None,
+            title_arg: Optional[str] = None,
+            **kwargs,
     ):
         # todo add title argument
         headers_arg = cls._headers(video.headers)
@@ -145,3 +190,7 @@ def run_video(video: "Video", title: Optional[str] = None, *, player: Optional[s
         return MpvPlayer.play(video, title)
     elif player == "vlc":
         return VLCPlayer.play(video, title)
+
+
+def run_m3u_playlist(videos: List["Video"], names: List[str], quality: int = 1080):
+    MpvPlayer.play_from_playlist(videos, names, quality=quality)

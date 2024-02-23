@@ -9,11 +9,11 @@ from anicli._completion import anime_word_choice_completer, word_choice_complete
 from anicli._validator import AnimePromptValidator, NumPromptValidator
 from anicli.cli.config import AnicliApp
 from anicli.cli.player import run_video
+from anicli.cli.slice_play import play_slice_urls, play_slice_playlist
 from anicli.cli.video_utils import (
     get_preferred_human_quality_index,
     is_video_url_valid,
     slice_play_hash,
-    slice_playlist_iter,
 )
 from anicli.utils import choice_human_index, choice_human_slice, create_title
 
@@ -212,9 +212,10 @@ def choose_quality_slice():
     anime: "BaseAnime" = app.fsm["anime"]
 
     with suppress(KeyboardInterrupt):
-        for episode, source, video in slice_playlist_iter(episodes, cmp_key_hash, app.CFG):
-            app.cmd.print_ft("SLICE MODE: Press q + CTRL+C for exit")
-            title = create_title(anime, episode, source)
+        app.cmd.print_ft("SLICE MODE: Press q + CTRL+C for exit")
+        if app.CFG.M3U_MAKE:
+            play_slice_playlist(anime=anime, episodes=episodes, cmp_key_hash=cmp_key_hash, app=app)
+        else:
+            play_slice_urls(anime=anime, episodes=episodes, cmp_key_hash=cmp_key_hash, app=app)
 
-            run_video(video, title, player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
     return app.fsm.set(SearchStates.EPISODE)
