@@ -2,30 +2,173 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["anicli/"]
+
 [project]
 name = "anicli-ru"
 dynamic = ["version"]
-description = "anime grabber video api and cli tool"
+description = 'cli tool for watching anime'
 readme = "README.md"
-license = "gpl-3.0"
 requires-python = ">=3.8"
+license = "MIT"
+keywords = []
 authors = [
-    { name = "Georgiy aka Vypivshiy", email = "" },
+  { name = "vypivshiy"},
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-    "requests",
+  "anicli-api", "eggella", "setuptools"
+]
+
+[project.urls]
+Documentation = "https://github.com/vypivshiy/ani-cli-ru#readme"
+Issues = "https://github.com/vypivshiy/ani-cli-ru/issues"
+Source = "https://github.com/vypivshiy/ani-cli-ru"
+
+[tool.hatch.version]
+path = "anicli/__init__.py"
+
+[tool.hatch.envs.default]
+dependencies = [
+  "coverage[toml]>=6.5",
+  "pytest",
+]
+
+[tool.hatch.envs.default.scripts]
+test = "pytest {args:tests}"
+test-cov = "coverage run -m pytest {args:tests}"
+cov-report = [
+  "- coverage combine",
+  "coverage report",
+]
+cov = [
+  "test-cov",
+  "cov-report",
 ]
 
 [project.scripts]
-anicli-ru = "anicli_ru.anicli:main"
+anicli-ru = "anicli:run_cli"
 
-[project.urls]
-Homepage = "https://github.com/vypivshiy/ani-cli-ru"
 
-[tool.hatch.version]
-path = "anicli_ru/__version__.py"
+[[tool.hatch.envs.all.matrix]]
+python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
-[tool.hatch.build.targets.sdist]
-include = [
-    "/anicli_ru",
+[tool.hatch.envs.lint]
+detached = true
+dependencies = [
+  "black>=23.1.0",
+  "mypy>=1.0.0",
+  "isort",
+  "ruff>=0.0.243",
+]
+[tool.hatch.envs.lint.scripts]
+typing = "mypy --install-types --non-interactive {args:temporary tests}"
+style = [
+  "ruff {args:.}",
+  "black --check --diff {args:.}",
+]
+fmt = [
+  "black {args:.}",
+  "ruff --fix {args:.}",
+  "style",
+]
+all = [
+  "style",
+  "typing",
+]
+
+[tool.isort]
+atomic = true
+profile = "black"
+line_length = 88
+skip_gitignore = true
+
+[tool.black]
+target-version = ["py38"]
+line-length = 120
+skip-string-normalization = true
+
+[tool.ruff]
+target-version = "py38"
+line-length = 120
+select = [
+  "A",
+  "ARG",
+  "B",
+  "C",
+  "DTZ",
+  "E",
+  "EM",
+  "F",
+  "FBT",
+  "I",
+  "ICN",
+  "ISC",
+  "N",
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",
+  "Q",
+  "RUF",
+  "S",
+  "T",
+  "TID",
+  "UP",
+  "W",
+  "YTT",
+]
+ignore = [
+  # Allow non-abstract empty methods in abstract base classes
+  "B027",
+  # Allow boolean positional values in function calls, like `dict.get(... True)`
+  "FBT003",
+  # Ignore checks for possible passwords
+  "S105", "S106", "S107",
+  # Ignore complexity
+  "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915",
+]
+unfixable = [
+  # Don't touch unused imports
+  "F401",
+]
+
+[tool.ruff.isort]
+known-first-party = ["temporary"]
+
+[tool.ruff.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.per-file-ignores]
+# Tests can use magic values, assertions, and relative imports
+"tests/**/*" = ["PLR2004", "S101", "TID252"]
+
+[tool.coverage.run]
+source_pkgs = ["anicli", "tests"]
+branch = true
+parallel = true
+omit = [
+  "anicli/__about__.py",
+]
+
+[tool.coverage.paths]
+temporary = ["anicli", "*/anicli/anicli"]
+tests = ["tests", "*/temporary/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
 ]
