@@ -1,88 +1,75 @@
-import argparse
 import importlib
-from typing import Any, Dict
+
+import pkg_resources
 
 from anicli.cli import APP
-from anicli.cli.config import get_file_config
-from anicli.cli.compat import tomllib
-from anicli.cli_utlis import is_ffmpeg_installed, is_player_installed
 
-__version__ = "5.0.3"
+__version__ = "5.0.5dev"
 
 
-def _read_file_config() -> Dict[str, Any]:
-    with open(get_file_config(), "r") as f:
-        cfg = tomllib.load(f)
-    return cfg
-
-
-def _run_app(namespaces: argparse.Namespace):
-    """parse config and run application"""
-    cfg = _read_file_config()
-    module_name = namespaces.source or cfg['source']
-    module = importlib.import_module(f"anicli_api.source.{module_name}")
-    APP.CFG.EXTRACTOR = getattr(module, "Extractor")()
-    APP.CFG.USE_FFMPEG_ROUTE = namespaces.ffmpeg or cfg["ffmpeg_proxy"]
-    APP.CFG.PLAYER = namespaces.player or cfg["player"]
-    APP.CFG.PLAYER_ARGS = cfg["player_arguments"]
-
-    if not is_player_installed(APP.CFG.PLAYER):
-        print(f"Error! Player {APP.CFG.PLAYER} not found")
-        exit(1)
-
-    APP.CFG.MIN_QUALITY = namespaces.quality or cfg['minimal_quality']
-    APP.CFG.TIMEOUT = namespaces.timeout or cfg['timeout']
-    APP.CFG.PROXY = namespaces.proxy or cfg["proxy"]
-    APP.loop()
+def _get_version():
+    return f"""anicli-ru {__version__}; anicli-api {pkg_resources.get_distribution("anicli-api").version}"""
 
 
 def run_cli():
     import argparse
-    parser = argparse.ArgumentParser(description="anicli-ru")
-    parser.add_argument("-s", "--source", choices=["animego", "sovetromantica",
-                                                                      "animejoy",
-                                                                      "anilibria",
-                                                                      "animevost"],
-                        help="Anime source provider. DEFAULT `animego`")
-    parser.add_argument("-q", "--quality",
-                        type=int,
-                        choices=[0, 144, 240, 360, 480, 720, 1080],
-                        help="Set minimal video quality output. "
-                             "If there is no maximum, it will display the closest value"
-                        )
-    parser.add_argument("-p", "--player",
-                        type=str,
-                        choices=["mpv", "vlc", "cvlc"],
-                        help="Set videoplayer target. Default mpv"
-                        )
 
-    parser.add_argument("--ffmpeg",
-                        action="store_true",
-                        help="usage ffmpeg proxy for redirect video to player. "
-                             "Enable, if your player cannot accept headers params or stream video"
-                             "from the internet"
-                        )
-    parser.add_argument("--proxy",
-                        type=str,
-                        help="Setup proxy")
-    parser.add_argument("--timeout",
-                        type=float,
-                        help="Setup timeout")
-
-    parser.add_argument("--version",
-                        action="store_true",
-                        default=False,
-                        help="Show app version")
+    parser = argparse.ArgumentParser(description=_get_version(), usage="anicli-ru [OPTIONS]")
+    parser.add_argument(
+        "-s",
+        "--source",
+        default="animego",
+        choices=["animego", "sovetromantica", "animejoy", "anilibria", "animevost"],
+        help="Anime source provider (Default `animego`)",
+    )
+    parser.add_argument(
+        "-q",
+        "--quality",
+        type=int,
+        default=1080,
+        choices=[0, 144, 240, 360, 480, 720, 1080],
+        help="Set minimal video quality output in /video menu. "
+        "If there is no maximum, it will display the closest value. "
+        "Eg: if -q 1080 and video not contains 1080 - set 720, 480...0 "
+        "(default 1080)",
+    )
+    parser.add_argument(
+        "-p",
+        "--player",
+        type=str,
+        default="mpv",
+        choices=["mpv", "vlc", "cvlc"],
+        help="Set videoplayer target. (default 'mpv')",
+    )
+    parser.add_argument(
+        "--ffmpeg",
+        action="store_true",
+        default=False,
+        help="Usage ffmpeg backend for redirect video buffer to player. "
+        "Enable, if your player cannot accept headers params (vlc, for example)",
+    )
+    parser.add_argument(
+        "--proxy",
+        type=str,
+        default=None,
+        help="Make request via proxy e.g. socks5://127.0.0.1:1080, https://user:passwd@127.0.0.1:443",
+    )
+    parser.add_argument("--timeout", type=float, default=None, help="Setup request timeout")
+    parser.add_argument("-v", "--version", action="store_true", default=False, help="Print version and exit")
 
     namespaces = parser.parse_args()
     if namespaces.version:
-        print("anicli-ru", __version__)
+        print(_get_version())
         exit(0)
-    if namespaces.ffmpeg and not is_ffmpeg_installed():
-        print("ffmpeg not found, please, install ffmpeg")
-        exit(1)
-
-    _run_app(namespaces)
+    # setup eggella app
+    module = importlib.import_module(f"anicli_api.source.{namespaces.source}")
+    APP.CFG.EXTRACTOR = getattr(module, "Extractor")()
+    APP.CFG.USE_FFMPEG_ROUTE = namespaces.ffmpeg
+    APP.CFG.PLAYER = namespaces.player
+    APP.CFG.MIN_QUALITY = namespaces.quality
+    APP.CFG.TIMEOUT = namespaces.timeout
+    APP.CFG.PROXY = namespaces.proxy
+    APP.loop()
 
 
 if __name__ == '__main__':

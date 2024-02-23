@@ -1,7 +1,9 @@
-from typing import Any, List, TYPE_CHECKING
+from dataclasses import asdict
+from typing import TYPE_CHECKING, Any, List
 
 from prompt_toolkit import HTML, print_formatted_text
 from prompt_toolkit.application import Application
+from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout.containers import HSplit, Window
 from prompt_toolkit.layout.controls import FormattedTextControl
@@ -9,60 +11,56 @@ from prompt_toolkit.layout.dimension import LayoutDimension as D
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.styles import Style
 from prompt_toolkit.widgets import SearchToolbar, TextArea
-from prompt_toolkit.formatted_text import FormattedText
+
 if TYPE_CHECKING:
     from anicli_api.base import BaseAnime
 
 
 class Message:
     @staticmethod
+    def print_bold(text: str):
+        # used in print header
+        print_formatted_text(HTML(f"<b>{text}</b>"))
+
+    @staticmethod
+    def video_not_found():
+        print_formatted_text(HTML("<ascired>Video whis quality not founded, decrease</ascired>"))
+
+    @staticmethod
     def not_found():
-        print_formatted_text(
-            HTML("<ascired>not found :(</ascired>")
-        )
+        print_formatted_text(HTML("<ascired>not found :(</ascired>"))
 
     @staticmethod
     def show_results(items_list: List[Any]):
         for i, item in enumerate(items_list[:20]):
-            print_formatted_text(
-                FormattedText([
-                    ("", "["),
-                    ("#F7FF00", str(i)),
-                    ("", "] "),
-                    ("", str(item))
-                ])
-            )
+            print_formatted_text(FormattedText([("", "["), ("#F7FF00", str(i + 1)), ("", "] "), ("", str(item))]))
         if len(items_list) > 20:
             print_formatted_text(f"... + {len(items_list) - 20 - 5}")
             for i, item in enumerate(items_list[-5:]):
                 print_formatted_text(
-                    FormattedText([
-                        ("", "["),
-                        ("#F7FF00", str(len(items_list)-(5-i))),
-                        ("", "] "),
-                        ("", str(item))
-                    ])
+                    FormattedText([("", "["), ("#F7FF00", str(len(items_list) - (5 - i))), ("", "] "), ("", str(item))])
                 )
 
     @staticmethod
     def not_found_episodes():
-        print_formatted_text(
-            HTML("<ascired>episodes not available</ascired>")
-        )
+        print_formatted_text(HTML("<ascired>episodes not available</ascired>"))
 
     @staticmethod
     def show_anime_full_description(anime: "BaseAnime"):
+        exclude_keys = (
+            "title",
+            "description",
+        )
+        meta_info = {k: v for k, v in asdict(anime).items() if k not in exclude_keys}
+        meta_info_str = [f"  - {k}: {v}\n" for k, v in meta_info.items()]
 
-        text = f"""{anime.title} [{anime.alt_titles}]
-
-Genres: {anime.genres}
-
-Release: {anime.aired}
-
-Episodes: {anime.episodes_available}/{anime.episodes_total}
+        text = f"""{anime.title}
 
 Description:
     {anime.description}
+
+Meta information:
+{"".join(meta_info_str)}
 """
 
         search_field = SearchToolbar(text_if_not_searching=[("class:not-searching", "Press '/' to start searching.")])
@@ -101,6 +99,7 @@ Description:
         @bindings.add("c-c")
         @bindings.add("q")
         def _(event):
+            "Quit."
             event.app.exit()
 
         style = Style.from_dict(
