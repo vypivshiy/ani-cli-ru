@@ -53,7 +53,9 @@ class MpvPlayer(BasePlayer):
                            names: List[str],
                            headers: Optional[dict] = None,
                            quality: int = 1080):
-        # make temp playlist and delete
+
+        # TODO pass headers args from argument
+        headers = videos[0].headers
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.m3u') as temp_file:
             playlist = generate_playlist(videos, names, quality=quality)
             temp_file.write(playlist)
