@@ -45,6 +45,7 @@ class MpvPlayer(BasePlayer):
     PLAYER = "mpv"
     TITLE = '--title'
     HEADERS_KEY = '--http-header-fields'
+    USER_AGENT_KEY = '--user-agent'
 
     @classmethod
     def play_from_playlist(cls,
@@ -74,11 +75,19 @@ class MpvPlayer(BasePlayer):
         #                                 v
         # --http-header-fields="Spam: egg","Foo: bar","BAZ: ZAZ"
         comma = f"{cls.HEADERS_KEY}="
+        comma_user_agent = None
 
         for k, v in headers.items():
-            comma += f'"{k}: {v}",'
+            if k.lower() == 'user-agent':
+                comma_user_agent = f'{cls.USER_AGENT_KEY}="{v}"'
+                headers.pop(k)
+                if not headers:
+                    return comma_user_agent
 
-        return comma.rstrip(',')
+                break
+
+        comma = comma + ','.join(f'"{k}: {v}"' for k, v in headers.items())
+        return comma_user_agent + ' ' + comma if comma_user_agent else comma
 
     @classmethod
     def play(cls, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None,
