@@ -5,7 +5,7 @@ import pkg_resources
 
 from anicli.cli import APP
 
-__version__ = "5.0.7"
+__version__ = "5.0.8"
 
 
 def _get_version():
