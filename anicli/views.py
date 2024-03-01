@@ -32,13 +32,17 @@ class Message:
 
     @staticmethod
     def show_results(items_list: List[Any]):
-        for i, item in enumerate(items_list[:20]):
-            print_formatted_text(FormattedText([("", "["), ("#F7FF00", str(i + 1)), ("", "] "), ("", str(item))]))
-        if len(items_list) > 20:
-            print_formatted_text(f"... + {len(items_list) - 20 - 5}")
-            for i, item in enumerate(items_list[-5:]):
+        # show 20 elements from sequence
+        if len(items_list) <= 20:
+            for i, item in enumerate(items_list, 1):
+                print_formatted_text(FormattedText([("", "["), ("#F7FF00", str(i)), ("", "] "), ("", str(item))]))
+        else:
+            for i, item in enumerate(items_list[:15], 1):
+                print_formatted_text(FormattedText([("", "["), ("#F7FF00", str(i)), ("", "] "), ("", str(item))]))
+            print_formatted_text(f"... + {len(items_list) - 20}")
+            for i, item in enumerate(items_list[-5:], 1):
                 print_formatted_text(
-                    FormattedText([("", "["), ("#F7FF00", str(len(items_list) - (5 - i))), ("", "] "), ("", str(item))])
+                    FormattedText([("", "["), ("#F7FF00", str(len(items_list) - (5-i))), ("", "] "), ("", str(item))])
                 )
 
     @staticmethod
