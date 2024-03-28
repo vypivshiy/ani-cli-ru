@@ -1,4 +1,5 @@
-from dataclasses import asdict
+from attr import asdict
+
 from typing import TYPE_CHECKING, Any, List
 
 from prompt_toolkit import HTML, print_formatted_text
