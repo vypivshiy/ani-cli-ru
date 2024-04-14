@@ -3,7 +3,7 @@ import subprocess
 import tempfile
 import warnings
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Optional, List
+from typing import TYPE_CHECKING, Any, Optional, List, Dict
 
 from anicli_api.tools import generate_playlist
 
@@ -23,7 +23,7 @@ class BasePlayer:
 
     @classmethod
     @abstractmethod
-    def play_from_playlist(cls, videos: List["Video"], names: List[str], headers: Optional[dict] = None,
+    def play_from_playlist(cls, videos: List["Video"], names: List[str], headers: Optional[Dict] = None,
                            quality: int = 1080):
         pass
 
@@ -51,7 +51,7 @@ class MpvPlayer(BasePlayer):
     def play_from_playlist(cls,
                            videos: List["Video"],
                            names: List[str],
-                           headers: Optional[dict] = None,
+                           headers: Optional[Dict] = None,
                            quality: int = 1080):
 
         # TODO pass headers args from argument
@@ -67,7 +67,7 @@ class MpvPlayer(BasePlayer):
             temp_file.close()
 
     @classmethod
-    def _parse_headers_args(cls, headers: dict[str, Any]):
+    def _parse_headers_args(cls, headers: Dict[str, Any]):
         if not headers:
             return ""
         # multiple command key build List Options:
@@ -105,7 +105,7 @@ class VLCPlayer(BasePlayer):
     PLAYER = "vlc"
 
     @classmethod
-    def play_from_playlist(cls, videos: List["Video"], names: List[str], headers: Optional[dict] = None,
+    def play_from_playlist(cls, videos: List["Video"], names: List[str], headers: Optional[Dict] = None,
                            quality: int = 1080):
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.m3u') as temp_file:
             if videos[0].headers:
@@ -156,7 +156,7 @@ class FFMPEGRouter(BasePlayer):
     HEARERS_ARG = "-headers "
 
     @classmethod
-    def play_from_playlist(cls, videos: List["Video"], names: List[str], headers: Optional[dict] = None,
+    def play_from_playlist(cls, videos: List["Video"], names: List[str], headers: Optional[Dict] = None,
                            quality: int = 1080):
         raise NotImplementedError("Not supported m3u playlist")
 
