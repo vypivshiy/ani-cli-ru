@@ -61,14 +61,14 @@ def start_ongoing():
 
 @app.on_state(OngoingStates.EPISODE)
 def choose_episode():
-    result: "BaseOngoing" = app.CTX["result"]
-    anime: Optional["BaseAnime"] = result.get_anime()
+    result: BaseOngoing = app.CTX["result"]
+    anime: Optional[BaseAnime] = result.get_anime()
 
     if not anime:
         return app.fsm.prev()
 
     app.fsm["anime"] = anime
-    episodes: List["BaseEpisode"] = anime.get_episodes()
+    episodes: List[BaseEpisode] = anime.get_episodes()
 
     if not episodes:
         views.Message.not_found_episodes()
@@ -78,6 +78,8 @@ def choose_episode():
     choose = app.cmd.prompt(
         "~/ongoing/episode ", completer=anime_word_choice_completer(episodes), validator=AnimePromptValidator(episodes)
     )
+    parts_count = 2
+
     if choose == "~":
         return app.fsm.finish()
     elif choose == "..":
@@ -86,7 +88,7 @@ def choose_episode():
         views.Message.show_anime_full_description(anime)
         return app.fsm.current()
 
-    elif (parts := choose.split("-")) and len(parts) == 2 and all([p.isdigit() for p in parts]):
+    elif (parts := choose.split("-")) and len(parts) == parts_count and all([p.isdigit() for p in parts]):  # noqa
         start, end = (int(p) for p in parts)
         app.fsm["ongoing"] = {"episode_slice": choice_human_slice(episodes, start, end)}
         return app.fsm.set(OngoingStates.SOURCE_SLICE)
@@ -98,8 +100,8 @@ def choose_episode():
 
 @app.on_state(OngoingStates.SOURCE)
 def choose_source():
-    episode: "BaseEpisode" = app.fsm["ongoing"]["episode"]
-    sources: List["BaseSource"] = episode.get_sources()
+    episode: BaseEpisode = app.fsm["ongoing"]["episode"]
+    sources: List[BaseSource] = episode.get_sources()
     if not sources:
         views.Message.not_found()
         return app.fsm.prev()
@@ -119,7 +121,7 @@ def choose_source():
 
 @app.on_state(OngoingStates.VIDEO)
 def choose_quality():
-    source: "BaseSource" = app.fsm["ongoing"]["source"]
+    source: BaseSource = app.fsm["ongoing"]["source"]
     videos = source.get_videos(**app.CFG.httpx_kwargs())
     preferred_quality = get_preferred_human_quality_index(videos, app.CFG.MIN_QUALITY)
 
@@ -150,8 +152,8 @@ def choose_quality():
         choose = int(choose) - 1
 
     app.fsm["ongoing"]["video"] = video
-    episode: "BaseEpisode" = app.fsm["ongoing"]["episode"]
-    anime: "BaseAnime" = app.fsm["anime"]
+    episode: BaseEpisode = app.fsm["ongoing"]["episode"]
+    anime: BaseAnime = app.fsm["anime"]
     title = create_title(anime, episode, source)
     run_video(video, app.CFG, title)
     return app.fsm.set(OngoingStates.EPISODE)
@@ -159,9 +161,9 @@ def choose_quality():
 
 @app.on_state(OngoingStates.SOURCE_SLICE)
 def play_slice():
-    episodes: List["BaseEpisode"] = app.fsm["ongoing"]["episode_slice"]
+    episodes: List[BaseEpisode] = app.fsm["ongoing"]["episode_slice"]
     episode = episodes[0]
-    sources: List["BaseSource"] = episode.get_sources()
+    sources: List[BaseSource] = episode.get_sources()
 
     views.Message.print_bold("[*] Sources <u>slice mode</u>:")
     views.Message.show_results(sources)
@@ -180,9 +182,9 @@ def play_slice():
 
 @app.on_state(OngoingStates.VIDEO_SLICE)
 def choose_quality_slice():
-    first_source: "BaseSource" = app.fsm["ongoing"]["source_slice"]
-    episodes: List["BaseEpisode"] = app.fsm["ongoing"]["episode_slice"]
-    videos: List["Video"] = first_source.get_videos(**app.CFG.httpx_kwargs())
+    first_source: BaseSource = app.fsm["ongoing"]["source_slice"]
+    episodes: List[BaseEpisode] = app.fsm["ongoing"]["episode_slice"]
+    videos: List[Video] = first_source.get_videos(**app.CFG.httpx_kwargs())
     preferred_quality = get_preferred_human_quality_index(videos, app.CFG.MIN_QUALITY)
 
     views.Message.print_bold("[*] Videos <u>slice mode</u>:")
@@ -209,7 +211,7 @@ def choose_quality_slice():
         choose = int(choose) - 1
 
     cmp_key_hash = slice_play_hash(video, first_source)
-    anime: "BaseAnime" = app.fsm["anime"]
+    anime: BaseAnime = app.fsm["anime"]
 
     with suppress(KeyboardInterrupt):
         views.Message.print_bold("SLICE MODE: Press q + CTRL+C for exit")

@@ -9,7 +9,7 @@ from anicli._completion import anime_word_choice_completer, word_choice_complete
 from anicli._validator import AnimePromptValidator, NumPromptValidator
 from anicli.cli.config import AnicliApp
 from anicli.cli.player import run_video
-from anicli.cli.slice_play import play_slice_urls, play_slice_playlist
+from anicli.cli.slice_play import play_slice_playlist, play_slice_urls
 from anicli.cli.video_utils import (
     get_preferred_human_quality_index,
     is_video_url_valid,
@@ -62,14 +62,14 @@ def start_search():
 
 @app.on_state(SearchStates.EPISODE)
 def choose_episode():
-    result: "BaseSearch" = app.CTX["result"]
-    anime: "BaseAnime" = result.get_anime()
+    result: BaseSearch = app.CTX["result"]
+    anime: BaseAnime = result.get_anime()
 
     if not anime:
         return app.fsm.prev()
     app.fsm["anime"] = anime
 
-    episodes: List["BaseEpisode"] = anime.get_episodes()
+    episodes: List[BaseEpisode] = anime.get_episodes()
     if not episodes:
         views.Message.not_found_episodes()
         return app.fsm.finish()
@@ -86,7 +86,8 @@ def choose_episode():
         views.Message.show_anime_full_description(anime)
         return app.fsm.set(SearchStates.EPISODE)
 
-    elif (parts := choose.split("-")) and len(parts) == 2 and all([p.isdigit() for p in parts]):
+    # 2 - text -> start_, end_ slice
+    elif (parts := choose.split("-")) and len(parts) == 2 and all([p.isdigit() for p in parts]):  # noqa
         start, end = (int(p) for p in parts)
         app.fsm["search"] = {"episode_slice": choice_human_slice(episodes, start, end)}
         return app.fsm.set(SearchStates.SOURCE_SLICE)
@@ -97,8 +98,8 @@ def choose_episode():
 
 @app.on_state(SearchStates.SOURCE)
 def choose_source():
-    episode: "BaseEpisode" = app.fsm["search"]["episode"]
-    sources: List["BaseSource"] = episode.get_sources()
+    episode: BaseEpisode = app.fsm["search"]["episode"]
+    sources: List[BaseSource] = episode.get_sources()
     if not sources:
         views.Message.not_found()
         return app.fsm.prev()
@@ -118,7 +119,7 @@ def choose_source():
 
 @app.on_state(SearchStates.VIDEO)
 def choose_quality():
-    source: "BaseSource" = app.fsm["search"]["source"]
+    source: BaseSource = app.fsm["search"]["source"]
     videos = source.get_videos(**app.CFG.httpx_kwargs())
     preferred_quality = get_preferred_human_quality_index(videos, app.CFG.MIN_QUALITY)
 
@@ -150,8 +151,8 @@ def choose_quality():
         choose = int(choose) - 1
 
     app.fsm["search"]["video"] = video
-    episode: "BaseEpisode" = app.fsm["search"]["episode"]
-    anime: "BaseAnime" = app.fsm["anime"]
+    episode: BaseEpisode = app.fsm["search"]["episode"]
+    anime: BaseAnime = app.fsm["anime"]
     title = create_title(anime, episode, source)
 
     run_video(video, app.CFG, title)
@@ -160,9 +161,9 @@ def choose_quality():
 
 @app.on_state(SearchStates.SOURCE_SLICE)
 def play_slice():
-    episodes: List["BaseEpisode"] = app.fsm["search"]["episode_slice"]
+    episodes: List[BaseEpisode] = app.fsm["search"]["episode_slice"]
     episode = episodes[0]
-    sources: List["BaseSource"] = episode.get_sources()
+    sources: List[BaseSource] = episode.get_sources()
     views.Message.print_bold("[*] Sources <u>slice mode</u>:")
     views.Message.show_results(sources)
     choose = app.cmd.prompt(
@@ -179,9 +180,9 @@ def play_slice():
 
 @app.on_state(SearchStates.VIDEO_SLICE)
 def choose_quality_slice():
-    first_source: "BaseSource" = app.fsm["search"]["source_slice"]
-    episodes: List["BaseEpisode"] = app.fsm["search"]["episode_slice"]
-    videos: List["Video"] = first_source.get_videos(**app.CFG.httpx_kwargs())
+    first_source: BaseSource = app.fsm["search"]["source_slice"]
+    episodes: List[BaseEpisode] = app.fsm["search"]["episode_slice"]
+    videos: List[Video] = first_source.get_videos(**app.CFG.httpx_kwargs())
     preferred_quality = get_preferred_human_quality_index(videos, app.CFG.MIN_QUALITY)
 
     views.Message.print_bold("[*] Video <u>slice mode</u>:")
@@ -209,7 +210,7 @@ def choose_quality_slice():
         choose = int(choose) - 1
 
     cmp_key_hash = slice_play_hash(video, first_source)
-    anime: "BaseAnime" = app.fsm["anime"]
+    anime: BaseAnime = app.fsm["anime"]
 
     with suppress(KeyboardInterrupt):
         app.cmd.print_ft("SLICE MODE: Press q + CTRL+C for exit")

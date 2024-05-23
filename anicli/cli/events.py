@@ -1,4 +1,3 @@
-import logging
 from urllib.parse import urlsplit
 
 from anicli_api.base import HTTPSync

@@ -2,12 +2,13 @@ from typing import TYPE_CHECKING, List
 
 from tqdm import tqdm
 
-from anicli.cli.player import run_video, run_m3u_playlist
+from anicli.cli.player import run_m3u_playlist, run_video
 from anicli.cli.video_utils import slice_playlist_iter
 from anicli.utils import create_title
 
 if TYPE_CHECKING:
     from anicli_api.base import BaseAnime, BaseEpisode
+
     from anicli.cli import AnicliApp
 
 

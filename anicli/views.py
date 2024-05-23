@@ -1,14 +1,13 @@
-from attr import asdict
-
 from typing import TYPE_CHECKING, Any, List
 
+from attr import asdict
 from prompt_toolkit import HTML, print_formatted_text
 from prompt_toolkit.application import Application
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout.containers import HSplit, Window
 from prompt_toolkit.layout.controls import FormattedTextControl
-from prompt_toolkit.layout.dimension import LayoutDimension as D
+from prompt_toolkit.layout.dimension import LayoutDimension as D  # noqa: N814
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.styles import Style
 from prompt_toolkit.widgets import SearchToolbar, TextArea
@@ -32,9 +31,10 @@ class Message:
         print_formatted_text(HTML("<ascired>not found :(</ascired>"))
 
     @staticmethod
-    def show_results(items_list: List[Any]):
+    def show_results(items_list: List[Any], result_count: int = 20):
         # show 20 elements from sequence
-        if len(items_list) <= 20:
+
+        if len(items_list) <= result_count:
             for i, item in enumerate(items_list, 1):
                 print_formatted_text(FormattedText([("", "["), ("#F7FF00", str(i)), ("", "] "), ("", str(item))]))
         else:
@@ -43,7 +43,7 @@ class Message:
             print_formatted_text(f"... + {len(items_list) - 20}")
             for i, item in enumerate(items_list[-5:], 1):
                 print_formatted_text(
-                    FormattedText([("", "["), ("#F7FF00", str(len(items_list) - (5-i))), ("", "] "), ("", str(item))])
+                    FormattedText([("", "["), ("#F7FF00", str(len(items_list) - (5 - i))), ("", "] "), ("", str(item))])
                 )
 
     @staticmethod

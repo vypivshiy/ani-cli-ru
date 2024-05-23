@@ -22,7 +22,7 @@ def slice_play_hash(video: "Video", source: "BaseSource"):
         # examples:
         # evie.yagami-light.com emily.yagami-light.com
         # amelia.yagami-light.com calcium.yagami-light.com
-        video_netloc = '.'.join(video_netloc.split('.')[-2:])
+        video_netloc = ".".join(video_netloc.split(".")[-2:])
     return hash((video_netloc, video.type, video.quality, source.title))
 
 
@@ -72,4 +72,4 @@ def is_video_url_valid(video: "Video") -> bool:
     # head method maybe don't work, but we can send GET request without read all content
     with Client().stream("GET", video.url, headers=video.headers) as r:
         # 200-299 OK, 302 - FOUND returns True, else False
-        return r.is_success or r.status_code == 302
+        return r.is_success or r.status_code == 302  # noqa

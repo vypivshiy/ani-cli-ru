@@ -130,6 +130,8 @@ select = [
   "YTT",
 ]
 ignore = [
+  # print function allowed in CLI client
+  "T201",
   # Allow non-abstract empty methods in abstract base classes
   "B027",
   # Allow boolean positional values in function calls, like `dict.get(... True)`
