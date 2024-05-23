@@ -1,6 +1,6 @@
 import importlib
 
-import pkg_resources
+from importlib.metadata import version as pkg_version
 
 from anicli.cli import APP
 
@@ -8,7 +8,7 @@ __version__ = "5.0.10"
 
 
 def _get_version():
-    return f"""anicli-ru {__version__}; anicli-api {pkg_resources.get_distribution("anicli-api").version}"""
+    return f"""anicli-ru {__version__}; anicli-api {pkg_version("anicli-api")}"""
 
 
 def get_modules(package_name='anicli_api.source'):
