@@ -45,6 +45,19 @@ class Config:
 class AnicliApp(Eggella):
     CFG = Config()
 
+    def exec_and_loop(self, key: str, args: str):
+
+        self.cmd.print_ft(self.intro)
+        self._load_blueprints()
+        self._command_manager.register_buildin_commands()
+        self._handle_startup_events()
+
+        # run command and handle loop
+        self.command_manager.exec(key, args)
+
+        self._handle_commands()
+        self._handle_close_events()
+
 
 app = AnicliApp("anicli", "~ ")
 app.session = PromptSession(

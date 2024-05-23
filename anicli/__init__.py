@@ -5,7 +5,9 @@ from importlib.metadata import version as pkg_version
 
 from anicli.cli import APP
 
-__version__ = "5.0.10"
+__version__ = "5.0.11"
+
+from anicli.cli_utlis import command_available
 
 
 def _get_version():
@@ -44,6 +46,17 @@ def run_cli():
         "(default 1080)",
     )
     parser.add_argument(
+        '--search',
+        type=str,
+        default=None,
+        help='run search by query menu'
+    )
+    parser.add_argument(
+        '--ongoing',
+        action='store_true',
+        help='run ongoing menu'
+    )
+    parser.add_argument(
         "-p",
         "--player",
         type=str,
@@ -62,7 +75,7 @@ def run_cli():
         "--ffmpeg",
         action="store_true",
         default=False,
-        help="Usage ffmpeg backend for redirect video buffer to player. "
+        help="DEPRECATED. Usage ffmpeg backend for redirect video buffer to player. "
         "Enable, if your player cannot accept headers params (vlc, for example)",
     )
     parser.add_argument(
@@ -93,8 +106,17 @@ def run_cli():
         print(_get_version())
         exit(0)
 
+    if namespaces.search and namespaces.ongoing:
+        print("Should be provide --search or --ongoing flag")
+        exit(1)
+
     if APP.CFG.USE_FFMPEG_ROUTE:
         warnings.warn("this key will be deleted in next versions", category=DeprecationWarning, stacklevel=2)
+
+    if not command_available(f"{APP.CFG.PLAYER} --version"):
+        msg = f"'{APP.CFG.PLAYER}' player not found. Install it and check it in $PATH environment variables"
+        warnings.warn(msg, category=RuntimeWarning, stacklevel=1)
+        exit(1)
 
     # setup eggella app
     module = importlib.import_module(f"anicli_api.source.{namespaces.source}")
@@ -107,7 +129,13 @@ def run_cli():
     APP.CFG.M3U_MAKE = namespaces.m3u
     APP.CFG.M3U_MAX_SIZE = namespaces.m3u_size
     APP.CFG.PLAYER_EXTRA_ARGS = namespaces.player_args
-    APP.loop()
+
+    if namespaces.search:
+        APP.exec_and_loop('search', namespaces.search)
+    elif namespaces.ongoing:
+        APP.exec_and_loop('ongoing', '')
+    else:
+        APP.loop()
 
 
 if __name__ == '__main__':
