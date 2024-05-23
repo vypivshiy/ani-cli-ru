@@ -154,7 +154,7 @@ def choose_quality():
     anime: "BaseAnime" = app.fsm["anime"]
     title = create_title(anime, episode, source)
 
-    run_video(video, title, player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
+    run_video(video, app.CFG, title)
     return app.fsm.set(SearchStates.EPISODE)
 
 

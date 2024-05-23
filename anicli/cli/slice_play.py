@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 def play_slice_urls(*, anime: "BaseAnime", episodes: List["BaseEpisode"], cmp_key_hash: int, app: "AnicliApp"):
     for episode, source, video in slice_playlist_iter(episodes, cmp_key_hash, app.CFG):
         title = create_title(anime, episode, source)
-        run_video(video, title, player=app.CFG.PLAYER, use_ffmpeg=app.CFG.USE_FFMPEG_ROUTE)
+        run_video(video, app.CFG, title=title)
 
 
 def play_slice_playlist(*, anime: "BaseAnime", episodes: List["BaseEpisode"], cmp_key_hash: int, app: "AnicliApp"):
@@ -26,11 +26,11 @@ def play_slice_playlist(*, anime: "BaseAnime", episodes: List["BaseEpisode"], cm
     for i, ctx in progress:
         episode, source, video = ctx
         if i % app.CFG.M3U_MAX_SIZE == 0 and i != 0:
-            run_m3u_playlist(videos=videos, names=names, quality=app.CFG.MIN_QUALITY)
+            run_m3u_playlist(videos=videos, names=names, app_cfg=app.CFG)
             videos.clear()
             names.clear()
         videos.append(video)
         names.append(create_title(anime, episode, source))
 
     if videos and names:
-        run_m3u_playlist(videos=videos, names=names, quality=app.CFG.MIN_QUALITY)
+        run_m3u_playlist(videos=videos, names=names, app_cfg=app.CFG)

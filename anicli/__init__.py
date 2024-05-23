@@ -1,4 +1,5 @@
 import importlib
+import warnings
 
 from importlib.metadata import version as pkg_version
 
@@ -51,6 +52,13 @@ def run_cli():
         help="Set videoplayer target. (default 'mpv')",
     )
     parser.add_argument(
+        '-pa',
+        '--player-args',
+        type=str,
+        default="",
+        help="Extra player arguments"
+    )
+    parser.add_argument(
         "--ffmpeg",
         action="store_true",
         default=False,
@@ -84,6 +92,10 @@ def run_cli():
     if namespaces.version:
         print(_get_version())
         exit(0)
+
+    if APP.CFG.USE_FFMPEG_ROUTE:
+        warnings.warn("this key will be deleted in next versions", category=DeprecationWarning, stacklevel=2)
+
     # setup eggella app
     module = importlib.import_module(f"anicli_api.source.{namespaces.source}")
     APP.CFG.EXTRACTOR = getattr(module, "Extractor")()
@@ -94,6 +106,7 @@ def run_cli():
     APP.CFG.PROXY = namespaces.proxy
     APP.CFG.M3U_MAKE = namespaces.m3u
     APP.CFG.M3U_MAX_SIZE = namespaces.m3u_size
+    APP.CFG.PLAYER_EXTRA_ARGS = namespaces.player_args
     APP.loop()
 
 
