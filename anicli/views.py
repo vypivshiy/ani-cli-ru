@@ -38,7 +38,7 @@ class Message:
             for i, item in enumerate(items_list, 1):
                 print_formatted_text(FormattedText([("", "["), ("#F7FF00", str(i)), ("", "] "), ("", str(item))]))
         else:
-            for i, item in enumerate(items_list[:15], 1):
+            for i, item in enumerate(items_list[:result_count - 5], 1):
                 print_formatted_text(FormattedText([("", "["), ("#F7FF00", str(i)), ("", "] "), ("", str(item))]))
             print_formatted_text(f"... + {len(items_list) - 20}")
             for i, item in enumerate(items_list[-5:], 1):
