@@ -5,7 +5,7 @@ from importlib.metadata import version as pkg_version
 
 from anicli.cli import APP
 
-__version__ = "5.0.11"
+__version__ = "5.0.12"
 
 from anicli.cli_utlis import command_available
 
