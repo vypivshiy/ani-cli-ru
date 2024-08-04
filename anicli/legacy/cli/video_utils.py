@@ -4,13 +4,10 @@ from urllib.parse import urlsplit
 from anicli_api.player.aniboom import Aniboom
 from httpx import Client
 
-from anicli.cli.config import AnicliApp
+from anicli import AnicliApp
 
 if TYPE_CHECKING:
-    from anicli_api.base import BaseEpisode, BaseSource
-    from anicli_api.player.base import Video
-
-    from anicli.cli.config import Config
+    pass
 
 
 def slice_play_hash(video: "Video", source: "BaseSource"):

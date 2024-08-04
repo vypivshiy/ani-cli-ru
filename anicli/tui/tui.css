@@ -1,0 +1,30 @@
+#header {
+    height: 6;
+}
+
+#search-container {
+    height: 4;
+}
+
+#search-input {
+    width: 64;
+}
+
+#ongoings-header {
+    content-align: center middle;
+}
+
+#ongoing-container {
+    border: solid;
+}
+
+#ongoings-items {
+    width: 80%;
+}
+
+#anime-descr {
+    height: 8;
+}
+
+#episode-items {
+}

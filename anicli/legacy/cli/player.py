@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING, Any, Optional, List
 
 from anicli_api.tools import generate_playlist
 
-from anicli.log import logger
-from anicli.utils import sanitize_filename
+from anicli import logger
+from anicli2.legacy.utils import sanitize_filename
 
 if TYPE_CHECKING:
-    from anicli_api.player.base import Video
+    pass
 
 
 class BasePlayer:

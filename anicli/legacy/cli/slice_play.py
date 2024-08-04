@@ -2,13 +2,12 @@ from typing import TYPE_CHECKING, List
 
 from tqdm import tqdm
 
-from anicli.cli.player import run_video, run_m3u_playlist
-from anicli.cli.video_utils import slice_playlist_iter
-from anicli.utils import create_title
+from anicli import run_video, run_m3u_playlist
+from anicli2.legacy.cli.video_utils import slice_playlist_iter
+from anicli2.legacy.utils import create_title
 
 if TYPE_CHECKING:
-    from anicli_api.base import BaseAnime, BaseEpisode
-    from anicli.cli import AnicliApp
+    pass
 
 
 def play_slice_urls(*, anime: "BaseAnime", episodes: List["BaseEpisode"], cmp_key_hash: int, app: "AnicliApp"):

@@ -3,22 +3,21 @@ from typing import TYPE_CHECKING, List, Optional
 
 from eggella.fsm import IntStateGroup
 
-from anicli import views
-from anicli._completion import anime_word_choice_completer, word_choice_completer
-from anicli._validator import AnimePromptValidator, NumPromptValidator
-from anicli.cli.config import AnicliApp
-from anicli.cli.player import run_video
-from anicli.cli.slice_play import play_slice_playlist, play_slice_urls
-from anicli.cli.video_utils import (
+from anicli2.legacy import views
+from anicli2.legacy._completion import anime_word_choice_completer, word_choice_completer
+from anicli2.legacy._validator import AnimePromptValidator, NumPromptValidator
+from anicli import AnicliApp
+from anicli import run_video
+from anicli2.legacy.cli.slice_play import play_slice_playlist, play_slice_urls
+from anicli2.legacy.cli.video_utils import (
     get_preferred_human_quality_index,
     is_video_url_valid,
     slice_play_hash,
 )
-from anicli.utils import choice_human_index, choice_human_slice, create_title
+from anicli2.legacy.utils import choice_human_index, choice_human_slice, create_title
 
 if TYPE_CHECKING:
-    from anicli_api.base import BaseAnime, BaseEpisode, BaseOngoing, BaseSource
-    from anicli_api.player.base import Video
+    pass
 
 
 class OngoingStates(IntStateGroup):
