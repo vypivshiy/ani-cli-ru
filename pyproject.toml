@@ -28,7 +28,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "anicli-api", "eggella", "setuptools"
+  "anicli-api", "eggella", "textual"
 ]
 
 [project.urls]
