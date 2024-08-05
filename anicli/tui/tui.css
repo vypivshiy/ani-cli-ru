@@ -1,30 +1,77 @@
+/* MAIN APP STYLES */
 #header {
-    height: 6;
+    height: 8;
+
+    #header-logo {
+        border: solid green;
+    }
 }
 
 #search-container {
-    height: 4;
+    height: 5;
+    border: solid green;
+    border-title-align: center;
+
 }
 
 #search-input {
-    width: 64;
-}
-
-#ongoings-header {
-    content-align: center middle;
+    width: 80%;
 }
 
 #ongoing-container {
-    border: solid;
+    border: solid green;
+    border-title-align: center;
 }
 
 #ongoings-items {
-    width: 80%;
+    width: 100%;
+    margin: 0 1 0 1;
+    border: solid green;
+}
+
+/* SEARCH SCREEN */
+#search-results-container {
+    border: solid green;
+    border-title-align: center;
+}
+
+#search-items {
+    width: 100%;
+    margin: 0 1 0 1;
+    border: solid green;
+}
+
+/* ANIME SCREEN */
+#anime-result-container {
+    border: solid green;
+    border-title-align: center;
+    border-title-style: bold underline;
 }
 
 #anime-descr {
     height: 8;
+    margin: 0 1 0 1;
 }
 
 #episode-items {
+    border: solid green;
+    border-title-align: center;
+    border-title-style: bold;
+    height: 70%;
+}
+
+/* SOURCES SCREEN */
+#sources-result-container {
+    border: solid green;
+    border-title-align: center;
+    border-title-style: bold underline;
+    height: 30%;
+}
+
+/* VIDEOS SCREEN*/
+#sources-videos-container {
+    border: solid green;
+    border-title-align: center;
+    border-title-style: bold underline;
+    height: 30%;
 }

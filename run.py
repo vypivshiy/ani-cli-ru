@@ -1,4 +1,4 @@
-from anicli2 import AnicliRuTui
+from anicli import AnicliRuTui
 
 if __name__ == '__main__':
     AnicliRuTui().run()

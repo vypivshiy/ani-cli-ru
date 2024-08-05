@@ -7,11 +7,12 @@ from textual import on, work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
-from textual.widgets import Footer, Static, Input, Button, ListView, LoadingIndicator
+from textual.widgets import Footer, Input, Button, ListView, LoadingIndicator
 
-from anicli2.tui.screens import AnimeResultScreen, SearchResultScreen, SourceResultScreen
-from anicli2.utils.cached_extractor import CachedExtractor
-from .widgets import AppHeader, AnimeListItem
+from .components import AppHeader, AnimeListItem
+from .player.mpv import run_video
+from .screens import AnimeResultScreen, SearchResultScreen, SourceResultScreen, VideoResultScreen
+from ..utils.cached_extractor import CachedExtractor
 
 
 class AnicliRuTui(App):
@@ -27,6 +28,8 @@ class AnicliRuTui(App):
     def on_mount(self) -> None:
         """Event handler called when widget is added to the app."""
         self.update_ongoings()
+        self.query_one('#ongoing-container').border_title = 'Ongoings'
+        self.query_one('#search-container').border_title = 'Search or filter ongoings'
 
     @work(exclusive=True)
     async def update_ongoings(self) -> None:
@@ -41,10 +44,9 @@ class AnicliRuTui(App):
         yield AppHeader(id='header')
         with Vertical():
             with Horizontal(id='search-container'):
-                yield Input(placeholder='search|filter ongoings >', id='search-input')
+                yield Input(placeholder='>', id='search-input')
                 yield Button('Search', id='search-button')
-            with Vertical(id='ongoings-container'):
-                yield Static("Ongoings", id='ongoings-header')
+            with Vertical(id='ongoing-container'):
                 yield LoadingIndicator(id='ongoings-loads')
                 yield ListView(id='ongoings-items')
         yield Footer()
@@ -66,10 +68,10 @@ class AnicliRuTui(App):
 
         results = await self.extractor.a_search(value)
         if not results:
-            self.notify(f'titles by [b]{value}[/b] query not founded', severity='warning')
+            self.notify(f'titles by [b]{value}[/b] query not founded', severity='error')
             return
 
-        await self.push_screen(SearchResultScreen(extractor=self.extractor, search_results=results))
+        await self.push_screen(SearchResultScreen(search_results=results))
 
     @on(Input.Changed, '#search-input')
     async def on_input_changed(self, event: Input.Changed):
@@ -90,34 +92,38 @@ class AnicliRuTui(App):
     async def ongoing_or_search_choice(self, event: ListView.Selected):
         result: SEARCH_OR_ONGOING = event.item.value  # type: ignore
         anime = await self.extractor.a_get_anime(result)
-        episodes = await anime.a_get_episodes()
+        episodes = await self.extractor.a_get_episodes(anime)
         if not episodes:
             self.notify(f'Episodes not found in [bold]{anime.title}[/]', severity='error')
             return
-        await self.push_screen(AnimeResultScreen(self.extractor, anime, episodes))
+        await self.push_screen(AnimeResultScreen(anime, episodes))
 
     @on(ListView.Selected, '#list-pager')
     async def on_selected_list(self, event: ListView.Selected) -> None:
         ep: BaseEpisode = event.item.value
-        self.notify(f'picked {event.item.value}')
-        sources = await ep.a_get_sources()
+        sources = await self.extractor.a_get_sources(ep)
         if not sources:
-            self.notify('Not found (maybe episode not released already?)')
+            self.notify('Not found (maybe episode not released yet?)')
             return
 
-        await self.push_screen(SourceResultScreen(self.extractor, sources))
+        await self.push_screen(SourceResultScreen(sources))
 
     @on(ListView.Selected, '#source-items')
     async def get_videos(self, event: ListView.Selected):
         source: BaseSource = event.item.value
         videos = await self.extractor.a_get_videos(source)
-        self.notify(f'picked {event.item.value}')
+        self.notify(f'picked {source}')
+        await self.push_screen(VideoResultScreen(videos))
 
-    @on(Button.Pressed, '#search-close, #anime-close, #source-back')
-    async def _pop_search_screen(self):
-        # HACK: clear input in main screen
-        # self.query_one('#search-input', Input).clear()
+    @on(Button.Pressed, '.back-source, .back-search, .back-anime, .back-video')
+    async def pop_screen_button_click(self):
         await self.pop_screen()
+
+    @on(ListView.Selected, '#video-items')
+    async def play_video(self, event: ListView.Selected):
+        video = event.item.value
+        self.notify(f'run video {video}')
+        run_video(video, player='mpv')
 
     def action_open_page(self, url: str):
         webbrowser.open(url)

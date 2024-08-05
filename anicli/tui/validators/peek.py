@@ -17,8 +17,7 @@ class InputPeekValidator(Validator):
     def _is_slice(value: str):
         if len(value.split("-")) == 2:
             start, end = value.split("-")
-            if start.isdigit() and end.isdigit():
-                return True
+            return start.isdigit() and end.isdigit()
         return False
 
     @staticmethod

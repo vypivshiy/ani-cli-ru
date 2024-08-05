@@ -1,17 +1,51 @@
+from typing import List
+
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.validation import Number
 from textual.widgets import ListItem, Label, Static, ListView, Button, Input
 
-from anicli2.tui.consts import LOGO_HEADER
-from .validators import InputPeekValidator
-from ..types_ import ANICLI_API_ITEM
-from ..utils.more_itertools import chunked
+from ...types_ import ANICLI_API_ITEM
+from ...utils.more_itertools import chunked
+
+
+# factories
+def new_list_view(items: List[ANICLI_API_ITEM], id: str) -> ListView:
+    return ListView(
+        *[AnimeListItem(i, r) for i, r in enumerate(items, 1)], id=id)
+
+
+def new_list_paginator(items: List[ANICLI_API_ITEM], id: str,
+                       items_per_page_count: int = 50,
+                       start_index: int = 0,
+                       ) -> 'ListPaginator':
+    return ListPaginator(
+        *[AnimeListItem(i, r) for i, r in enumerate(items, 1)],
+        id=id,
+        start_index=start_index,
+        items_per_page_count=items_per_page_count,
+    )
+
+
+class AnimeListItem(ListItem):
+    """modified ListItem helps storage iterable anicli-api objects and Video"""
+
+    def __init__(self, num: int, item: ANICLI_API_ITEM):
+        super().__init__()
+        self.num = num
+        self._item = item
+
+    @property
+    def value(self):
+        return self._item
+
+    def compose(self) -> ComposeResult:
+        yield Label(f'{self.num}) {self._item}')
 
 
 class ListPaginator(Static):
-    """paginator component"""
+    """paginator component for increase performance render many objects"""
     DEFAULT_CSS = """
         #prev-page {
             width: 1;
@@ -41,15 +75,19 @@ class ListPaginator(Static):
         }
     """
 
-    def __init__(self, *items: ListItem, stack=50, start_index=0, id: str):
+    def __init__(self,
+                 *items: ListItem,
+                 items_per_page_count: int = 50,
+                 start_index: int = 0,
+                 id: str):
         # TODO: provide any default kwargs
         super().__init__(id=id)
 
-        _x, _y = divmod(len(items), stack)
+        _x, _y = divmod(len(items), items_per_page_count)
         self.max_pages = _x if _y == 0 else _x + 1
         self.items = list(items)
 
-        self.chunks_items = list(chunked(items, stack))
+        self.chunks_items = list(chunked(items, items_per_page_count))
 
         self.cur_index = start_index
         self.end_index = len(self.chunks_items) - 1
@@ -58,16 +96,6 @@ class ListPaginator(Static):
             maximum=self.max_pages,
             failure_description=f'should be in range 1-{self.max_pages}'
         )
-
-    @property
-    def current_page(self):
-        return self.cur_index + 1
-
-    def next_page(self):
-        self.cur_index += 1
-
-    def prev_page(self):
-        self.cur_index -= 1
 
     def compose(self) -> ComposeResult:
         # show slice indexes
@@ -82,6 +110,16 @@ class ListPaginator(Static):
                         id='pager-goto-input',
                         max_length=3)
             yield Button('>', id='next-page')
+
+    @property
+    def current_page(self):
+        return self.cur_index + 1
+
+    def next_page(self):
+        self.cur_index += 1
+
+    def prev_page(self):
+        self.cur_index -= 1
 
     def on_mount(self):
         # not need pagination
@@ -104,7 +142,8 @@ class ListPaginator(Static):
         self._update_buttons_states()
         self._update_listview()
 
-        self.query_one('#pager-counter', Label).update(f'Page {self.current_page}/{self.max_pages} | items: {len(self.items)}')
+        self.query_one('#pager-counter', Label).update(
+            f'Page {self.current_page}/{self.max_pages} | items: {len(self.items)}')
 
     @on(Input.Submitted, '#pager-goto-input')
     def jump_page_input(self, event: Input.Submitted):
@@ -118,7 +157,8 @@ class ListPaginator(Static):
         self._update_buttons_states()
         self._update_listview()
 
-        self.query_one('#pager-counter', Label).update(f'Page {self.current_page}/{self.max_pages} | items: {len(self.items)}')
+        self.query_one('#pager-counter', Label).update(
+            f'Page {self.current_page}/{self.max_pages} | items: {len(self.items)}')
 
     def _update_listview(self):
         items_slice = self.chunks_items[self.cur_index]
@@ -155,28 +195,3 @@ class ListPaginator(Static):
         self.query_one('#prev-page', Button).disabled = True
         self.query_one('#next-page', Button).disabled = True
         self.query_one('#pager-goto-input').disabled = True
-
-
-class AnimeListItem(ListItem):
-    """modified ListItem helps storage iterable anicli-api objects"""
-
-    def __init__(self, num: int, item: ANICLI_API_ITEM):
-        super().__init__()
-        self.num = num
-        self._item = item
-
-    @property
-    def value(self):
-        return self._item
-
-    def compose(self) -> ComposeResult:
-        yield Label(f'{self.num}) {self._item}')
-
-
-class AppHeader(Horizontal):
-    LOGO = LOGO_HEADER
-    STATIC_TITLE: str = 'Anicli-ru'
-    COLLAPSED: bool = True
-
-    def compose(self):
-        yield Static(self.LOGO)
