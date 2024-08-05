@@ -1,3 +1,9 @@
+/* GLOBAL */
+
+LoadingIndicator {
+    color: green;
+}
+
 /* MAIN APP STYLES */
 #header {
     height: 8;
