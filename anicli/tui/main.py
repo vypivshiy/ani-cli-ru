@@ -7,16 +7,34 @@ from textual import on, work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
-from textual.widgets import Footer, Input, Button, ListView
+from textual.widgets import Footer, Input, Button, ListView, SelectionList
 
 from anicli import tooltips as _
+from anicli.tui.components.utils import set_loading, update_list_view
+from anicli.tui.player.mpv_cmd import run_playlist
+from anicli.tui.player.slice_playlist import make_playlist
 from .components import AppHeader, AnimeListItem
-from .player.mpv import run_video
 from .screens import AnimeResultScreen, SearchResultScreen, SourceResultScreen, VideoResultScreen
-from ..utils.cached_extractor import CachedExtractor
+from ..utils.cached_extractor import CachedExtractor, CachedItemContext
 
 
-class AnicliRuTui(App):
+class _ActionsAppMixin(App):
+
+    @staticmethod
+    def action_open_page(url: str):
+        webbrowser.open(url)
+
+    def action_toggle_dark(self) -> None:
+        """An action to toggle dark mode."""
+        self.dark = not self.dark  # type: ignore
+
+    def action_pop_screen(self):
+        if len(self.screen_stack) == 1:
+            return
+        self.pop_screen()
+
+
+class AnicliRuTui(_ActionsAppMixin, App):
     BINDINGS = [
         ("ctrl+d", "toggle_dark", "Toggle dark mode"),
         ("ctrl+b", "pop_screen", "back to previous screen"),
@@ -25,150 +43,150 @@ class AnicliRuTui(App):
     ]
     CSS_PATH = 'tui.css'
 
-    ongoings: reactive[List[BaseOngoing]] = reactive([])
-    extractor: reactive[CachedExtractor] = reactive(CachedExtractor(Extractor()))  # todo: choice source
+    ongoings: List[BaseOngoing] = reactive([])
+    # todo: choice extractor source
+    cached_extractor: CachedExtractor = reactive(CachedExtractor(Extractor()))
+
+    def __init__(self, extractor=Extractor()):
+        super().__init__()
+        self.cached_extractor = CachedExtractor(extractor)
+        self.context = CachedItemContext(extractor=self.cached_extractor)
 
     def on_mount(self) -> None:
-        """Event handler called when widget is added to the app."""
         self.update_ongoings()
         self.query_one('#ongoing-container').border_title = 'Ongoings'
         self.query_one('#ongoing-container').tooltip = _.APP_ONGOING_CONTAINER
-
         self.query_one('#search-container').border_title = 'Search or filter ongoings'
-
         self.query_one('#search-input').tooltip = _.APP_SEARCH_INPUT
 
+    # BASE APP LAYER
     @work(exclusive=True)
     async def update_ongoings(self) -> None:
-        ongs_view = self.query_one('#ongoings-items', ListView)
-
+        ongoings_lv = self.query_one('#ongoings-items', ListView)
         self.query_one('#search-input').disabled = True
-        ongs_view.loading = True
-        self.ongoings = await self.extractor.a_ongoing()
-        await ongs_view.extend([AnimeListItem(i, o) for i, o in enumerate(self.ongoings, 1)])
 
-        self.query_one('#search-input').disabled = False
-        ongs_view.loading = False
+        with set_loading(ongoings_lv):
+            self.ongoings = await self.cached_extractor.a_ongoing()
+            await ongoings_lv.extend([AnimeListItem(i, o) for i, o in enumerate(self.ongoings, 1)])
+            self.query_one('#search-input').disabled = False
 
     def compose(self) -> ComposeResult:
         yield AppHeader(id='header')
         with Vertical():
             with Horizontal(id='search-container'):
                 yield Input(placeholder='>', id='search-input')
-                yield Button('Search', id='search-button')
             with Vertical(id='ongoing-container'):
                 yield ListView(id='ongoings-items')
         yield Footer()
 
-    @on(Button.Pressed, '#search-button')
-    async def spawn_search_screen(self, _: Button.Pressed):
-        value = self.query_one('#search-input', Input).value
-        await self._spawn_search_screen(value)
-
     @on(Input.Submitted, '#search-input')
-    async def search_results(self, event: Input.Submitted):
+    async def on_input_submit_search(self, event: Input.Submitted):
         value = event.value
-        await self._spawn_search_screen(value)
-
-    async def _spawn_search_screen(self, value: str):
         if not value:
             self.notify('Empty search query', severity='error')
             return
 
-        self.query_one('#search-input').loading = True
-        results = await self.extractor.a_search(value)
-        if not results:
-            self.notify(f'titles by [b]{value}[/b] query not founded', severity='error')
-            self.query_one('#search-input').loading = False
-            return
-
-        self.query_one('#search-input').loading = False
-        await self.push_screen(SearchResultScreen(search_results=results))
+        with set_loading(self.query_one('#search-input')):
+            results = await self.context.a_search(value)
+            if not results:
+                self.notify(f'Titles by [b]{value}[/b] query not founded', severity='error')
+                return
+            await self.push_screen(SearchResultScreen(self.context))
 
     @on(Input.Changed, '#search-input')
-    async def on_input_changed(self, event: Input.Changed):
-        """reuse search input via filter ongoings list"""
+    async def on_input_ongoings_filter(self, event: Input.Changed):
+        # reuse search input via filter ongoings list
         list_view: ListView = self.query_one('#ongoings-items', ListView)
-        ongoings = await self.extractor.a_ongoing()
+        ongoings = await self.cached_extractor.a_ongoing()
 
         if not event.value:
-            await list_view.clear()
-            await list_view.extend([AnimeListItem(i, o) for i, o in enumerate(ongoings, 1)])
+            new_items = (AnimeListItem(i, o) for i, o in enumerate(ongoings, 1))
+            update_list_view(list_view, *new_items)
             return
 
-        await list_view.clear()
-        await list_view.extend(
-            [AnimeListItem(i, o) for i, o in enumerate(ongoings, 1) if event.value.lower() in str(o).lower()])
+        new_items = (AnimeListItem(i, o) for i, o in enumerate(ongoings, 1)
+                     if event.value.lower() in str(o).lower())
+        update_list_view(list_view, *new_items)
 
+    # SEARCH + ONGOINGS
     @on(ListView.Selected, '#ongoings-items, #search-items')
-    async def ongoing_or_search_choice(self, event: ListView.Selected):
-        event.list_view.loading = True
-        result: SEARCH_OR_ONGOING = event.item.value  # type: ignore
+    async def on_lv_select_spawn_anime_sc(self, event: ListView.Selected):
+        with set_loading(event.list_view):
+            result: SEARCH_OR_ONGOING = event.item.value  # type: ignore
+            # todo: rewrite to context scope
+            anime = await self.cached_extractor.a_get_anime(result)
+            self.context.anime = anime
+            episodes = await self.context.a_get_episodes()
 
-        anime = await self.extractor.a_get_anime(result)
-        episodes = await self.extractor.a_get_episodes(anime)
-        if not episodes:
-            self.notify(f'[bold]{anime.title}[/]: episodes not founded', severity='error')
-            event.list_view.loading = False
-            return
+            if not episodes:
+                self.notify(f'[bold]{anime.title}[/]: episodes not founded', severity='error')
+                return
+        await self.push_screen(AnimeResultScreen(self.context))
 
-        event.list_view.loading = False
-        await self.push_screen(AnimeResultScreen(anime, episodes))
-
+    # ANIME SCREEN
     @on(ListView.Selected, '#list-pager')
-    async def on_selected_list(self, event: ListView.Selected) -> None:
-        event.list_view.loading = True
-        ep: BaseEpisode = event.item.value
+    async def on_lv_select_push_source_sc(self, event: ListView.Selected) -> None:
+        with set_loading(event.list_view, event.item):
+            ep: BaseEpisode = event.item.value  # type: ignore
+            sources = await self.cached_extractor.a_get_sources(ep)
+            self.context.sources = sources
 
-        sources = await self.extractor.a_get_sources(ep)
+            if not sources:
+                self.notify('Not found (maybe episode not released yet?)')
+                return
 
-        if not sources:
-            self.notify('Not found (maybe episode not released yet?)')
-            event.item.loading = False
+        await self.push_screen(SourceResultScreen(self.context))
+
+    @on(Button.Pressed, '#episodes-pick-accept')
+    async def episodes_choice_accept(self, _):
+        episodes_indexes = self.query_one('#episodes-items', SelectionList).selected
+        if len(episodes_indexes) == 0:
+            self.notify('Please, choice episodes')
             return
 
-        event.list_view.loading = False
-        await self.push_screen(SourceResultScreen(sources))
+        self.context.picked_episode_indexes = episodes_indexes
+        # pick first sources list. slice playlist logic calculate be later
+        self.context.sources = await self.cached_extractor.a_get_sources(
+            self.context.episodes[episodes_indexes[0]]
+        )
+        await self.push_screen(SourceResultScreen(self.context))
 
+    # SOURCE SCREEN
     @on(ListView.Selected, '#source-items')
-    async def get_videos(self, event: ListView.Selected):
-        event.list_view.loading = True
-        source: BaseSource = event.item.value
+    async def on_lv_selected_push_video_sc(self, event: ListView.Selected):
+        with set_loading(event.list_view, event.item):
+            source: BaseSource = event.item.value  # type: ignore
+            self.context.picked_source = source
 
-        videos = await self.extractor.a_get_videos(source)
+            videos = await self.cached_extractor.a_get_videos(source)
+            if not videos:
+                self.notify('Not found videos')
+                return
+            self.context.videos = videos
 
-        event.list_view.loading = False
-        await self.push_screen(VideoResultScreen(videos))
+        await self.push_screen(VideoResultScreen(self.context))
+
+    # VIDEO SCREEN
+    @on(ListView.Selected, '#video-items')
+    async def on_lv_select_play_video(self, event: ListView.Selected):
+        with set_loading(event.list_view):
+            video = event.item.value  # type: ignore
+            self.context.picked_video = video
+
+            self.notify(f'{self.context.picked_episode_indexes}')
+            self.notify(f'run video {video}')
+            self._play_video()
 
     @on(Button.Pressed, '.back-source, .back-search, .back-anime, .back-video')
-    async def pop_screen_button_click(self):
+    async def on_button_pop_sc(self):
+        """universal close screen entrypoint"""
         await self.pop_screen()
 
-    @on(ListView.Selected, '#video-items')
-    async def play_video(self, event: ListView.Selected):
-        video = event.item.value
-        event.list_view.loading = True
-
-        self.notify(f'run video {video}')
-
-        self._play_video(video)
-        event.list_view.loading = False
-
-    @work(thread=True)
-    def _play_video(self, video):
-        run_video(video)
-
-    def action_open_page(self, url: str):
-        webbrowser.open(url)
-
-    def action_toggle_dark(self) -> None:
-        """An action to toggle dark mode."""
-        self.dark = not self.dark
-
-    def action_pop_screen(self):
-        if len(self.screen_stack) == 1:
-            return
-        self.pop_screen()
+    @work(exclusive=True)
+    async def _play_video(self):
+        playlist = await make_playlist(self.context)
+        # todo detect headers (aniboom case)
+        run_playlist(playlist, {})
 
 
 if __name__ == '__main__':

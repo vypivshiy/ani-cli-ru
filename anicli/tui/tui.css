@@ -21,7 +21,7 @@ LoadingIndicator {
 }
 
 #search-input {
-    width: 80%;
+    width: 100%;
 }
 
 #ongoing-container {
@@ -55,16 +55,32 @@ LoadingIndicator {
 }
 
 #anime-descr {
-    height: 8;
-    margin: 0 1 0 1;
+    height: 15%;
 }
 
-#episode-items {
-    border: solid green;
-    border-title-align: center;
-    border-title-style: bold;
-    height: 70%;
+#episodes-selector {
+    height: 50%;
+
+    #episodes-picker-input {
+        width: 30%;
+    }
+
+    #episodes-items{
+        height: 40%;
+    }
+
+    #episodes-selector-container {
+        height: 3;
+    }
+
+    #episodes-selected-textbox {
+        height: 50%;
+        margin: 1 0 1 0;
+        border: solid green;
+        border-title-style: bold underline;
+    }
 }
+
 
 /* SOURCES SCREEN */
 #sources-result-container {

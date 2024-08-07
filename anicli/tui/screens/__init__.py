@@ -1,3 +1,4 @@
-from .anime_info import AnimeResultScreen
-from .search_info import SearchResultScreen
-from .video_info import SourceResultScreen, VideoResultScreen
+from .anime_sc import AnimeResultScreen
+from .search_sc import SearchResultScreen
+from .source_sc import SourceResultScreen
+from .video_sc import VideoResultScreen
