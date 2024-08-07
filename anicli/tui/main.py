@@ -39,7 +39,6 @@ class AnicliRuTui(_ActionsAppMixin, App):
         ("ctrl+d", "toggle_dark", "Toggle dark mode"),
         ("ctrl+b", "pop_screen", "back to previous screen"),
         ("ctrl+h", "help_screen", "show help page"),
-        # ("ctrl+s", "toggle_sidebar", "Toggle sidebar")
     ]
     CSS_PATH = 'tui.css'
 
@@ -149,6 +148,19 @@ class AnicliRuTui(_ActionsAppMixin, App):
         self.context.sources = await self.cached_extractor.a_get_sources(
             self.context.episodes[episodes_indexes[0]]
         )
+        # ongoings case:
+        # check last episode index if exist and check available videos
+        max_ep_index = max(self.context.picked_episode_indexes)
+        if max_ep_index == len(self.context.episodes) - 1:
+            result = await self.context.extractor.a_get_sources(
+                self.context.episodes[-1]
+            )
+            if not result:
+                self.notify('last episode is not available. Maybe it release later?',
+                            severity='warning'
+                            )
+                return
+
         await self.push_screen(SourceResultScreen(self.context))
 
     # SOURCE SCREEN
