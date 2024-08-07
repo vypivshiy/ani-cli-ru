@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.screen import Screen
-
+from textual.widgets import Footer
 from ..components import new_list_view, ButtonPopScreen
 
 if TYPE_CHECKING:
@@ -25,3 +25,4 @@ class SourceResultScreen(Screen):
         with VerticalScroll(id='sources-result-container'):
             yield new_list_view(self.context.sources, id='source-items')
             yield ButtonPopScreen('back-source')
+        yield Footer()

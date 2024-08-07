@@ -3,7 +3,7 @@ from typing import List, TYPE_CHECKING
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.screen import Screen
-
+from textual.widgets import Footer
 from ..components import new_list_view, ButtonPopScreen
 
 if TYPE_CHECKING:
@@ -22,3 +22,4 @@ class VideoResultScreen(Screen):
         with VerticalScroll(id='sources-videos-container'):
             yield new_list_view(self.context.videos, id='video-items')
             yield ButtonPopScreen('back-video')
+        yield Footer()

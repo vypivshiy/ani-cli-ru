@@ -1,10 +1,9 @@
 from typing import TYPE_CHECKING
 
-from textual import on
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.screen import Screen
-from textual.widgets import TextArea, Button, SelectionList
+from textual.widgets import TextArea, Footer
 
 from ..components import ButtonPopScreen
 from ..components.episodes_selector import EpisodesSelector
@@ -30,4 +29,4 @@ class AnimeResultScreen(Screen):
                            tab_behavior='indent')
             yield EpisodesSelector(self.context.episodes, id='episodes-selector')
             yield ButtonPopScreen('back-anime')
-
+        yield Footer()

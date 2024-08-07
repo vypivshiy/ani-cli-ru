@@ -1,9 +1,11 @@
+from typing import TYPE_CHECKING
+
 from textual.app import ComposeResult
 from textual.containers import Vertical
+from textual.widgets import Footer
 from textual.screen import Screen
-from typing import TYPE_CHECKING
-from ..components import new_list_view, MiddleTitle, ButtonPopScreen
-from ...types_ import LIST_SEARCH_OR_ONGOING
+
+from ..components import new_list_view, ButtonPopScreen
 
 if TYPE_CHECKING:
     from ...utils.cached_extractor import CachedItemContext
@@ -23,3 +25,4 @@ class SearchResultScreen(Screen):
                 self.context.searches_or_ongoings,
                 id='search-items')
             yield ButtonPopScreen('back-search')
+        yield Footer()
