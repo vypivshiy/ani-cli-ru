@@ -1,1 +1,1 @@
-from .peek import InputPeekValidator
+from .number_peek import NumberPeekValidator
