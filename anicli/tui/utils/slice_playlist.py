@@ -1,3 +1,5 @@
+import tempfile
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, List
 from urllib.parse import urlsplit
 
@@ -6,6 +8,21 @@ from anicli_api.tools.m3u import Playlist
 if TYPE_CHECKING:
     from anicli.utils.cached_extractor import CachedItemContext
     from anicli_api.base import BaseSource, Video, BaseEpisode, BaseAnime
+
+__all__ = [
+    'new_tmp_playlist',
+    'make_playlist'
+]
+
+
+@contextmanager
+def new_tmp_playlist(playlist_raw: str) -> str:
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.m3u') as temp_file:
+        temp_file.write(playlist_raw)
+    try:
+        yield temp_file.name
+    finally:
+        temp_file.close()
 
 
 def source_hash(source: "BaseSource") -> int:

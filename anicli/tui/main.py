@@ -11,8 +11,7 @@ from textual.widgets import Footer, Input, Button, ListView, SelectionList
 
 from anicli import tooltips as _
 from anicli.tui.components.utils import set_loading, update_list_view
-from anicli.tui.player.mpv_cmd import run_playlist
-from anicli.tui.player.slice_playlist import make_playlist
+from anicli.tui.screens.player_sc import MPVPlayerSc
 from .components import AppHeader, AnimeListItem
 from .screens import AnimeResultScreen, SearchResultScreen, SourceResultScreen, VideoResultScreen
 from ..utils.cached_extractor import CachedExtractor, CachedItemContext
@@ -31,6 +30,13 @@ class _ActionsAppMixin(App):
     def action_pop_screen(self):
         if len(self.screen_stack) == 1:
             return
+
+        # bind close video shortcut
+        if isinstance(self.screen_stack[-1], MPVPlayerSc):
+            try:
+                self.screen_stack[-1].mpv_socket.command('stop')
+            except BrokenPipeError:
+                pass
         self.pop_screen()
 
 
@@ -184,21 +190,19 @@ class AnicliRuTui(_ActionsAppMixin, App):
         with set_loading(event.list_view):
             video = event.item.value  # type: ignore
             self.context.picked_video = video
-
-            self.notify(f'{self.context.picked_episode_indexes}')
-            self.notify(f'run video {video}')
-            self._play_video()
+            await self.push_screen(MPVPlayerSc(self.context))
 
     @on(Button.Pressed, '.back-source, .back-search, .back-anime, .back-video')
     async def on_button_pop_sc(self):
         """universal close screen entrypoint"""
         await self.pop_screen()
 
-    @work(exclusive=True)
-    async def _play_video(self):
-        playlist = await make_playlist(self.context)
-        # todo detect headers (aniboom case)
-        run_playlist(playlist, {})
+    @on(Button.Pressed, '.back-player')
+    async def close_video(self):
+
+        sc: MPVPlayerSc = self.screen_stack[-1]  # type: ignore
+        sc.mpv_socket.command('stop')
+        await self.pop_screen()
 
 
 if __name__ == '__main__':
