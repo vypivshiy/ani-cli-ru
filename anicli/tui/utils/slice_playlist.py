@@ -6,7 +6,7 @@ from urllib.parse import urlsplit
 from anicli_api.tools.m3u import Playlist
 
 if TYPE_CHECKING:
-    from anicli.utils.cached_extractor import CachedItemContext
+    from anicli.utils.cached_extractor import CachedItemAsyncContext
     from anicli_api.base import BaseSource, Video, BaseEpisode, BaseAnime
 
 __all__ = [
@@ -33,7 +33,7 @@ def create_player_title(episode: 'BaseEpisode', source: 'BaseSource', anime: 'Ba
     return f'{episode.num} {episode.title} ({source.title}) - {anime.title}'
 
 
-async def make_playlist(context: 'CachedItemContext') -> str:
+async def make_playlist(context: 'CachedItemAsyncContext') -> str:
     # TODO: convert to chunked iterator
     indexes = context.picked_episode_indexes
     base_video = context.picked_video

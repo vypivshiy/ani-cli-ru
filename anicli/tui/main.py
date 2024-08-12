@@ -14,7 +14,7 @@ from anicli.tui.components.utils import set_loading, update_list_view
 from anicli.tui.screens.player_sc import MPVPlayerSc
 from .components import AppHeader, AnimeListItem
 from .screens import AnimeResultScreen, SearchResultScreen, SourceResultScreen, VideoResultScreen
-from ..utils.cached_extractor import CachedExtractor, CachedItemContext
+from ..utils.cached_extractor import CachedExtractorAsync, CachedItemAsyncContext
 
 
 class _ActionsAppMixin(App):
@@ -50,12 +50,12 @@ class AnicliRuTui(_ActionsAppMixin, App):
 
     ongoings: List[BaseOngoing] = reactive([])
     # todo: choice extractor source
-    cached_extractor: CachedExtractor = reactive(CachedExtractor(Extractor()))
+    cached_extractor: CachedExtractorAsync = reactive(CachedExtractorAsync(Extractor()))
 
     def __init__(self, extractor=Extractor()):
         super().__init__()
-        self.cached_extractor = CachedExtractor(extractor)
-        self.context = CachedItemContext(extractor=self.cached_extractor)
+        self.cached_extractor = CachedExtractorAsync(extractor)
+        self.context = CachedItemAsyncContext(extractor=self.cached_extractor)
 
     def on_mount(self) -> None:
         self.update_ongoings()
@@ -71,7 +71,7 @@ class AnicliRuTui(_ActionsAppMixin, App):
         self.query_one('#search-input').disabled = True
 
         with set_loading(ongoings_lv):
-            self.ongoings = await self.cached_extractor.a_ongoing()
+            self.ongoings = await self.context.a_ongoing()
             await ongoings_lv.extend([AnimeListItem(i, o) for i, o in enumerate(self.ongoings, 1)])
             self.query_one('#search-input').disabled = False
 
@@ -102,7 +102,7 @@ class AnicliRuTui(_ActionsAppMixin, App):
     async def on_input_ongoings_filter(self, event: Input.Changed):
         # reuse search input via filter ongoings list
         list_view: ListView = self.query_one('#ongoings-items', ListView)
-        ongoings = await self.cached_extractor.a_ongoing()
+        ongoings = await self.context.a_ongoing()
 
         if not event.value:
             new_items = (AnimeListItem(i, o) for i, o in enumerate(ongoings, 1))
@@ -118,9 +118,7 @@ class AnicliRuTui(_ActionsAppMixin, App):
     async def on_lv_select_spawn_anime_sc(self, event: ListView.Selected):
         with set_loading(event.list_view):
             result: SEARCH_OR_ONGOING = event.item.value  # type: ignore
-            # todo: rewrite to context scope
-            anime = await self.cached_extractor.a_get_anime(result)
-            self.context.anime = anime
+            anime = await self.context.a_get_anime(result)
             episodes = await self.context.a_get_episodes()
 
             if not episodes:
@@ -133,9 +131,7 @@ class AnicliRuTui(_ActionsAppMixin, App):
     async def on_lv_select_push_source_sc(self, event: ListView.Selected) -> None:
         with set_loading(event.list_view, event.item):
             ep: BaseEpisode = event.item.value  # type: ignore
-            sources = await self.cached_extractor.a_get_sources(ep)
-            self.context.sources = sources
-
+            sources = await self.context.a_get_sources(ep)
             if not sources:
                 self.notify('Not found (maybe episode not released yet?)')
                 return
@@ -158,9 +154,7 @@ class AnicliRuTui(_ActionsAppMixin, App):
         # check last episode index if exist and check available videos
         max_ep_index = max(self.context.picked_episode_indexes)
         if max_ep_index == len(self.context.episodes) - 1:
-            result = await self.context.extractor.a_get_sources(
-                self.context.episodes[-1]
-            )
+            result = await self.context.a_get_sources(self.context.episodes[-1])
             if not result:
                 self.notify('last episode is not available. Maybe it release later?',
                             severity='warning'
@@ -175,8 +169,7 @@ class AnicliRuTui(_ActionsAppMixin, App):
         with set_loading(event.list_view, event.item):
             source: BaseSource = event.item.value  # type: ignore
             self.context.picked_source = source
-
-            videos = await self.cached_extractor.a_get_videos(source)
+            videos = await self.context.a_get_videos(source)
             if not videos:
                 self.notify('Not found videos')
                 return
@@ -201,8 +194,14 @@ class AnicliRuTui(_ActionsAppMixin, App):
     async def close_video(self):
 
         sc: MPVPlayerSc = self.screen_stack[-1]  # type: ignore
-        sc.mpv_socket.command('stop')
-        await self.pop_screen()
+        try:
+            sc.mpv_socket.command('stop')
+        except BrokenPipeError:
+            # mpv closed manually, ignore exception
+            pass
+
+        finally:
+            await self.pop_screen()
 
 
 if __name__ == '__main__':

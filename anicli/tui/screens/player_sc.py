@@ -4,7 +4,7 @@ from textual.screen import Screen
 from textual.widgets import Log
 
 from anicli.tui.components import ButtonPopScreen
-from anicli.utils.cached_extractor import CachedItemContext
+from anicli.utils.cached_extractor import CachedItemAsyncContext
 from ..utils.slice_playlist import new_tmp_playlist, make_playlist
 from ...mpv_json_ipc import MPV
 
@@ -15,7 +15,7 @@ class MPVPlayerSc(Screen):
         "playlist-pos", "filename", "chapter", "audio-bitrate"
     ]
 
-    def __init__(self, context: 'CachedItemContext'):
+    def __init__(self, context: 'CachedItemAsyncContext'):
         super().__init__()
         self.context = context
 

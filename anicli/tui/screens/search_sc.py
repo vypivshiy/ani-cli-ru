@@ -8,11 +8,11 @@ from textual.screen import Screen
 from ..components import new_list_view, ButtonPopScreen
 
 if TYPE_CHECKING:
-    from ...utils.cached_extractor import CachedItemContext
+    from ...utils.cached_extractor import CachedItemAsyncContext
 
 
 class SearchResultScreen(Screen):
-    def __init__(self, context: 'CachedItemContext'):
+    def __init__(self, context: 'CachedItemAsyncContext'):
         super().__init__()
         self.context = context
 

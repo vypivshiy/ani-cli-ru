@@ -9,11 +9,11 @@ from ..components import ButtonPopScreen
 from ..components.episodes_selector import EpisodesSelector
 
 if TYPE_CHECKING:
-    from ...utils.cached_extractor import CachedItemContext
+    from ...utils.cached_extractor import CachedItemAsyncContext
 
 
 class AnimeResultScreen(Screen):
-    def __init__(self, context: 'CachedItemContext'):
+    def __init__(self, context: 'CachedItemAsyncContext'):
         super().__init__()
         self.context = context
 

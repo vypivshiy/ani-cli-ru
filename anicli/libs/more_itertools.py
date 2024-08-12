@@ -1,6 +1,8 @@
-"""original code: https://github.com/more-itertools/more-itertools
+""" this project required 'chunked' iterator instead a full module
+original code: https://github.com/more-itertools/more-itertools
 """
 from functools import partial
+
 from itertools import islice
 
 

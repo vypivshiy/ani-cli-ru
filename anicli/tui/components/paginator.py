@@ -7,7 +7,7 @@ from textual.validation import Number
 from textual.widgets import ListItem, Label, Static, ListView, Button, Input
 
 from ...types_ import ANICLI_API_ITEM
-from ...utils.more_itertools import chunked
+from anicli.libs.more_itertools import chunked
 
 
 # factories
