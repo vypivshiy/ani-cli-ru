@@ -204,7 +204,7 @@ class MPVProcess:
     Manages an MPV process, ensuring the socket or pipe is available. (Internal)
     """
 
-    def __init__(self, ipc_socket, mpv_location=None, **kwargs):
+    def __init__(self, ipc_socket, mpv_location=None, http_headers=None, **kwargs):
         """
         Create and start the MPV process. Will block until socket/pipe is available.
 
@@ -245,7 +245,21 @@ class MPVProcess:
 
         args.extend("--{0}={1}".format(v[0].replace("_", "-"), self._mpv_fmt(v[1]))
                     for v in arg_pairs)
-        self.process = subprocess.Popen(args)
+
+        # http-header-fields path
+        http_args = []
+        if http_headers:
+            for k, v in http_headers.items():
+                if k.lower() == 'user-agent':
+                    args.append('--user-agent="{0}"'.format(v))
+                else:
+                    http_args.append(f'"{k}: {v}"')
+            args.append('--http-header-fields={}'.format(','.join(http_args)))
+
+        self.process = subprocess.Popen(
+            ' '.join(args),
+            shell=True
+        )
         ipc_exists = False
         for _ in range(100):  # Give MPV 10 seconds to start.
             time.sleep(0.1)
@@ -412,7 +426,9 @@ class MPV:
     """
 
     def __init__(self, start_mpv=True, ipc_socket=None, mpv_location=None,
-                 log_handler=None, loglevel=None, quit_callback=None, **kwargs):
+                 log_handler=None, loglevel=None, quit_callback=None,
+                 http_headers=None,
+                 **kwargs):
         """
         Create the interface to MPV and process instance.
 
@@ -445,7 +461,7 @@ class MPV:
             # Attempt to start MPV 3 times.
             for i in range(3):
                 try:
-                    self.mpv_process = MPVProcess(ipc_socket, mpv_location, **kwargs)
+                    self.mpv_process = MPVProcess(ipc_socket, mpv_location, http_headers, **kwargs)
                     break
                 except MPVError:
                     log.warning("MPV start failed.", exc_info=1)
@@ -688,3 +704,8 @@ class MPV:
 
     def __dir__(self):
         return self._dir
+
+
+if __name__ == '__main__':
+    MPV(http_headers={"user-agent": "Mozilla 5.0",
+                      "Referer": "https://aniboom.one/", "Accept-Language": "ru-RU", "Origin": "https://aniboom.one"})
