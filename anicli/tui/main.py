@@ -185,17 +185,18 @@ class AnicliRuTui(_ActionsAppMixin, App):
         with set_loading(event.list_view):
             video = event.item.value  # type: ignore
             self.context.picked_video = video
-
-            await self.push_screen(
-                MPVPlayerSc(self.context, self.mpv_ipc_socket)
-            )
+            try:
+                await self.push_screen(
+                    MPVPlayerSc(self.context, self.mpv_ipc_socket)
+                )
+            except BrokenPipeError:
+                self._init_mpv_socket()
+                await self.push_screen(
+                    MPVPlayerSc(self.context, self.mpv_ipc_socket)
+                )
 
     def _init_mpv_socket(self):
-
         self.mpv_ipc_socket = MPV()
-        # TODO
-        # for p in self.MPV_PROPERTIES_LOG:
-        #     self.mpv_ipc_socket.bind_property_observer(p, self.handle_observer)
 
     @on(Button.Pressed, '.back-source, .back-search, .back-anime, .back-video')
     async def on_button_pop_sc(self):
@@ -209,8 +210,8 @@ class AnicliRuTui(_ActionsAppMixin, App):
         try:
             sc.mpv_socket.command('stop')
         except BrokenPipeError:
-            # mpv closed manually, ignore exception
-            pass
+            # mpv closed manually, ignore exception and create new socket
+            self._init_mpv_socket()
 
         finally:
             await self.pop_screen()

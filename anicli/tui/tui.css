@@ -66,7 +66,7 @@ LoadingIndicator {
     }
 
     #episodes-items{
-        height: 40%;
+        height: 60%;
     }
 
     #episodes-selector-container {
@@ -87,7 +87,7 @@ LoadingIndicator {
     border: solid green;
     border-title-align: center;
     border-title-style: bold underline;
-    height: 30%;
+    height: 50%;
 }
 
 /* VIDEOS SCREEN*/
@@ -95,5 +95,20 @@ LoadingIndicator {
     border: solid green;
     border-title-align: center;
     border-title-style: bold underline;
-    height: 30%;
+    height: 90%;
+    margin: 0 1 0 1;
+}
+
+/* PLAYER SCREEN */
+#video-progress {
+    margin: 0 1 0 1;
+}
+#player-stats-container {
+    border: solid green;
+    margin: 0 1 0 1;
+    height: 12%;
+}
+#player-logs{
+    border: solid green;
+    margin: 0 1 0 1;
 }

@@ -1,7 +1,7 @@
 from anicli_api.tools.m3u import Playlist
 from textual import work, on
 from textual.app import ComposeResult
-from textual.containers import Vertical, Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.reactive import var
 from textual.screen import Screen
 from textual.widgets import Log, Button, Input, Label, ProgressBar
@@ -50,15 +50,17 @@ class MPVPlayerSc(Screen):
         yield Button('Close', classes='back-player')
         yield Label('', id='media-title')
         yield Label('', id='playlist-pos')
-        with Horizontal():
-            yield Label('--:--:--', id='video-pos-start')
-            yield ProgressBar(id='video-progress', show_eta=False, show_percentage=False)
-            yield Label('--:--:--', id='video-pos-end')
-        with Vertical():
-            yield Input(placeholder='mpv cmd >', id='mpv-cmd', suggester=start_suggester)
+        with Vertical(id='player-stats-container'):
+            yield Label('', id='video-title')
+            with Horizontal():
+                yield Label('--:--:--', id='video-pos-start')
+                yield ProgressBar(id='video-progress', show_eta=False, show_percentage=False)
+                yield Label('--:--:--', id='video-pos-end')
         yield Log(id='player-logs')
 
     def on_mount(self):
+        self.query_one('#player-stats-container', Vertical).border_title = 'Playlist'
+        self.query_one('#player-logs', Log).border_title = 'MPV logs'
         for prop in self.MPV_PROPERTIES_LOG:
             self.mpv_socket.bind_property_observer(prop, self.handle_observer)
 
@@ -98,12 +100,12 @@ class MPVPlayerSc(Screen):
 
     def watch_media_title(self, value):
         if value:
-            self.query_one('#media-title', Label).update(value)
+            self.query_one('#video-title', Label).update(value)
 
     def watch_playlist_pos(self, value):
         if value != None:
-            # self.mpv_socket.command('get-property', *['playlist',])
-            self.query_one('#playlist-pos', Label).update(f'playlist-pos: {value + 1}|{self.playlist_max}')
+            self.query_one('#player-stats-container', Vertical) \
+                .border_title = f'Playlist: {value + 1} | {self.playlist_max}'
 
     def handle_observer(self, key, data):
         # TODO: rewrite to reactive
@@ -112,6 +114,8 @@ class MPVPlayerSc(Screen):
             self.duration = int(data)
         elif key == 'playback-time' and data:
             self.playback_time = int(data)
+            # ignore log playback-time for clean log
+            return
         elif key == 'media-title':
             self.media_title = data
         elif key == 'playlist-pos':
