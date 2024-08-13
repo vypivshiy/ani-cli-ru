@@ -1,6 +1,6 @@
 import tempfile
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Tuple
 from urllib.parse import urlsplit
 
 from anicli_api.tools.m3u import Playlist
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     'new_tmp_playlist',
-    'make_playlist'
+    'make_playlist_items'
 ]
 
 
@@ -33,7 +33,7 @@ def create_player_title(episode: 'BaseEpisode', source: 'BaseSource', anime: 'Ba
     return f'{episode.num} {episode.title} ({source.title}) - {anime.title}'
 
 
-async def make_playlist(context: 'CachedItemAsyncContext') -> str:
+async def make_playlist_items(context: 'CachedItemAsyncContext') -> Tuple[List['Video'], List[str]]:
     # TODO: convert to chunked iterator
     indexes = context.picked_episode_indexes
     base_video = context.picked_video
@@ -64,10 +64,7 @@ async def make_playlist(context: 'CachedItemAsyncContext') -> str:
                     create_player_title(episode, source, context.anime)
                 )
                 break
-    return Playlist.from_videos(
-        video_urls,
-        video_titles
-    )
+    return video_urls, video_titles
 
 
 def save_playlist_to_tmp(playlist_raw: str) -> str:

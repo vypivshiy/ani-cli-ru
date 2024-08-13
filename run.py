@@ -1,5 +1,9 @@
 from anicli import AnicliRuTui
 
 if __name__ == '__main__':
-    # TODO: close MPV socket
-    AnicliRuTui().run()
+    app = AnicliRuTui()
+
+    try:
+        app.run()
+    finally:
+        app.mpv_ipc_socket.terminate()

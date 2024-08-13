@@ -10,6 +10,7 @@ from textual.reactive import reactive
 from textual.widgets import Footer, Input, Button, ListView, SelectionList
 
 from anicli import tooltips as _
+from anicli.libs.mpv_json_ipc import MPV
 from anicli.tui.components.utils import set_loading, update_list_view
 from anicli.tui.screens.player_sc import MPVPlayerSc
 from .components import AppHeader, AnimeListItem
@@ -56,6 +57,7 @@ class AnicliRuTui(_ActionsAppMixin, App):
         super().__init__()
         self.cached_extractor = CachedExtractorAsync(extractor)
         self.context = CachedItemAsyncContext(extractor=self.cached_extractor)
+        self.mpv_ipc_socket = MPV()
 
     def on_mount(self) -> None:
         self.update_ongoings()
@@ -183,7 +185,17 @@ class AnicliRuTui(_ActionsAppMixin, App):
         with set_loading(event.list_view):
             video = event.item.value  # type: ignore
             self.context.picked_video = video
-            await self.push_screen(MPVPlayerSc(self.context))
+
+            await self.push_screen(
+                MPVPlayerSc(self.context, self.mpv_ipc_socket)
+            )
+
+    def _init_mpv_socket(self):
+
+        self.mpv_ipc_socket = MPV()
+        # TODO
+        # for p in self.MPV_PROPERTIES_LOG:
+        #     self.mpv_ipc_socket.bind_property_observer(p, self.handle_observer)
 
     @on(Button.Pressed, '.back-source, .back-search, .back-anime, .back-video')
     async def on_button_pop_sc(self):
