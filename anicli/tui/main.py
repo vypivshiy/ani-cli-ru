@@ -1,5 +1,5 @@
 import webbrowser
-from typing import List
+from typing import List, TYPE_CHECKING
 
 from anicli_api.base import BaseOngoing, BaseEpisode, BaseSource
 from anicli_api.source.animego import Extractor
@@ -20,6 +20,8 @@ from .components import AppHeader, AnimeListItem
 from .screens import AnimeResultScreen, SearchResultScreen, SourceResultScreen, VideoResultScreen
 from ..utils.cached_extractor import CachedExtractorAsync, CachedItemAsyncContext
 
+if TYPE_CHECKING:
+    from anicli_api.base import Video
 
 class _ActionsAppMixin(App):
 
@@ -199,8 +201,14 @@ class AnicliRuTui(_ActionsAppMixin, App):
     @on(ListView.Selected, '#video-items')
     async def on_lv_select_play_video(self, event: ListView.Selected):
         with set_loading(event.list_view):
-            video = event.item.value  # type: ignore
+            video: 'Video' = event.item.value  # type: ignore
             self.context.picked_video = video
+
+            # if player required headers (aniboom, jutsu) - restart and push this params
+            if video.headers:
+                self.mpv_ipc_socket.terminate()
+                self.mpv_ipc_socket = MPV(http_header_fields=video.headers)
+
             try:
                 await self.push_screen(
                     MPVPlayerSc(self.context, self.mpv_ipc_socket)
