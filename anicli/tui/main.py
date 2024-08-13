@@ -243,12 +243,9 @@ class AnicliRuTui(_ActionsAppMixin, App):
     # SETTINGS
     def watch_source_title(self, value):
         if value:
-            self.notify(f'watch title {value}')
             self.query_one(
                 '#search-container', Horizontal
             ).border_subtitle = netloc(self.context.extractor.BASE_URL)
-
-            self.notify('OK')
 
     @on(Button.Pressed, '#sidebar-success')
     async def settings_apply(self) -> None:
