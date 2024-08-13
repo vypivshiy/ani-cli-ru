@@ -4,6 +4,27 @@ LoadingIndicator {
     color: green;
 }
 
+/* SETTINGS */
+#settings-sidebar {
+    width: 30;
+    height: 100%;
+    dock: left;
+    layer: sidebar;
+    border: solid green;
+    border-title-align: center;
+
+    /*Screen {*/
+    /*    layers: sidebar;*/
+    /*}*/
+}
+
+#settings-sidebar.-hidden {
+    display: none;
+}
+#sidebar-success{
+    width: 100%;
+}
+
 /* MAIN APP STYLES */
 #header {
     height: 8;
@@ -65,7 +86,7 @@ LoadingIndicator {
         width: 30%;
     }
 
-    #episodes-items{
+    #episodes-items {
         height: 60%;
     }
 
@@ -103,12 +124,14 @@ LoadingIndicator {
 #video-progress {
     margin: 0 1 0 1;
 }
+
 #player-stats-container {
     border: solid green;
     margin: 0 1 0 1;
     height: 12%;
 }
-#player-logs{
+
+#player-logs {
     border: solid green;
     margin: 0 1 0 1;
 }

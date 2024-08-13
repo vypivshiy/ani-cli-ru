@@ -13,6 +13,7 @@ from anicli import tooltips as _
 from anicli.libs.mpv_json_ipc import MPV
 from anicli.tui.components.utils import set_loading, update_list_view
 from anicli.tui.screens.player_sc import MPVPlayerSc
+from anicli.tui.screens.settings_sc import Sidebar
 from .components import AppHeader, AnimeListItem
 from .screens import AnimeResultScreen, SearchResultScreen, SourceResultScreen, VideoResultScreen
 from ..utils.cached_extractor import CachedExtractorAsync, CachedItemAsyncContext
@@ -40,12 +41,18 @@ class _ActionsAppMixin(App):
                 pass
         self.pop_screen()
 
+    def action_toggle_sidebar(self) -> None:
+        if len(self.screen_stack) == 1:
+            self.query_one(Sidebar).toggle_class("-hidden")
+            return
+
 
 class AnicliRuTui(_ActionsAppMixin, App):
     BINDINGS = [
         ("ctrl+d", "toggle_dark", "Toggle dark mode"),
         ("ctrl+b", "pop_screen", "back to previous screen"),
         ("ctrl+h", "help_screen", "show help page"),
+        ("ctrl+s", "toggle_sidebar")
     ]
     CSS_PATH = 'tui.css'
 
@@ -79,6 +86,7 @@ class AnicliRuTui(_ActionsAppMixin, App):
 
     def compose(self) -> ComposeResult:
         yield AppHeader(id='header')
+        yield Sidebar(classes="-hidden", id='settings-sidebar')
         with Vertical():
             with Horizontal(id='search-container'):
                 yield Input(placeholder='>', id='search-input')
