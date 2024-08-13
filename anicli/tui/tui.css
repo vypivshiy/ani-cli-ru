@@ -21,9 +21,9 @@ LoadingIndicator {
 #settings-sidebar.-hidden {
     display: none;
 }
-#sidebar-success{
-    width: 100%;
-}
+/*#sidebar-success{*/
+/*    width: 100%;*/
+/*}*/
 
 /* MAIN APP STYLES */
 #header {

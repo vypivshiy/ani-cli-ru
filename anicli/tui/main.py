@@ -14,6 +14,8 @@ from anicli.libs.mpv_json_ipc import MPV
 from anicli.tui.components.utils import set_loading, update_list_view
 from anicli.tui.screens.player_sc import MPVPlayerSc
 from anicli.tui.screens.settings_sc import Sidebar
+from anicli.utils.fetch_extractors import import_extractor
+from anicli.utils.str_formatters import netloc
 from .components import AppHeader, AnimeListItem
 from .screens import AnimeResultScreen, SearchResultScreen, SourceResultScreen, VideoResultScreen
 from ..utils.cached_extractor import CachedExtractorAsync, CachedItemAsyncContext
@@ -36,7 +38,7 @@ class _ActionsAppMixin(App):
         # bind close video shortcut
         if isinstance(self.screen_stack[-1], MPVPlayerSc):
             try:
-                self.screen_stack[-1].mpv_socket.command('stop')
+                self.screen_stack[-1].mpv_socket.command('stop')  # type: MPVPlayerSc
             except BrokenPipeError:
                 pass
         self.pop_screen()
@@ -55,44 +57,52 @@ class AnicliRuTui(_ActionsAppMixin, App):
         ("ctrl+s", "toggle_sidebar")
     ]
     CSS_PATH = 'tui.css'
-
     ongoings: List[BaseOngoing] = reactive([])
-    # todo: choice extractor source
-    cached_extractor: CachedExtractorAsync = reactive(CachedExtractorAsync(Extractor()))
+    source_title = reactive('')
 
     def __init__(self, extractor=Extractor()):
         super().__init__()
-        self.cached_extractor = CachedExtractorAsync(extractor)
-        self.context = CachedItemAsyncContext(extractor=self.cached_extractor)
+        self.context = CachedItemAsyncContext(extractor=CachedExtractorAsync(extractor))
+        self.video_quality = 0
         self.mpv_ipc_socket = MPV()
-
-    def on_mount(self) -> None:
-        self.update_ongoings()
-        self.query_one('#ongoing-container').border_title = 'Ongoings'
-        self.query_one('#ongoing-container').tooltip = _.APP_ONGOING_CONTAINER
-        self.query_one('#search-container').border_title = 'Search or filter ongoings'
-        self.query_one('#search-input').tooltip = _.APP_SEARCH_INPUT
-
-    # BASE APP LAYER
-    @work(exclusive=True)
-    async def update_ongoings(self) -> None:
-        ongoings_lv = self.query_one('#ongoings-items', ListView)
-        self.query_one('#search-input').disabled = True
-
-        with set_loading(ongoings_lv):
-            self.ongoings = await self.context.a_ongoing()
-            await ongoings_lv.extend([AnimeListItem(i, o) for i, o in enumerate(self.ongoings, 1)])
-            self.query_one('#search-input').disabled = False
+        self.settings_sidebar = Sidebar(classes="-hidden", id='settings-sidebar')
 
     def compose(self) -> ComposeResult:
         yield AppHeader(id='header')
-        yield Sidebar(classes="-hidden", id='settings-sidebar')
+        yield self.settings_sidebar
         with Vertical():
             with Horizontal(id='search-container'):
                 yield Input(placeholder='>', id='search-input')
             with Vertical(id='ongoing-container'):
                 yield ListView(id='ongoings-items')
         yield Footer()
+
+    def on_mount(self) -> None:
+        self.query_one(
+            '#search-container', Horizontal
+        ).border_title = f'Search or filter ongoings'
+
+        self.update_ongoings()
+        self.source_title = self.context.extractor.BASE_URL
+
+        self.query_one('#settings-sidebar').border_title = 'Settings'
+        self.query_one('#ongoing-container').border_title = 'Ongoings'
+        self.query_one('#ongoing-container').tooltip = _.APP_ONGOING_CONTAINER
+        self.query_one('#search-input').tooltip = _.APP_SEARCH_INPUT
+
+    # BASE APP LAYER
+
+    @work(exclusive=True)
+    async def update_ongoings(self) -> None:
+        ongoings_lv = self.query_one('#ongoings-items', ListView)
+        await ongoings_lv.clear()
+
+        self.query_one('#search-input').disabled = True
+
+        with set_loading(ongoings_lv):
+            self.ongoings = await self.context.a_ongoing()
+            await ongoings_lv.extend([AnimeListItem(i, o) for i, o in enumerate(self.ongoings, 1)])
+            self.query_one('#search-input').disabled = False
 
     @on(Input.Submitted, '#search-input')
     async def on_input_submit_search(self, event: Input.Submitted):
@@ -157,9 +167,7 @@ class AnicliRuTui(_ActionsAppMixin, App):
 
         self.context.picked_episode_indexes = episodes_indexes
         # pick first sources list. slice playlist logic calculate be later
-        self.context.sources = await self.cached_extractor.a_get_sources(
-            self.context.episodes[episodes_indexes[0]]
-        )
+        self.context.sources = await self.context.a_get_sources(episodes_indexes[0])
         # ongoings case:
         # check last episode index if exist and check available videos
         max_ep_index = max(self.context.picked_episode_indexes)
@@ -218,11 +226,44 @@ class AnicliRuTui(_ActionsAppMixin, App):
         try:
             sc.mpv_socket.command('stop')
         except BrokenPipeError:
-            # mpv closed manually, ignore exception and create new socket
+            # if mpv closed manually, ignore exception and create new socket
             self._init_mpv_socket()
 
         finally:
             await self.pop_screen()
+
+    # SETTINGS
+    def watch_source_title(self, value):
+        if value:
+            self.notify(f'watch title {value}')
+            self.query_one(
+                '#search-container', Horizontal
+            ).border_subtitle = netloc(self.context.extractor.BASE_URL)
+
+            self.notify('OK')
+
+    @on(Button.Pressed, '#sidebar-success')
+    async def settings_apply(self) -> None:
+        screen = self.query_one('#settings-sidebar', Sidebar)
+
+        if screen.picked_settings.get('extractor'):
+            extractor = import_extractor(screen.picked_settings['extractor'])()
+
+            self.context = CachedItemAsyncContext(
+                extractor=CachedExtractorAsync(extractor)
+            )
+            self.source_title = extractor.BASE_URL
+
+        elif screen.picked_settings.get('quality'):
+            quality = int(screen.picked_settings['quality'])
+            self.video_quality = quality
+
+        self.update_ongoings()
+
+        # clear picked configs
+        # widgets.Pretty
+        self.query_one('#sidebar-options').update({})  # type: ignore
+        screen.picked_settings.clear()
 
 
 if __name__ == '__main__':
