@@ -1,0 +1,22 @@
+{% extends 'base.j2' %}
+
+{% block content %}
+    <div class="container">
+        <div class="row">
+            <div class="col-sm-2">
+                {{ select_providers }}
+            </div>
+            <div class="col">
+                <form action="/search" method="GET" class="navbar-form navbar-right" role="form">
+                    <div class="input-group mb-2">
+                        <span class="input-group-text" id="basic-addon1">Search ></span>
+                        <input type="text" name="query" class="form-control" placeholder="..."
+                               aria-describedby="basic-addon1">
+                    </div>
+                </form>
+
+            </div>
+        </div>
+        {{ ongoings }}
+        <div>
+{% endblock %}

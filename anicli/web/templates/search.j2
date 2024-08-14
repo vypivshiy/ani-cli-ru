@@ -1,0 +1,11 @@
+{% extends "base.j2" %}
+{% block content %}
+    <div class="container">
+    {% for search in search_results %}
+        <div class="row">
+            <div class="col-sm-6"><img src="{{ search.thumbnail }}" alt=""></div>
+            <div class="col-sm-6"><h4>{{ search.title }}</h4> {{ search.url }}</div>
+        </div>
+    {% endfor %}
+
+{% endblock %}

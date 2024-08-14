@@ -1,0 +1,5 @@
+<select class="form-select " aria-label="Default select">
+    {% for module_name in modules %}
+        <option value="{{ module_name }}" selected>{{ module_name }}</option>
+    {% endfor %}
+</select>

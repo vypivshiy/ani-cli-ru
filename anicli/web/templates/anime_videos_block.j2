@@ -1,0 +1,10 @@
+<ul class="list-group">
+    {% for video in videos %}
+        <li class="list-group-item btn primary"
+            hx-get="/spawn_player"
+            hx-vals='{"quality": "{{ video.quality }}", "type": "{{ video.type }}", "url": "{{ video.url }}"}'
+            hx-target="#video-container"
+        >{{ video.type }} {{ video.quality }} {{ video.url.lstrip('https://').split('.')[0] }}
+        </li>
+    {% endfor %}
+</ul>
