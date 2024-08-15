@@ -235,9 +235,26 @@ class MPVProcess:
         self._set_default(kwargs, "input_terminal", False)
         self._set_default(kwargs, "terminal", False)
 
+        # http-header-fields path
+        http_args = []
+        http_headers = http_headers or {}
+        if kwargs.get('http_header_fields'):
+            http_headers.update(kwargs.pop('http_header_fields'))
+
+        if kwargs.get('user_agent'):
+            http_headers.update({'user-agent': kwargs.pop('user_agent')})
+
+        if http_headers:
+            for k, v in http_headers.items():
+                if k.lower() == 'user-agent':
+                    args.append('--user-agent="{0}"'.format(v))
+                else:
+                    http_args.append(f'"{k}: {v}"')
+            args.append('--http-header-fields={}'.format(','.join(http_args)))
+
         arg_pairs = []
         for key, value in kwargs.items():
-            if type(value) == list:
+            if isinstance(value, list):
                 for v in value:
                     arg_pairs.append((key, v))
             else:
@@ -246,15 +263,7 @@ class MPVProcess:
         args.extend("--{0}={1}".format(v[0].replace("_", "-"), self._mpv_fmt(v[1]))
                     for v in arg_pairs)
 
-        # http-header-fields path
-        http_args = []
-        if http_headers:
-            for k, v in http_headers.items():
-                if k.lower() == 'user-agent':
-                    args.append('--user-agent="{0}"'.format(v))
-                else:
-                    http_args.append(f'"{k}: {v}"')
-            args.append('--http-header-fields={}'.format(','.join(http_args)))
+
 
         self.process = subprocess.Popen(
             ' '.join(args),
@@ -707,5 +716,13 @@ class MPV:
 
 
 if __name__ == '__main__':
-    MPV(http_headers={"user-agent": "Mozilla 5.0",
-                      "Referer": "https://aniboom.one/", "Accept-Language": "ru-RU", "Origin": "https://aniboom.one"})
+    # examples inject arguments
+    MPV(config_dir='/path/to/config',
+        user_agent="Mozilla 5.0",
+        http_header_fields={
+                      "Referer": "https://example.com", "Accept-Language": "ru-RU", "Origin": "https://example.com"})
+
+    MPV(config_dir='/path/to/config',
+        user_agent="Mozilla 5.0",
+        http_header_fields={
+            "Referer": "https://example.com", "Accept-Language": "ru-RU", "Origin": "https://example.com"})
