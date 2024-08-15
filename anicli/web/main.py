@@ -1,21 +1,24 @@
 from urllib.parse import urlsplit
+
 from anicli_api.source.animego import Extractor
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, Response
+from flask_cors import CORS
 
 from ..utils.cached_extractor import CachedExtractor, CachedItemContext
 from ..utils.fetch_extractors import get_extractor_modules
 
 app = Flask(__name__)
+cors = CORS(app, resources={r"/*": {"origins": "*", "methods": ["GET", "POST", "HEAD"], "allow_headers": "*"}})
 
 EX = CachedExtractor(Extractor())
 CONTEXT = CachedItemContext(extractor=EX)
 
 
-# {ongoing: {}, search: {}, anime: {}, episodes: {}, sources: {}, video: {} }
-
 @app.get('/')
 def main():
     modules = get_extractor_modules()
+    # RESET ALL STATES
+    CONTEXT.clear()
 
     ongoings_results = CONTEXT.ongoing()
     ongoings_element = render_template('ongoings_block.j2', ongoings_results=ongoings_results)
@@ -83,8 +86,19 @@ def anime_spawn_player():
     video = [v for v in CONTEXT.videos if v.url == url and v.quality == quality and v.type == type_][0]
     CONTEXT.picked_video = video
 
-    return render_template('anime_player_js_block.j2', video=video)
+    return render_template('anime_player_js_block.j2', video=video
+                           )
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# TODO: reverse-proxy for videos
+@app.route('/proxy-video.<_ext>', methods=['GET', 'HEAD'])
+def proxy_video(_ext: str):
+    # helps avoid, CORS and other security issues
+    client = CONTEXT.extractor.extractor.http
+    video = CONTEXT.picked_video
+
+    content_type = client.head(video.url, headers=video.headers).headers['content-type']
+    print(video.url)
+
+    resp = client.get(video.url, headers=video.headers)
+    return Response(resp.content, content_type=content_type)

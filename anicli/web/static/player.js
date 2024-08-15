@@ -43,7 +43,7 @@ function playerJS(url, headers = {}) {
         const videoSource = video.src;
         const xhr = new XMLHttpRequest();
         xhr.open('GET', videoSource, true);
-
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         for (const [key, value] of Object.entries(headers)) {
             xhr.setRequestHeader(key, value);
         }

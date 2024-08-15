@@ -1,1 +1,6 @@
-<script> playerJS("{{ video.url }}", headers={{ video.headers }})</script>
+{# if video required headers - use reverse-proxy API for avoid CORS issues #}
+{% if video.headers %}
+<h1>reverse proxy TODO, choice another source</h1>
+{% else %}
+<script> playerJS("{{ video.url }}")</script>
+{% endif %}

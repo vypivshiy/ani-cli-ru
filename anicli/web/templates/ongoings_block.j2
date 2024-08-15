@@ -1,13 +1,16 @@
 {% for ongoing in ongoings_results %}
     <div class="row border">
-        <div class="col-sm-3"><img src="{{ ongoing.thumbnail }}" alt=""></div>
-        <div class="col-sm-3">{{ ongoing.title }}</div>
-        <div class="col-sm-3">
-            <form id="redirectForm" method="POST" action="/anime">
+        <div class="col-sm-6"><img class="img-thumbnail" src="{{ ongoing.thumbnail }}" alt=""></div>
+        <div class="col-sm-6">
+            <div class="row">
+                {{ ongoing.title }}
+            </div>
+            <div class="row"></div>
+             <form id="redirectForm" method="POST" action="/anime">
                 <input name="title" type="text" hidden="true" value="{{ ongoing.title }}">
                 <input name="url" type="text" hidden="true" value="{{ ongoing.url }}">
                 <input type="submit" value="OPEN" class="btn btn-primary">
-            </form>
-        </div>
+             </form>
+            </div>
     </div>
 {% endfor %}
