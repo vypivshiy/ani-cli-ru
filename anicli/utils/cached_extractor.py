@@ -35,6 +35,17 @@ class _CachedItemBase:
     picked_source: Optional['BaseSource'] = None
     picked_video: Optional['Video'] = None
 
+    def clear(self):
+        """reset current context"""
+        self.searches_or_ongoings = []
+        self.anime = None
+        self.episodes = []
+        self.sources = []
+        self.videos = []
+        self.picked_episode_indexes = []
+        self.picked_source = None
+        self.picked_video = None
+
 
 @dataclass
 class CachedItemAsyncContext(_CachedItemBase):
