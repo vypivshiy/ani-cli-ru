@@ -1,35 +1,63 @@
 {% extends 'base.j2' %}
 
+{#anime.title#}
+{#anime.thumbnail#}
+{#anime.description#}
+
+{#episodes#}
+{#episode.num#}
+{#episode.title #}
+
 {% block content %}
-
-    <h3>{{ anime.title }}</h3>
     <div class="row">
-        <div class="col"><img src="{{ anime.thumbnail }}" alt=""></div>
-        <div class="col"><h4>Description</h4><br>{{ anime.description }}</div>
-    </div>
+        <div class="col-sm-3 border">
+            <img class="img-thumbnail"
+                 src="{{ anime.thumbnail }}">
+        </div>
+        <div class="col-sm-9 border"><h2>{{ anime.title }}</h2><br>
+            {{ anime.description }}
+        </div>
 
-    <div class="row">
-        <div class="col-4 mx-auto">
-            <div id="video-container">PLAYER</div>
+    </div>
+    <div class="row border">
+        <div class="col-sm-3">
+            <input type="text" class="form-control" placeholder="Ep. №">
         </div>
-        <div class="col-4 mx-auto">
-            <div id="videos">VIDEOS</div>
+        <div class="col-sm-3 dropdown">
+            <button class="btn btn-secondary dropdown-toggle" type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                Episodes
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1" id="dropdown-episodes">
+                {% for episode in episodes %}
+                    <li class="dropdown-item"
+                        hx-get="/get_sources"
+                        hx-vals='{"num": "{{ episode.num }}"}'
+                        hx-target="#dropdown-sources"
+                    >{{ episode.num }} {{ episode.title }}</li>
+                {% endfor %}
+            </ul>
         </div>
-        <div class="col-4 mx-auto">
-            <div id="sources">SOURCES</div>
+        <div class="col-sm-3 dropdown">
+            <button class="btn btn-secondary dropdown-toggle" type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                Sources
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1" id="dropdown-sources">
+                <li class="dropdown-item">pick episode first</li>
+            </ul>
+        </div>
+        <div class="col-sm-3 dropdown">
+            <button class="btn btn-secondary dropdown-toggle" type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                Videos
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1" id="dropdown-videos">
+                <li class="dropdown-item">TODO</li>
+            </ul>
+        </div>
+        <div class="row">
+            <div class="border" id="video-container">PLAYER PLACEHOLDER</div>
         </div>
     </div>
-
-    <h4>Episodes</h4>
-    <ul class="list-group">
-        {% for episode in episodes %}
-            <li class="list-group-item btn primary"
-                hx-get="/get_sources"
-                hx-vals='{"num": "{{ episode.num }}", "title": "{{ episode.title }}"}'
-                hx-trigger="click"
-                hx-target="#sources">
-                {{ episode.num }} {{ episode.title }}
-            </li>
-        {% endfor %}
-    </ul>
 {% endblock %}

@@ -1,10 +1,8 @@
-<ul class="list-group">
-    {% for source in sources %}
-        <li class="list-group-item btn primary"
-            hx-get="/get_videos"
-            hx-vals='{"url": "{{ source.url }}", "title": "{{ source.title }}"}'
-            hx-target="#videos"
-        > {{ source.title }} {{ source.url.lstrip('https://').split('.')[0] }}
-        </li>
-    {% endfor %}
-</ul>
+{% for source in sources %}
+    <li class="dropdown-item"
+        hx-get="/get_videos"
+        hx-vals='{"url": "{{ source.url }}", "title": "{{ source.title }}"}'
+        hx-target="#dropdown-videos"
+    > {{ source.title }} {{ fn_urlspit(source.url).netloc }}
+    </li>
+{% endfor %}

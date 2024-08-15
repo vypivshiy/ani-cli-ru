@@ -1,5 +1,5 @@
+from urllib.parse import urlsplit
 from anicli_api.source.animego import Extractor
-from anicli_api.base import BaseSource
 from flask import Flask, render_template, request
 
 from ..utils.cached_extractor import CachedExtractor, CachedItemContext
@@ -53,19 +53,24 @@ def anime_sources():
     num = request.args.get('num').strip()
     ep = [e for e in CONTEXT.episodes if e.num == num][0]
     sources = CONTEXT.get_sources(ep)
-    return render_template('anime_source_block.j2', sources=sources)
+    return render_template('anime_source_block.j2',
+                           sources=sources,
+                           fn_urlspit=urlsplit  # enchant render source element
+                           )
 
 
 @app.get('/get_videos')
 def anime_videos():
-    url = request.args.get('url').strip()
     title = request.args.get('title').strip()
+    url = request.args.get('url').strip()
 
     source = [s for s in CONTEXT.sources if s.title == title and s.url == url][0]
     CONTEXT.picked_source = source
 
     videos = CONTEXT.get_videos(source)
-    return render_template('anime_videos_block.j2', videos=videos)
+    return render_template('anime_videos_block.j2',
+                           videos=videos,
+                           fn_urlspit=urlsplit)  # enchant render source element
 
 
 @app.get('/spawn_player')
@@ -74,11 +79,12 @@ def anime_spawn_player():
     url = request.args.get('url').strip()
     quality = int(request.args.get('quality').strip())
     type_ = request.args.get('type').strip()
-    CONTEXT.picked_source
-    video = [v for v in CONTEXT.videos if v.url == url and v.quality==quality and v.type == type_][0]
+
+    video = [v for v in CONTEXT.videos if v.url == url and v.quality == quality and v.type == type_][0]
     CONTEXT.picked_video = video
 
     return render_template('anime_player_js_block.j2', video=video)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
