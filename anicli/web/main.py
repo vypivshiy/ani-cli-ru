@@ -1,22 +1,48 @@
+#  pkg install clang libxml2 libxslt python-lxml.
+# pip install .[web]
+from typing import TypeVar, Sequence
 from urllib.parse import urlsplit
 
-from anicli_api.source.animego import Extractor
-from flask import Flask, render_template, request, Response
-from flask_cors import CORS
+from flask import Flask, render_template, request
 
+from ..types_ import TYPER_CONTEXT_OPTIONS
+from ..utils.anicli_api_helpers import get_video_by_quality
 from ..utils.cached_extractor import CachedExtractor, CachedItemContext
-from ..utils.fetch_extractors import get_extractor_modules
+from ..utils.fetch_extractors import import_extractor
+
+T = TypeVar('T')
 
 app = Flask(__name__)
-cors = CORS(app, resources={r"/*": {"origins": "*", "methods": ["GET", "POST", "HEAD"], "allow_headers": "*"}})
+app.config['cli_args']: TYPER_CONTEXT_OPTIONS
 
-EX = CachedExtractor(Extractor())
-CONTEXT = CachedItemContext(extractor=EX)
+# TODO: implement switch extractor in runtime
+IS_EXTRACTOR_LOADED = False
+# in main route load extractor
+CONTEXT = CachedItemContext(extractor=None)  # type: ignore
+
+
+def match_item_by_kwargs(items: Sequence[T], **kwargs) -> T:
+    """base web application state logic: search and return first item matching"""
+    for i in items:
+        if all(getattr(i, k, None) == v for k, v in kwargs.items()):
+            return i
+    raise TypeError('Failed match item')
 
 
 @app.get('/')
 def main():
-    modules = get_extractor_modules()
+    global IS_EXTRACTOR_LOADED
+
+    if not IS_EXTRACTOR_LOADED:
+        _EXTRACTOR = CachedExtractor(
+            import_extractor(
+                app.config['cli_args']['source'])()
+        )
+        CONTEXT.extractor = _EXTRACTOR
+        IS_EXTRACTOR_LOADED = True
+
+    modules = ['TODO: switch source']  # get_extractor_modules()
+
     # RESET ALL STATES
     CONTEXT.clear()
 
@@ -32,7 +58,7 @@ def main():
 
 @app.get('/search')
 def search():
-    # TODO: validate
+    # TODO: validate input
     query = request.args.get('query', '')
 
     searches = CONTEXT.search(query)
@@ -45,7 +71,10 @@ def anime_page():
     url = request.form['url']
 
     # HACK: get search/ongoing from cache by title and url
-    match_item = [o for o in CONTEXT.searches_or_ongoings if o.title == title and o.url == url][0]
+    match_item = match_item_by_kwargs(
+        CONTEXT.searches_or_ongoings,
+        url=url,
+        title=title)
     anime = CONTEXT.get_anime(match_item)
     episodes = CONTEXT.get_episodes()
     return render_template('anime.j2', title=anime.title, episodes=episodes, anime=anime)
@@ -54,7 +83,8 @@ def anime_page():
 @app.get('/get_sources')
 def anime_sources():
     num = request.args.get('num').strip()
-    ep = [e for e in CONTEXT.episodes if e.num == num][0]
+
+    ep = match_item_by_kwargs(CONTEXT.episodes, num=num)
     sources = CONTEXT.get_sources(ep)
     return render_template('anime_source_block.j2',
                            sources=sources,
@@ -66,39 +96,31 @@ def anime_sources():
 def anime_videos():
     title = request.args.get('title').strip()
     url = request.args.get('url').strip()
-
-    source = [s for s in CONTEXT.sources if s.title == title and s.url == url][0]
+    source = match_item_by_kwargs(CONTEXT.sources, title=title, url=url)
     CONTEXT.picked_source = source
 
     videos = CONTEXT.get_videos(source)
-    return render_template('anime_videos_block.j2',
-                           videos=videos,
-                           fn_urlspit=urlsplit)  # enchant render source element
+    if app.config['cli_args']['quality'] == 0:
+        return render_template('anime_videos_block.j2',
+                               videos=videos,
+                               fn_urlspit=urlsplit)  # enchant render source element
+
+    video = get_video_by_quality(
+        app.config['cli_args']['quality'],
+        CONTEXT.get_videos(source)
+    )
+    return render_template('anime_player_js_block.j2', video=video)
 
 
 @app.get('/spawn_player')
 def anime_spawn_player():
+    """spawn js player in web"""
     # '{"quality": "{{ video.quality }}", "type": "{{ video.type }}", "url": "{{ video.url }}"}'
     url = request.args.get('url').strip()
     quality = int(request.args.get('quality').strip())
     type_ = request.args.get('type').strip()
 
-    video = [v for v in CONTEXT.videos if v.url == url and v.quality == quality and v.type == type_][0]
+    video = match_item_by_kwargs(CONTEXT.videos, quality=quality, type=type_, url=url)
     CONTEXT.picked_video = video
 
-    return render_template('anime_player_js_block.j2', video=video
-                           )
-
-
-# TODO: reverse-proxy for videos
-@app.route('/proxy-video.<_ext>', methods=['GET', 'HEAD'])
-def proxy_video(_ext: str):
-    # helps avoid, CORS and other security issues
-    client = CONTEXT.extractor.extractor.http
-    video = CONTEXT.picked_video
-
-    content_type = client.head(video.url, headers=video.headers).headers['content-type']
-    print(video.url)
-
-    resp = client.get(video.url, headers=video.headers)
-    return Response(resp.content, content_type=content_type)
+    return render_template('anime_player_js_block.j2', video=video)

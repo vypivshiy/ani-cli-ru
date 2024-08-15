@@ -1,19 +1,21 @@
 {% extends "base.j2" %}
 
 {% block content %}
-    {% for search in search_results %}
-        <div class="row border">
-            <div class="col-sm-3 border"><img class="img-thumbnail" src="{{ search.thumbnail }}" alt=""></div>
-            <div class="col-sm-3">
-                <div class="row">{{ search.title }}</div>
-                <div class="row">
-                    <form id="redirectForm" method="POST" action="/anime">
-                        <input name="title" type="text" hidden="true" value="{{ search.title }}">
-                        <input name="url" type="text" hidden="true" value="{{ search.url }}">
-                        <input type="submit" value="OPEN" class="btn btn-primary">
-                    </form>
+    <div class="container-fluid">
+        {% for search in search_results %}
+            <div class="row border">
+                <div class="col-sm-3 border"><img class="img-thumbnail" src="{{ search.thumbnail }}" alt=""></div>
+                <div class="col-sm-3">
+                    <div class="row">{{ search.title }}</div>
+                    <div class="row">
+                        <form id="redirectForm" method="POST" action="/anime">
+                            <input name="title" type="text" hidden="true" value="{{ search.title }}">
+                            <input name="url" type="text" hidden="true" value="{{ search.url }}">
+                            <input type="submit" value="OPEN" class="btn btn-primary">
+                        </form>
+                    </div>
                 </div>
             </div>
-        </div>
-    {% endfor %}
+        {% endfor %}
+    </div>
 {% endblock %}
