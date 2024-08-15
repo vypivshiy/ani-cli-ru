@@ -1,4 +1,9 @@
+from typing import Iterable, TypeVar
 from urllib.parse import urlsplit
+
+import sys
+
+T = TypeVar('T')
 
 
 def float_to_hms(duration_float: float) -> str:
@@ -14,3 +19,23 @@ def float_to_hms(duration_float: float) -> str:
 
 def netloc(url: str) -> str:
     return urlsplit(url).netloc
+
+
+def progress_bar(items: Iterable[T]) -> T:
+    """
+    Generator that yields each item with a rotating progress symbol.
+
+    Args:
+        items (list): List of items to process.
+
+    Yields:
+        item: Each item in the list.
+    """
+    symbols = ['|', '/', '-', '\\']
+    num_symbols = len(symbols)
+
+    for index, item in enumerate(items):
+        symbol = symbols[index % num_symbols]
+        sys.stdout.write(f"\r{symbol} {item}")
+        sys.stdout.flush()
+        yield item
