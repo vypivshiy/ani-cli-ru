@@ -33,7 +33,7 @@ def run_cli():
     parser.add_argument(
         "-s",
         "--source",
-        default="animego", # "yummy_anime_org",
+        default="yummy_anime_org",
         choices=get_modules(),
         help="Anime source provider (Default `yummy_anime_org`)",
     )
