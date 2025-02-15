@@ -3,11 +3,13 @@ import sys
 import warnings
 from importlib.metadata import version as pkg_version
 
+from anicli.check_updates import check_version
 from anicli.cli import APP
 
-__version__ = "5.0.12"
+__version__ = "5.0.13"
 
 from anicli.cli_utlis import command_available
+from anicli.updater import is_installed_in_pipx, is_installed_in_uv, update_pipx, update_uv
 
 
 def _get_version():
@@ -31,9 +33,9 @@ def run_cli():
     parser.add_argument(
         "-s",
         "--source",
-        default="animego",
+        default="animego", # "yummy_anime_org",
         choices=get_modules(),
-        help="Anime source provider (Default `animego`)",
+        help="Anime source provider (Default `yummy_anime_org`)",
     )
     parser.add_argument(
         "-q",
@@ -83,6 +85,7 @@ def run_cli():
         help="Make Extractor request via proxy e.g. socks5://127.0.0.1:1080, http://user:passwd@127.0.0.1:443",
     )
     parser.add_argument("--timeout", type=float, default=None, help="Setup request timeout")
+    parser.add_argument("-U", "--update", action="store_true", help="Update anicli-api package (pipx, uv)")
     parser.add_argument("-v", "--version", action="store_true", default=False, help="Print version and exit")
 
     namespaces = parser.parse_args()
@@ -90,6 +93,9 @@ def run_cli():
         print(_get_version())
         sys.exit(0)
 
+    if namespaces.update:
+        _run_updater()
+        sys.exit(0)
     if namespaces.search and namespaces.ongoing:
         print("Should be provide --search or --ongoing flag")
         sys.exit(1)
@@ -120,6 +126,25 @@ def run_cli():
         APP.exec_and_loop("ongoing", "")
     else:
         APP.loop()
+
+
+def _run_updater():
+    result, old, new = check_version()
+    if not result:
+        if not new:
+            print("failed get version from pypi")
+        else:
+            print(f"anicli-ru have last anicli-api version ({old})")
+    else:
+        print("start update")
+        if is_installed_in_pipx():
+            print("start update pipx")
+            update_pipx()
+        elif is_installed_in_uv():
+            print("start update uv")
+            update_uv()
+        else:
+            print("failed detect package manager (uv, pipx). try manually update")
 
 
 if __name__ == "__main__":
