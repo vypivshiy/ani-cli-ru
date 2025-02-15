@@ -2,6 +2,7 @@ from urllib.parse import urlsplit
 
 from anicli_api.base import HTTPSync
 
+from anicli.check_updates import check_version
 from anicli.cli.config import app
 
 
@@ -18,3 +19,11 @@ def setup_http_config():
 @app.on_startup()
 def loaded_extractor_msg():
     app.cmd.print_ft("Loaded source provider:", urlsplit(app.CFG.EXTRACTOR.BASE_URL).netloc)
+
+@app.on_startup()
+def check_anicli_api_version():
+    result, current, new = check_version()
+    if result:
+        print()
+        print(f"available new anicli-api version: (current: {current}, new: {new})")
+        print("close app and run `anicli-ru --update` to update anicli-api package")
