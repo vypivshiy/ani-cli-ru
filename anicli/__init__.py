@@ -6,7 +6,10 @@ from importlib.metadata import version as pkg_version
 from anicli.check_updates import check_version
 from anicli.cli import APP
 
-__version__ = "5.0.13"
+__version__ = "5.0.15"
+
+_DEFAULT_SOURCE = "yummy_anime_org"
+_DEFAULT_SOURCE_OLD = "animego"
 
 from anicli.cli_utlis import command_available
 from anicli.updater import is_installed_in_pipx, is_installed_in_uv, update_pipx, update_uv
@@ -28,13 +31,18 @@ def get_modules(package_name="anicli_api.source"):
 
 def run_cli():
     import argparse
+    from random import choice
+
+    api_modules = get_modules()
+    # avoid exception if anicli-api is not latest
+    default_source = _DEFAULT_SOURCE if _DEFAULT_SOURCE in api_modules else _DEFAULT_SOURCE_OLD
 
     parser = argparse.ArgumentParser(description=_get_version(), usage="anicli-ru [OPTIONS]")
     parser.add_argument(
         "-s",
         "--source",
-        default="yummy_anime_org",
-        choices=get_modules(),
+        default=default_source,
+        choices=api_modules,
         help="Anime source provider (Default `yummy_anime_org`)",
     )
     parser.add_argument(
@@ -85,7 +93,11 @@ def run_cli():
         help="Make Extractor request via proxy e.g. socks5://127.0.0.1:1080, http://user:passwd@127.0.0.1:443",
     )
     parser.add_argument("--timeout", type=float, default=None, help="Setup request timeout")
-    parser.add_argument("-U", "--update", action="store_true", help="Update anicli-api package (pipx, uv)")
+    parser.add_argument(
+        "-U", "--update",
+        action="store_true",
+        default=False ,
+        help="Update anicli-api package (pipx, uv)")
     parser.add_argument("-v", "--version", action="store_true", default=False, help="Print version and exit")
 
     namespaces = parser.parse_args()
@@ -94,14 +106,15 @@ def run_cli():
         sys.exit(0)
 
     if namespaces.update:
-        _run_updater()
+        _run_updater("anicli-api", "anicli-ru")
         sys.exit(0)
+
     if namespaces.search and namespaces.ongoing:
         print("Should be provide --search or --ongoing flag")
         sys.exit(1)
 
     if APP.CFG.USE_FFMPEG_ROUTE:
-        warnings.warn("this key will be deleted in next versions", category=DeprecationWarning, stacklevel=2)
+        warnings.warn("this key will be deleted in next versions", category=DeprecationWarning)
 
     if not command_available(f"{APP.CFG.PLAYER} --version"):
         msg = f"'{APP.CFG.PLAYER}' player not found. Install it and check it in $PATH environment variables"
@@ -128,23 +141,23 @@ def run_cli():
         APP.loop()
 
 
-def _run_updater():
-    result, old, new = check_version()
-    if not result:
+def _run_updater(*packages: str) -> None:
+    for package in packages:
+        result, old, new = check_version(package)
         if not new:
-            print("failed get version from pypi")
-        else:
-            print(f"anicli-ru have last anicli-api version ({old})")
-    else:
-        print("start update")
-        if is_installed_in_pipx():
-            print("start update pipx")
-            update_pipx()
-        elif is_installed_in_uv():
-            print("start update uv")
-            update_uv()
-        else:
-            print("failed detect package manager (uv, pipx). try manually update")
+            print(f"failed get version from pypi: {package}")
+        elif result:
+            print("start update")
+            if is_installed_in_pipx():
+                print("application found: pipx")
+                update_pipx()
+            elif is_installed_in_uv():
+                print("application found: uv")
+                update_uv()
+            else:
+                print("failed detect package manager (uv, pipx). try manually update")
+            return
+    print("latest version is used")
 
 
 if __name__ == "__main__":
