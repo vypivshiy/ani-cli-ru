@@ -1,13 +1,7 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["anicli/"]
-
 [project]
 name = "anicli-ru"
-dynamic = ["version"]
+# todo: bump ver via script
+version="5.0.16"
 description = 'cli tool for watching anime'
 readme = "README.md"
 requires-python = ">=3.8"
@@ -24,11 +18,19 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
-  "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "anicli-api", "eggella", "setuptools"
+    "anicli-api>=0.7.5",
+    "eggella>=0.1.7",
+    "tqdm>=4.67.1",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.14.1",
+    "ruff>=0.9.9",
 ]
 
 [project.urls]
@@ -36,68 +38,12 @@ Documentation = "https://github.com/vypivshiy/ani-cli-ru#readme"
 Issues = "https://github.com/vypivshiy/ani-cli-ru/issues"
 Source = "https://github.com/vypivshiy/ani-cli-ru"
 
-[tool.hatch.version]
-path = "anicli/__init__.py"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.hatch.envs.default]
-dependencies = [
-  "coverage[toml]>=6.5",
-  "pytest",
-]
-
-[tool.hatch.envs.default.scripts]
-test = "pytest {args:tests}"
-test-cov = "coverage run -m pytest {args:tests}"
-cov-report = [
-  "- coverage combine",
-  "coverage report",
-]
-cov = [
-  "test-cov",
-  "cov-report",
-]
-
-[project.scripts]
-anicli-ru = "anicli:run_cli"
-
-
-[[tool.hatch.envs.all.matrix]]
-python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
-
-[tool.hatch.envs.lint]
-detached = true
-dependencies = [
-  "black>=23.1.0",
-  "mypy>=1.0.0",
-  "isort",
-  "ruff>=0.0.243",
-]
-[tool.hatch.envs.lint.scripts]
-typing = "mypy --install-types --non-interactive {args:temporary tests}"
-style = [
-  "ruff {args:.}",
-  "black --check --diff {args:.}",
-]
-fmt = [
-  "black {args:.}",
-  "ruff --fix {args:.}",
-  "style",
-]
-all = [
-  "style",
-  "typing",
-]
-
-[tool.isort]
-atomic = true
-profile = "black"
-line_length = 88
-skip_gitignore = true
-
-[tool.black]
-target-version = ["py38"]
-line-length = 120
-skip-string-normalization = true
+[tool.hatch.build.targets.wheel]
+packages = ["anicli/"]
 
 [tool.ruff]
 target-version = "py38"
@@ -144,33 +90,4 @@ ignore = [
 unfixable = [
   # Don't touch unused imports
   "F401",
-]
-
-[tool.ruff.isort]
-known-first-party = ["temporary"]
-
-[tool.ruff.flake8-tidy-imports]
-ban-relative-imports = "all"
-
-[tool.ruff.per-file-ignores]
-# Tests can use magic values, assertions, and relative imports
-"tests/**/*" = ["PLR2004", "S101", "TID252"]
-
-[tool.coverage.run]
-source_pkgs = ["anicli", "tests"]
-branch = true
-parallel = true
-omit = [
-  "anicli/__about__.py",
-]
-
-[tool.coverage.paths]
-temporary = ["anicli", "*/anicli/anicli"]
-tests = ["tests", "*/temporary/tests"]
-
-[tool.coverage.report]
-exclude_lines = [
-  "no cov",
-  "if __name__ == .__main__.:",
-  "if TYPE_CHECKING:",
 ]
