@@ -22,7 +22,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
 ]
 dependencies = [
-    "anicli-api>=0.7.5",
+    "anicli-api>=0.7.6",
     "eggella>=0.1.7",
     "tqdm>=4.67.1",
 ]
