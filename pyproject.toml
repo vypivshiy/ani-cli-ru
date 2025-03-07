@@ -33,6 +33,9 @@ dev = [
     "ruff>=0.9.9",
 ]
 
+[project.scripts]
+anicli-ru = "anicli:run_cli"
+
 [project.urls]
 Documentation = "https://github.com/vypivshiy/ani-cli-ru#readme"
 Issues = "https://github.com/vypivshiy/ani-cli-ru/issues"
