@@ -34,7 +34,7 @@ class Config:
 
     @classmethod
     def httpx_kwargs(cls):
-        return {"proxies": cls.PROXY, "timeout": cls.TIMEOUT}
+        return {"proxy": cls.PROXY, "timeout": cls.TIMEOUT}
 
     @classmethod
     def exists_config(cls) -> bool:

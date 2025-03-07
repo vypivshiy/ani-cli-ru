@@ -8,11 +8,7 @@ from anicli.cli.config import app
 
 @app.on_startup()
 def setup_http_config():
-    if app.CFG.PROXY:
-        app.cmd.print_ft("Setup proxy")
-    if app.CFG.TIMEOUT:
-        app.cmd.print_ft("Setup timeout")
-    app.CFG.EXTRACTOR.http = HTTPSync(proxies=app.CFG.PROXY, timeout=app.CFG.TIMEOUT)
+    app.CFG.EXTRACTOR.http = HTTPSync(proxy=app.CFG.PROXY, timeout=app.CFG.TIMEOUT)
     # todo video extractor provide config
 
 
