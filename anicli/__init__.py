@@ -6,7 +6,7 @@ from importlib.metadata import version as pkg_version
 from anicli.check_updates import check_version
 from anicli.cli import APP
 
-__version__ = "5.0.15"
+__version__ = "5.0.16"
 
 _DEFAULT_SOURCE = "yummy_anime_org"
 _DEFAULT_SOURCE_OLD = "animego"
