@@ -11,16 +11,17 @@ let
 in
 with pyPkgs;
 
-buildPythonApplication rec {
-  pname = "anicli_ru";
-  version = "5.0.16";
+let
+    pname = "anicli_ru";
+    version = "5.0.16";
+in
+
+buildPythonApplication {
+  inherit pname version;
   pyproject = true;
 
   src = pkgs.fetchPypi {
-    inherit
-      pname
-      version
-      ;
+    inherit pname version;
     hash = "sha256-gM9on15RQIpQVJfWW/uPeN63vSSbCJt2mNN5zkvc5Jg=";
   };
 
@@ -61,6 +62,7 @@ buildPythonApplication rec {
         github = "mctrxnv";
         githubId = 189107707;
       }
+      ch4og
     ];
     mainProgram = "anicli-ru";
   };
