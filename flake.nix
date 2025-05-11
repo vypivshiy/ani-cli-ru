@@ -9,31 +9,31 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs =
-    inputs:
-    inputs.flake-utils.lib.eachDefaultSystem (
-      system:
+  outputs = { self, nixpkgs, flake-utils, ... }:
+    let
+      supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
+    in
+    flake-utils.lib.eachSystem supportedSystems (system:
       let
-        pkgs = import inputs.nixpkgs {
-          inherit
-            system
-            ;
+        pkgs = import nixpkgs { 
+          inherit system;
         };
       in
-      rec {
+      {
         packages = {
           anicli-ru = pkgs.callPackage ./nix/package.nix { };
-          default = packages.anicli-ru;
+          default = self.packages.${system}.anicli-ru;
         };
+        
         devShells = {
           default = pkgs.mkShell {
-            buildInputs = [ packages.default ];
+            buildInputs = [ self.packages.${system}.default ];
           };
         };
-        overlays = {
-          default = final: prev: {
-            anicli-ru = packages.default;
-          };
+        
+        overlays = final: prev: {
+          anicli-ru = self.packages.${system}.anicli-ru;
+          default = self.packages.${system}.anicli-ru;
         };
       }
     );
