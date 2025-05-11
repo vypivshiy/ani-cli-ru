@@ -1,12 +1,14 @@
 {
-  pkgs,
-  pyPkgs,
+  buildPythonApplication,
+  fetchPypi,
+  attrs,
+  hatchling,
+  httpx,
+  parsel,
   #
   version ? null,
   hash ? null,
 }:
-
-with pyPkgs;
 
 buildPythonApplication rec {
   pname = "anicli_api";
@@ -14,7 +16,7 @@ buildPythonApplication rec {
   pyproject = true;
   dontCheckRuntimeDeps = true;
 
-  src = pkgs.fetchPypi {
+  src = fetchPypi {
     inherit
       pname
       version
@@ -23,7 +25,6 @@ buildPythonApplication rec {
   };
 
   build-system = [
-    poetry-core
     hatchling
   ];
 
@@ -31,8 +32,6 @@ buildPythonApplication rec {
     attrs
     httpx
     httpx.optional-dependencies.http2
-    hatchling
     parsel
-    tqdm
   ];
 }

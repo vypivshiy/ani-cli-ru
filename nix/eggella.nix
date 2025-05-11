@@ -1,19 +1,19 @@
 {
-  pkgs,
-  pyPkgs,
+  buildPythonApplication,
+  fetchPypi,
+  hatchling,
+  prompt-toolkit,
   #
   version ? null,
   hash ? null,
 }:
-
-with pyPkgs;
 
 buildPythonApplication rec {
   pname = "eggella";
   inherit version;
   pyproject = true;
 
-  src = pkgs.fetchPypi {
+  src = fetchPypi {
     inherit
       pname
       version
@@ -22,7 +22,6 @@ buildPythonApplication rec {
   };
 
   build-system = [
-    setuptools
     hatchling
   ];
 
