@@ -1,49 +1,43 @@
 {
-  pkgs,
   lib,
+  buildPythonApplication,
+  callPackage,
+  fetchPypi,
+  hatchling,
+  mpv,
+  tqdm,
 }:
 
-# watch anime in terminal (cli)
-# only russian sources
-
 let
-  pyPkgs = pkgs.python312Packages;
-in
-with pyPkgs;
-
-let
-    pname = "anicli_ru";
-    version = "5.0.16";
+  pname = "anicli_ru";
+  version = "5.0.16";
+  hash = "sha256-gM9on15RQIpQVJfWW/uPeN63vSSbCJt2mNN5zkvc5Jg=";
 in
 
 buildPythonApplication {
-  inherit pname version;
+  inherit
+    pname
+    version
+    ;
   pyproject = true;
 
-  src = pkgs.fetchPypi {
-    inherit pname version;
-    hash = "sha256-gM9on15RQIpQVJfWW/uPeN63vSSbCJt2mNN5zkvc5Jg=";
+  src = fetchPypi {
+    inherit
+      pname
+      version
+      hash
+      ;
   };
 
   build-system = [
-    setuptools
     hatchling
   ];
 
   dependencies = [
-    pkgs.mpv
-    hatchling
-    setuptools
-    (callPackage ./eggella.nix {
-      inherit pyPkgs;
-      version = "0.1.7";
-      hash = "sha256-8Vo39BePA86wcLKs/F+u2N7tpIpPrEyEPp3POszy050=";
-    })
-    (callPackage ./api.nix {
-      inherit pyPkgs;
-      version = "0.7.14";
-      hash = "sha256-zmB2U4jyDPCLuykUc6PyrlcTULaXDxQ8ZvyTmJfOI0s=";
-    })
+    mpv
+    tqdm
+    (callPackage ./eggella.nix { })
+    (callPackage ./api.nix { })
   ];
 
   meta = with lib; {
@@ -52,7 +46,7 @@ buildPythonApplication {
       ! only russian sources !
     '';
     homepage = "https://github.com/vypivshiy/ani-cli-ru";
-    license = licenses.afl3;
+    license = licenses.gpl3Plus;
     platforms = platforms.linux;
     maintainers = with maintainers; [
       DADA30000
