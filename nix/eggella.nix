@@ -3,14 +3,19 @@
   fetchPypi,
   hatchling,
   prompt-toolkit,
-  #
-  version ? null,
-  hash ? null,
 }:
 
-buildPythonApplication rec {
+let
   pname = "eggella";
-  inherit version;
+  version = "0.1.7";
+  hash = "sha256-8Vo39BePA86wcLKs/F+u2N7tpIpPrEyEPp3POszy050=";
+in
+
+buildPythonApplication {
+  inherit
+    pname
+    version
+    ;
   pyproject = true;
 
   src = fetchPypi {

@@ -5,14 +5,19 @@
   hatchling,
   httpx,
   parsel,
-  #
-  version ? null,
-  hash ? null,
 }:
 
-buildPythonApplication rec {
+let
   pname = "anicli_api";
-  inherit version;
+  version = "0.7.14";
+  hash = "sha256-zmB2U4jyDPCLuykUc6PyrlcTULaXDxQ8ZvyTmJfOI0s=";
+in
+
+buildPythonApplication {
+  inherit
+    pname
+    version
+    ;
   pyproject = true;
   dontCheckRuntimeDeps = true;
 
