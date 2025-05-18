@@ -9,7 +9,10 @@ from anicli.cli.config import app
 @app.on_startup()
 def setup_http_config():
     app.CFG.EXTRACTOR.http = HTTPSync(proxy=app.CFG.PROXY, timeout=app.CFG.TIMEOUT)
-    # todo video extractor provide config
+    if app.CFG.HEADERS:
+        app.CFG.EXTRACTOR.http.headers.update(app.CFG.HEADERS)
+    if app.CFG.COOKIES:
+        app.CFG.EXTRACTOR.http.cookies.update(app.CFG.COOKIES)
 
 
 @app.on_startup()

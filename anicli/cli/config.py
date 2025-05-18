@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional, Dict
 
 from eggella import Eggella
 from prompt_toolkit import PromptSession
@@ -27,6 +27,7 @@ class Config:
 
     # httpx params
     COOKIES: Optional[Cookies] = {}
+    HEADERS: Dict[str, str] = {}
     PROXY: Optional[str] = None
     TIMEOUT: Optional[float] = None
     # m3u for SLICE play mode
@@ -35,7 +36,7 @@ class Config:
 
     @classmethod
     def httpx_kwargs(cls):
-        return {"proxy": cls.PROXY, "timeout": cls.TIMEOUT, "cookies": cls.COOKIES or {}}
+        return {"proxy": cls.PROXY, "timeout": cls.TIMEOUT, "cookies": cls.COOKIES or {}, "headers": cls.HEADERS or {}}
 
     @classmethod
     def exists_config(cls) -> bool:

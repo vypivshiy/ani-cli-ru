@@ -15,7 +15,8 @@ _DEFAULT_SOURCE_OLD = "animego"
 
 from anicli.cli_utlis import command_available
 from anicli.updater import is_installed_in_pipx, is_installed_in_uv, update_pipx, update_uv
-from anicli.cookies import BROWSER_SUPPORTS
+from anicli.cookies import BROWSER_SUPPORTS, parse_netscape_cookie_string
+from anicli.headers import parse_header_line
 
 def _get_version():
     return f"""anicli-ru {__version__}; anicli-api {pkg_version("anicli-api")}"""
@@ -116,6 +117,16 @@ def run_cli():
         default=None,
         help="extract cookies from browser and pass to client",
         choices=BROWSER_SUPPORTS)
+    parser.add_argument(
+        "--header",
+        type=str,
+        action="append",
+        help="Add extra headers to http client, use multiple times (Key=Value)")
+    parser.add_argument(
+        "--header-file",
+        type=str,
+        help='Path to file with headers (one per line, Key=Value)')
+
     namespaces = parser.parse_args()
     if namespaces.version:
         print(_get_version())
@@ -126,32 +137,50 @@ def run_cli():
         sys.exit(0)
 
     if namespaces.search and namespaces.ongoing:
-        print("Should be provide --search or --ongoing flag")
-        sys.exit(1)
+        raise argparse.ArgumentTypeError("Should be provide --search or --ongoing flag")
 
     if APP.CFG.USE_FFMPEG_ROUTE:
         warnings.warn("this key will be deleted in next versions", category=DeprecationWarning)
 
     if not command_available(f"{APP.CFG.PLAYER} --version"):
         msg = f"'{APP.CFG.PLAYER}' player not found. Install it and check it in $PATH environment variables"
-        warnings.warn(msg, category=RuntimeWarning, stacklevel=1)
-        sys.exit(1)
+        raise argparse.ArgumentTypeError(msg)
 
     cookies = {}
     if namespaces.cookies:
-        try:
-            Path(namespaces.cookies).read_text(encoding="utf-8")
-            from anicli.cookies import parse_netscape_cookie_string
-            cookies = parse_netscape_cookie_string(namespaces.cookies)
-            print(f"read {len(cookies)} cookies")
-        except FileNotFoundError:
+        if not Path(namespaces.cookies).is_file():
             msg = f"Cookies file {namespaces.cookies} not found"
             warnings.warn(msg, category=RuntimeWarning)
             cookies = {}
+        else:
+            Path(namespaces.cookies).read_text(encoding="utf-8")
+            cookies = parse_netscape_cookie_string(namespaces.cookies)
+            print(f"read {len(cookies)} cookies")
     elif namespaces.cookies_from_browser:
         from anicli.cookies import get_cookies_from_browser
         cookies = get_cookies_from_browser(namespaces.cookies_from_browser)
         print(f"read {len(cookies)} cookies")
+
+    all_headers = {}
+    if namespaces.header:
+        for line in namespaces.header:
+            if '=' not in line:
+                raise argparse.ArgumentTypeError(f"Invalid header format: '{line}'. Expected key=value.")
+            k, v = parse_header_line(line)
+            all_headers[k] = v
+    if namespaces.header_file:
+        if not Path(namespaces.header_file).is_file():
+            msg = f"Headers file {namespaces.header_file} not found"
+            warnings.warn(msg, category=RuntimeWarning)
+        else:
+            lines = Path(namespaces.header_file).read_text(encoding="utf-8")
+            for line in lines.splitlines():
+                if '=' not in line:
+                    raise argparse.ArgumentTypeError(f"Invalid header format: '{line}'. Expected key=value.")
+                k, v = parse_header_line(line)
+                all_headers[k] = v
+    if len(all_headers) > 0:
+        print(f"load headers lines {len(all_headers)}")
     # setup eggella app
     module = importlib.import_module(f"anicli_api.source.{namespaces.source}")
     APP.CFG.EXTRACTOR = module.Extractor()
@@ -164,6 +193,7 @@ def run_cli():
     APP.CFG.M3U_MAX_SIZE = namespaces.m3u_size
     APP.CFG.PLAYER_EXTRA_ARGS = namespaces.player_args
     APP.CFG.COOKIES = cookies
+    APP.CFG.HEADERS = all_headers
 
     if namespaces.search:
         APP.exec_and_loop("search", namespaces.search)
