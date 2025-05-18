@@ -1,19 +1,24 @@
 {
-  pkgs,
-  pyPkgs,
-  #
-  version ? null,
-  hash ? null,
+  buildPythonApplication,
+  fetchPypi,
+  hatchling,
+  prompt-toolkit,
 }:
 
-with pyPkgs;
-
-buildPythonApplication rec {
+let
   pname = "eggella";
-  inherit version;
+  version = "0.1.7";
+  hash = "sha256-8Vo39BePA86wcLKs/F+u2N7tpIpPrEyEPp3POszy050=";
+in
+
+buildPythonApplication {
+  inherit
+    pname
+    version
+    ;
   pyproject = true;
 
-  src = pkgs.fetchPypi {
+  src = fetchPypi {
     inherit
       pname
       version
@@ -22,7 +27,6 @@ buildPythonApplication rec {
   };
 
   build-system = [
-    setuptools
     hatchling
   ];
 

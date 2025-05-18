@@ -1,20 +1,27 @@
 {
-  pkgs,
-  pyPkgs,
-  #
-  version ? null,
-  hash ? null,
+  buildPythonApplication,
+  fetchPypi,
+  attrs,
+  hatchling,
+  httpx,
+  parsel,
 }:
 
-with pyPkgs;
-
-buildPythonApplication rec {
+let
   pname = "anicli_api";
-  inherit version;
+  version = "0.7.14";
+  hash = "sha256-zmB2U4jyDPCLuykUc6PyrlcTULaXDxQ8ZvyTmJfOI0s=";
+in
+
+buildPythonApplication {
+  inherit
+    pname
+    version
+    ;
   pyproject = true;
   dontCheckRuntimeDeps = true;
 
-  src = pkgs.fetchPypi {
+  src = fetchPypi {
     inherit
       pname
       version
@@ -23,7 +30,6 @@ buildPythonApplication rec {
   };
 
   build-system = [
-    poetry-core
     hatchling
   ];
 
@@ -31,8 +37,6 @@ buildPythonApplication rec {
     attrs
     httpx
     httpx.optional-dependencies.http2
-    hatchling
     parsel
-    tqdm
   ];
 }
