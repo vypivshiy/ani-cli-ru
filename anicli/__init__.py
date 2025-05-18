@@ -1,4 +1,6 @@
 import importlib
+from pathlib import Path
+
 import sys
 import warnings
 from importlib.metadata import version as pkg_version
@@ -13,7 +15,7 @@ _DEFAULT_SOURCE_OLD = "animego"
 
 from anicli.cli_utlis import command_available
 from anicli.updater import is_installed_in_pipx, is_installed_in_uv, update_pipx, update_uv
-
+from anicli.cookies import BROWSER_SUPPORTS
 
 def _get_version():
     return f"""anicli-ru {__version__}; anicli-api {pkg_version("anicli-api")}"""
@@ -98,8 +100,22 @@ def run_cli():
         action="store_true",
         default=False ,
         help="Update anicli-api package (pipx, uv)")
-    parser.add_argument("-v", "--version", action="store_true", default=False, help="Print version and exit")
-
+    parser.add_argument(
+        "-v", "--version",
+        action="store_true",
+        default=False,
+        help="Print version and exit")
+    parser.add_argument(
+        "--cookies",
+        type=str,
+        default=None,
+        help="read cookies file (netscape format) and pass to client")
+    parser.add_argument(
+        "--cookies-from-browser",
+        type=str,
+        default=None,
+        help="extract cookies from browser and pass to client",
+        choices=BROWSER_SUPPORTS)
     namespaces = parser.parse_args()
     if namespaces.version:
         print(_get_version())
@@ -121,6 +137,21 @@ def run_cli():
         warnings.warn(msg, category=RuntimeWarning, stacklevel=1)
         sys.exit(1)
 
+    cookies = {}
+    if namespaces.cookies:
+        try:
+            Path(namespaces.cookies).read_text(encoding="utf-8")
+            from anicli.cookies import parse_netscape_cookie_string
+            cookies = parse_netscape_cookie_string(namespaces.cookies)
+            print(f"read {len(cookies)} cookies")
+        except FileNotFoundError:
+            msg = f"Cookies file {namespaces.cookies} not found"
+            warnings.warn(msg, category=RuntimeWarning)
+            cookies = {}
+    elif namespaces.cookies_from_browser:
+        from anicli.cookies import get_cookies_from_browser
+        cookies = get_cookies_from_browser(namespaces.cookies_from_browser)
+        print(f"read {len(cookies)} cookies")
     # setup eggella app
     module = importlib.import_module(f"anicli_api.source.{namespaces.source}")
     APP.CFG.EXTRACTOR = module.Extractor()
@@ -132,6 +163,7 @@ def run_cli():
     APP.CFG.M3U_MAKE = namespaces.m3u
     APP.CFG.M3U_MAX_SIZE = namespaces.m3u_size
     APP.CFG.PLAYER_EXTRA_ARGS = namespaces.player_args
+    APP.CFG.COOKIES = cookies
 
     if namespaces.search:
         APP.exec_and_loop("search", namespaces.search)

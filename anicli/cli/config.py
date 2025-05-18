@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 from eggella import Eggella
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.shortcuts.prompt import CompleteStyle
-
+from httpx import Cookies
 # import tomli
 
 
@@ -26,6 +26,7 @@ class Config:
     _DB_NAME: str = "anicli.db"
 
     # httpx params
+    COOKIES: Optional[Cookies] = {}
     PROXY: Optional[str] = None
     TIMEOUT: Optional[float] = None
     # m3u for SLICE play mode
@@ -34,7 +35,7 @@ class Config:
 
     @classmethod
     def httpx_kwargs(cls):
-        return {"proxy": cls.PROXY, "timeout": cls.TIMEOUT}
+        return {"proxy": cls.PROXY, "timeout": cls.TIMEOUT, "cookies": cls.COOKIES or {}}
 
     @classmethod
     def exists_config(cls) -> bool:
