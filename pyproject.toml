@@ -1,7 +1,7 @@
 [project]
 name = "anicli-ru"
 # todo: bump ver via script
-version="5.0.16"
+version="5.0.17"
 description = 'cli tool for watching anime'
 readme = "README.md"
 requires-python = ">=3.8"
@@ -22,12 +22,16 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
 ]
 dependencies = [
-    "anicli-api>=0.7.6",
+    "anicli-api>=0.7.14",
     "eggella>=0.1.7",
     "tqdm>=4.67.1",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
+browser-cookies = [
+  "anicli-api[browser-cookies]"
+]
+
 dev = [
     "mypy>=1.14.1",
     "ruff>=0.9.9",
