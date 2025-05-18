@@ -50,6 +50,7 @@ class MpvPlayer(BasePlayer):
     TITLE = "--title"
     HEADERS_KEY = "--http-header-fields"
     USER_AGENT_KEY = "--user-agent"
+    REFERER_KEY = "--referrer"
 
     def play_from_playlist(
         self, videos: List["Video"], names: List[str], headers: Optional[Dict] = None, quality: int = 1080
@@ -68,29 +69,34 @@ class MpvPlayer(BasePlayer):
             temp_file.close()
 
     @classmethod
-    def _parse_headers_args(cls, headers: Dict[str, Any]):
-        if not headers:
-            return ""
-        # multiple command key build List Options:
-        # shlex don't support mpv list arguments feature
-        # Note:
-        #       don't need whitespace see: man mpv, \http-header-fields
-        #                                 v
-        # --http-header-fields="Spam: egg","Foo: bar","BAZ: ZAZ"
-        comma = f"{cls.HEADERS_KEY}="
-        comma_user_agent = None
+    def _find_and_drop_key(cls, headers: Dict, key: str) -> Optional[str]:
+        for k,v in headers.items():
+            if k.lower() == key:
+                value = headers.pop(k)
+                return value
+        return None
 
+    @classmethod
+    def _headers_to_mpv_opts(cls, headers: Dict[str, Any]) -> str:
+        if ua:= cls._find_and_drop_key(headers, "user-agent"):
+            user_agent = f'{cls.USER_AGENT_KEY}="{ua}"'
+        else:
+            user_agent = ""
+        if referrer:=cls._find_and_drop_key(headers, "referrer"):
+            referrer = f'{cls.REFERER_KEY}="{referrer}"'
+        else:
+            referrer = ""
+        result = []
         for k, v in headers.items():
-            if k.lower() == "user-agent":
-                comma_user_agent = f'{cls.USER_AGENT_KEY}="{v}"'
-                headers.pop(k)
-                if not headers:
-                    return comma_user_agent
+            v = v.replace('"', '\\"')
+            result.append(f'"{k}: {v}"')
+        if result:
+            return f"{user_agent} {referrer} --http-header-fields={','.join(result)}"
+        return f"{user_agent} {referrer}"
 
-                break
-
-        comma = comma + ",".join(f'"{k}: {v}"' for k, v in headers.items())
-        return comma_user_agent + " " + comma if comma_user_agent else comma
+    @classmethod
+    def _parse_headers_args(cls, headers: Dict[str, Any]):
+        return cls._headers_to_mpv_opts(headers)
 
     def play(self, video: "Video", title: Optional[str] = None, *, player: Optional[str] = None, **kwargs):
         title_arg = f"{self.TITLE}={self.quote(title)}" if title else ""
