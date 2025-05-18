@@ -70,6 +70,12 @@ def get_preferred_human_quality_index(videos: List["Video"], quality: int) -> in
 
 def is_video_url_valid(video: "Video") -> bool:
     # head method maybe don't work, but we can send GET request without read all content
+
+    # skip check anilib sources
+    # this solution returns 403 code, but in MPV player works
+    if 'anilib.me' in video.url:
+        return True
+
     with Client().stream("GET", video.url, headers=video.headers) as r:
         # 200-299 OK, 302 - FOUND returns True, else False
         return r.is_success or r.status_code == 302  # noqa
