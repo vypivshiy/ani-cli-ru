@@ -52,8 +52,8 @@ def run_cli():
         "-q",
         "--quality",
         type=int,
-        default=1080,
-        choices=[0, 144, 240, 360, 480, 720, 1080],
+        default=2060,
+        choices=[0, 144, 240, 360, 480, 720, 1080, 2060],
         help="Set minimal video quality output in /video menu. "
         "If there is no maximum, it will display the closest value. "
         "Eg: if -q 1080 and video not contains 1080 - set 720, 480...0 "
