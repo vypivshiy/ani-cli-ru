@@ -1,4 +1,5 @@
 import argparse
+import pypresence.exceptions
 
 def main():
     parser = argparse.ArgumentParser(description="Rich Presence Script")
@@ -13,18 +14,21 @@ def main():
     from pypresence import Presence
     import time
     client_id = "1392818712511385652"
-    RPC = Presence(client_id)
-    RPC.connect()
+    try:
+        RPC = Presence(client_id)
+        RPC.connect()
 
-    while True:
-        RPC.update(
-            state=str(args.name),
-            large_image=str(args.thumbnail),
-            details="Смотрит Аниме",
-            party_size=[int(args.episode), int(args.episode)],
-            buttons=[{"label": "Github Repository", "url": "https://github.com"}],
-        )
-        time.sleep(15)  # minimum 15 seconds
+        while True:
+            RPC.update(
+                state=str(args.name),
+                large_image=str(args.thumbnail),
+                details="Смотрит Аниме",
+                party_size=[int(args.episode), int(args.episode)],
+                buttons=[{"label": "Github Repository", "url": "https://github.com"}],
+            )
+            time.sleep(15)  # minimum 15 seconds
+    except pypresence.exceptions.DiscordNotFound:
+        pass
 
 if __name__ == "__main__":
     main()
