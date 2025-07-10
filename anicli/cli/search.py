@@ -30,6 +30,7 @@ class SearchStates(IntStateGroup):
     SOURCE_SLICE = 4
     VIDEO_SLICE = 5
 
+chosen_episode = None
 
 app = AnicliApp("search")
 app.register_states(SearchStates)
@@ -93,6 +94,8 @@ def choose_episode():
         return app.fsm.set(SearchStates.SOURCE_SLICE)
     else:
         app.fsm["search"] = {"episode": choice_human_index(episodes, int(choose))}
+        global chosen_episode
+        chosen_episode = choose
         app.fsm.set(SearchStates.SOURCE)
 
 
@@ -155,7 +158,7 @@ def choose_quality():
     anime: BaseAnime = app.fsm["anime"]
     title = create_title(anime, episode, source)
 
-    run_video(video, app.CFG, title)
+    run_video(str(app.CTX["result"].thumbnail), str(app.CTX["result"]), str(chosen_episode), video, app.CFG, title)
     return app.fsm.set(SearchStates.EPISODE)
 
 
