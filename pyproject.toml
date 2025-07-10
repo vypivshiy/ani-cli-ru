@@ -25,6 +25,7 @@ dependencies = [
     "anicli-api>=0.7.14",
     "eggella>=0.1.7",
     "tqdm>=4.67.1",
+    "pypresence>=4.3.0"
 ]
 
 [project.optional-dependencies]

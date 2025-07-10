@@ -189,17 +189,24 @@ class FFMPEGRouter(BasePlayer):
         subprocess.Popen(cmd, shell=True).wait()
 
 
-def run_video(video: "Video", app_cfg: "Config", title: Optional[str] = None):
+def run_video(thumbnail, name, episode, video: "Video", app_cfg: "Config", title: Optional[str] = None,):
     if app_cfg.USE_FFMPEG_ROUTE:
         if app_cfg.PLAYER == "mpv":
+            proc1 = subprocess.Popen(['python', 'anicli/rich_presence.py', "--name", name, "--episode", episode, "--episode_max", "255","--thumbnail", thumbnail])
             FFMPEGRouter(app_cfg).play(video, title, player=app_cfg.PLAYER, title_arg='--title="{}"')
+            return proc1.kill()
         elif app_cfg.PLAYER in ("vlc", "cvlc"):
+            proc1 = subprocess.Popen(['python', 'anicli/rich_presence.py', "--name", name, "--episode", episode, "--episode_max", "255","--thumbnail", thumbnail])
             FFMPEGRouter(app_cfg).play(video, title, player=app_cfg.PLAYER, title_arg='--meta-title "{}"')
-        return
+            return proc1.kill()
     elif app_cfg.PLAYER == "mpv":
-        return MpvPlayer(app_cfg).play(video, title)
+        proc1 = subprocess.Popen(['python', 'anicli/rich_presence.py', "--name", name, "--episode", episode, "--episode_max", "255", "--thumbnail", thumbnail])
+        MpvPlayer(app_cfg).play(video, title)
+        return proc1.kill()
     elif app_cfg.PLAYER == "vlc":
-        return VLCPlayer(app_cfg).play(video, title)
+        proc1 = subprocess.Popen(['python', 'anicli/rich_presence.py', "--name", name, "--episode", episode, "--episode_max", "255","--thumbnail", thumbnail])
+        VLCPlayer(app_cfg).play(video, title)
+        return proc1.kill()
 
 
 def run_m3u_playlist(videos: List["Video"], names: List[str], app_cfg: "Config"):
