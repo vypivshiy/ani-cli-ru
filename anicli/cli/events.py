@@ -1,31 +1,35 @@
-from urllib.parse import urlsplit
+from anicli.common.extractors import dynamic_load_extractor_module
 
-from anicli_api.base import HTTPSync
-
-from anicli.check_updates import check_version
-from anicli.cli.config import app
+from .contexts import AnicliContext
+from .ptk_lib import AppContext
 
 
-@app.on_startup()
-def setup_http_config():
-    app.CFG.EXTRACTOR.http = HTTPSync(proxy=app.CFG.PROXY, timeout=app.CFG.TIMEOUT)
-    if app.CFG.HEADERS:
-        app.CFG.EXTRACTOR.http.headers.update(app.CFG.HEADERS)
-    if app.CFG.COOKIES:
-        app.CFG.EXTRACTOR.http.cookies.update(app.CFG.COOKIES)
+async def on_start_config_http_client(ctx: AppContext[AnicliContext]) -> None:
+    proxy = ctx.data.get("proxy", None)
+    headers = ctx.data.get("headers", {})
+    cookies = ctx.data.get("cookies", {})
+    timeout = ctx.data.get("timeout", None)
 
+    extractor_instance = dynamic_load_extractor_module(ctx.data["extractor_name"]).Extractor  # type: ignore
+    extractor = extractor_instance()
+    ctx.data["extractor_instance"] = extractor_instance
+    ctx.data["extractor"] = extractor
 
-@app.on_startup()
-def loaded_extractor_msg():
-    app.cmd.print_ft("Loaded source provider:", urlsplit(app.CFG.EXTRACTOR.BASE_URL).netloc)
+    # required create new httpx instance for add proxy transport
+    if proxy:
+        from anicli_api._http import HTTPSync, HTTPAsync  # noqa
 
-@app.on_startup()
-def check_updates():
-    result_api, current_api, new_api = check_version()
-    result_client, current_client, new_client = check_version("anicli-ru")
-    if result_api:
-        print(f"available new anicli-api version: (current: {current_api}, new: {new_api})")
-    elif result_client:
-        print(f"available new anicli-ru version: (current: {current_api}, new: {new_api})")
-    if result_api or result_client:
-        print("close app and run `anicli-ru -U` to get updates")
+        # close old instances and replace a new
+        extractor.http.close()
+        await extractor.http_async.aclose()
+
+        extractor.http = HTTPSync(proxy=proxy, headers=headers, cookies=cookies, timeout=timeout)
+        extractor.http_async = HTTPAsync(proxy=proxy, headers=headers, cookies=cookies, timeout=timeout)
+    else:
+        extractor.http.headers.update(headers)
+        extractor.http.cookies.update(cookies)
+        extractor.http.timeout = timeout
+
+        extractor.http_async.headers.update(headers)
+        extractor.http_async.cookies.update(cookies)
+        extractor.http_async.timeout = timeout
