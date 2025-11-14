@@ -9,9 +9,6 @@ from rich import get_console
 from typer import BadParameter, Option
 from typing_extensions import Annotated
 
-from anicli.common.extractors import (
-    get_extractor_modules,
-)
 from anicli.common.cookies_config import (
     BROWSER_SUPPORTS,
     parse_args_headers,
@@ -19,9 +16,13 @@ from anicli.common.cookies_config import (
     read_from_browser,
     read_from_netscape_file,
 )
+from anicli.common.extractors import (
+    get_extractor_modules,
+)
 
 from .cli.contexts import AnicliContext
 from .common.mpv import is_mpv_installed
+from .common.updater import get_api_version
 from .common.utils import validate_proxy_url
 
 app = typer.Typer(
@@ -39,9 +40,8 @@ APP_VERSION = "6.0.0a"
 @app.command(help="show app and api versions and exit")
 def version():
     from rich.panel import Panel  # noqa
-    from importlib.metadata import version as pkg_version  # noqa
 
-    api_version = pkg_version("anicli-api")
+    api_version = get_api_version()
     renderable = f"anicli-ru : [bold]{APP_VERSION}[/bold]\nanicli-api: [bold]{api_version}[/bold]"
     panel = Panel(renderable, title="Versions", expand=False)
     console.print(panel)
@@ -61,6 +61,19 @@ def update(force: Annotated[bool, Option("--force", is_flag=True, help="force up
         update_uv(force=force)
     elif is_pipx:
         update_pipx(force=force)
+
+
+@app.command(help="check updates")
+def check_updates():
+    from .common.updater import check_for_updates, get_api_version  # noqa
+    import asyncio  # noqa
+    from .cli.helpers.render import render_update_notification  # noqa
+
+    result = asyncio.run(check_for_updates(APP_VERSION, get_api_version()))
+    if result["anicli_api"]["is_outdated"] or result["anicli_ru"]["is_outdated"]:
+        render_update_notification(result, console)  # type: ignore
+    else:
+        console.print("Used actual versions")
 
 
 # typer callbacks
@@ -184,7 +197,8 @@ def cli(
         raise BadParameter(msg)
 
     cfg = AnicliContext()
-
+    cfg["app_version"] = APP_VERSION
+    cfg["api_version"] = get_api_version()
     cfg["extractor_name"] = source
     cfg["quality"] = quality if quality else 2060
     cfg["mpv_opts"] = mpv_opts if mpv_opts else ""

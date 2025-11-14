@@ -1,12 +1,17 @@
 import asyncio
 import subprocess
-from typing import Any, Dict, Optional
+from importlib.metadata import version as pkg_version
+from typing import Any, Dict, Optional, TypedDict
 
 import httpx
 
 
 class UpdateExceptionError(Exception):
     pass
+
+
+def get_api_version() -> str:
+    return pkg_version("anicli-api")
 
 
 def _check_installed_cli_package(cmd: str, cli_package: str = "anicli-ru") -> bool:
@@ -161,7 +166,7 @@ def update_uv(package: str = "anicli-ru", dependency: str = "anicli-api", force:
         raise UpdateExceptionError(msg) from e
 
 
-async def get_package_version_from_pypi(package_name: str, current_version: Optional[str] = None) -> Dict[str, Any]:
+async def get_package_version_from_pypi(package_name: str, current_version: Optional[str] = None) -> "TPACKAGE":
     """
     Get the latest version information for a package from PyPI.
 
@@ -187,16 +192,28 @@ async def get_package_version_from_pypi(package_name: str, current_version: Opti
                 "is_outdated": current_version is not None and current_version != latest_version,
             }
 
-            return result
+            return result  # type: ignore
         except httpx.RequestError as e:
             raise
         except KeyError:
             raise ValueError(f"Unexpected response format from PyPI for {package_name}")
 
 
+class TPACKAGE(TypedDict):
+    package_name: str
+    current_version: str
+    latest_version: str
+    is_outdated: bool
+
+
+class TVERSION(TypedDict):
+    anicli_ru: TPACKAGE
+    anicli_api: TPACKAGE
+
+
 async def check_for_updates(
     current_anicli_ru_version: Optional[str] = None, current_anicli_api_version: Optional[str] = None
-) -> Dict[str, Any]:
+) -> TVERSION:
     """
     Check for updates for both anicli-ru and anicli-api packages.
 
