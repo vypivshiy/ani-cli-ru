@@ -11,6 +11,8 @@ class AnicliContext(TypedDict, total=False):
     # internal app fields (late init)
 
     # TODO
+    app_version: str
+    api_version: str
     config_path: Path
     extractor_instance: Type[BaseExtractor]
     extractor: BaseExtractor
