@@ -1,7 +1,8 @@
 import importlib.util
 import os
+import re
 from functools import lru_cache
-from typing import List, Protocol, Type, cast
+from typing import List, Optional, Protocol, Type, cast
 
 from anicli_api.base import (
     BaseAnime,
@@ -36,10 +37,10 @@ def get_extractor_modules(package_name: str = "anicli_api.source") -> List[str]:
 
 
 def dynamic_load_extractor_module(source_name: str) -> ExtractorLikeModule:
-    source_name = source_name.replace("-", "_")
     if source_name not in get_extractor_modules():
         msg = f"Extractor module {source_name} not exists in anicli-api"
         raise NameError(msg)
+    source_name = source_name.replace("-", "_")
     module = importlib.import_module(f"anicli_api.source.{source_name}")
     module = cast(ExtractorLikeModule, module)
     return module

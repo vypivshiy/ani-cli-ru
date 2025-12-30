@@ -3,25 +3,25 @@
 # Core application
 from .core.application import Application
 
+# Optional: expose Completer helpers
+from .core.completer import NestedCompleterWithMeta
+
 # Decorators (main API)
 from .core.decorators import command, fsm_route, fsm_state
+
+# Optional: expose BaseFSM for inheritance
+from .core.fsm import BaseFSM
 from .core.shortcuts import print_subcommand_help
 
 # Types for typing support
 from .core.types import (
     AppContext,
     CommandContext,
-    FSMContext,
     CommandRoute,
+    FSMContext,
     FSMRoute,
     FSMState,
 )
-
-# Optional: expose BaseFSM for inheritance
-from .core.fsm import BaseFSM
-
-# Optional: expose Completer helpers
-from .core.completer import NestedCompleterWithMeta
 
 # Optional: expose validators (user implements them, but we provide base idea)
 # (Validators are typically user-defined callables)

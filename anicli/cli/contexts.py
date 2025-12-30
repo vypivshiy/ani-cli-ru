@@ -1,6 +1,6 @@
 from http.cookiejar import CookieJar
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Type, TypedDict, Union
+from typing import Dict, List, Optional, Sequence, Type, TypedDict
 
 from anicli_api.base import BaseAnime, BaseEpisode, BaseExtractor, BaseOngoing, BaseSearch, BaseSource
 from anicli_api.player.base import Video

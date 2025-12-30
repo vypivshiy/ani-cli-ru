@@ -24,11 +24,10 @@ def _escape_shell_arg(arg: str) -> str:
     """Escape argument for shell execution, especially for Windows."""
     # For Windows compatibility, use double quotes and escape any quotes within
     if '"' in arg:
-        escaped = arg.replace('"', '\\"')
-        return f'"{escaped}"'
-    elif " " in arg or "\t" in arg or "&" in arg or "|" in arg or ";" in arg or "<" in arg or ">" in arg:
-        return f'"{arg}"'
-    return arg
+        arg = arg.replace('"', '\\"')
+    if "'" in arg:
+        arg = arg.replace("'", "\\'")
+    return f'"{arg}"'
 
 
 def _parse_other_headers(cmd_parts: List[str], headers: Dict[str, str]) -> None:
@@ -56,6 +55,7 @@ def _parse_mpv_useragent_header(cmd_parts: List[str], headers: Dict[str, str]) -
         cmd_parts.append(f"{USER_AGENT_KEY}={_escape_shell_arg(user_agent)}")
 
 
+# FIXME: wrap to quotas "" arguments
 async def play_mpv_video(video: Video, title: str, mpv_opts: str = "") -> None:
     """
     Play a video using mpv
@@ -84,6 +84,7 @@ async def play_mpv_video(video: Video, title: str, mpv_opts: str = "") -> None:
     cmd_parts.append(_escape_shell_arg(video.url))
     full_cmd = " ".join(cmd_parts)
 
+    print("Execute:", full_cmd)
     process = await create_subprocess_shell(full_cmd, shell=True)
     await process.wait()
 
@@ -110,6 +111,8 @@ async def play_mpv_batched_videos(videos: Sequence[Video], titles: Sequence[str]
     try:
         cmd_parts.append(_escape_shell_arg(temp_file.name))
         full_cmd = " ".join(cmd_parts)
+
+        print("Execute:", full_cmd)
         process = await create_subprocess_shell(full_cmd, shell=True)
         await process.wait()
     finally:

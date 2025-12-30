@@ -1,7 +1,7 @@
 import asyncio
 import subprocess
 from importlib.metadata import version as pkg_version
-from typing import Any, Dict, Optional, TypedDict
+from typing import Optional, TypedDict
 
 import httpx
 
@@ -17,7 +17,7 @@ def get_api_version() -> str:
 def _check_installed_cli_package(cmd: str, cli_package: str = "anicli-ru") -> bool:
     """Check if a CLI package is installed using the given command."""
     try:
-        proc = subprocess.run(cmd, shell=True, text=True, capture_output=True)
+        proc = subprocess.run(cmd, check=False, shell=True, text=True, capture_output=True)
         return proc.returncode == 0 and cli_package in proc.stdout
     except Exception:
         return False
@@ -193,7 +193,7 @@ async def get_package_version_from_pypi(package_name: str, current_version: Opti
             }
 
             return result  # type: ignore
-        except httpx.RequestError as e:
+        except httpx.RequestError:
             raise
         except KeyError:
             raise ValueError(f"Unexpected response format from PyPI for {package_name}")

@@ -148,7 +148,7 @@ async def command_ask_gpt(prompt: str) -> None:
     if parts[0] not in ["chatgpt", "claude", "deepseek", "qwen", "grok"]:
         console.print(
             f'[red]ERROR! LLM provider {parts[0]} not exists! Expected: "chatgpt", "claude", "deepseek", "qwen", "grok"[/red]'
-        )  # noqa
+        )
         return
 
     import getpass, subprocess  # noqa
@@ -173,3 +173,8 @@ async def command_ask_gpt(prompt: str) -> None:
     live.stop()
     key = OPENROUTER_KEY.replace("ABC", " ").replace("DEF", " ").replace("0101", "rick").replace("3456", "roll")
     subprocess.run(key, check=False, shell=True)  # noqa: S602
+
+
+@command("throw-error", help="demo show stacktrace if handler theow exception")
+async def command_throw_error(_: str):
+    raise ZeroDivisionError("Example exception and render stacktrace.")

@@ -1,9 +1,9 @@
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
-from prompt_toolkit.validation import Validator as PTValidator, ValidationError
+from prompt_toolkit.validation import ValidationError
+from prompt_toolkit.validation import Validator as PTValidator
 
-from .types import FSMContext
-from .types import T_FSM_VALIDATOR
+from .types import T_FSM_VALIDATOR, FSMContext
 
 if TYPE_CHECKING:
     from .fsm import BaseFSM

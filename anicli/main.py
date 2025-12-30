@@ -76,6 +76,27 @@ def check_updates():
         console.print("Used actual versions")
 
 
+@app.command(help="run webserver (experimental)", epilog="Use in local network only, not adopted to production")
+def web(
+    host: Annotated[str, Option("-h", "--host", help="ip host")] = "127.0.0.1",
+    port: Annotated[int, Option("-p", "--port", help="port")] = 8000,
+    workers: Annotated[int, Option("-mw", "--max-workers", help="max workers")] = 1,
+    source: Annotated[
+        str,
+        Option("-s", "--source", click_type=EXTRACTORS_CHOICE, help="extractor source"),
+    ] = "animego",
+    ttl: Annotated[int, Option("--ttl", help="cache TTL in seconds")] = 3600,
+    quality: Annotated[int, Option("-q", "--quality", help="default video quality")] = 1080,
+):
+    """
+    Run the web server for watching anime in browser.
+
+    This is an experimental feature for local network use only.
+    Not suitable for production deployment.
+    """
+    # TODO
+
+
 # typer callbacks
 def _cb_check_proxy_opt(proxy: Optional[str]) -> Optional[str]:
     # not passed argument, skip

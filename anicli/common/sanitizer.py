@@ -94,8 +94,9 @@ def sanitize_filename(s: str, restricted: bool = False, is_id: bool = False) -> 
 
     # If this is not an identifier, normalize spacing/underscores and trim edges
     if not is_id:
-        # Collapse any whitespace into a single underscore
-        result = re.sub(r"\s+", "_", result)
+        # Collapse any whitespace into a single space
+        # (in original yt-dlp sanitaizer replace to '_')
+        result = re.sub(r"\s+", " ", result)
         # Collapse multiple underscores into one
         result = re.sub(r"_+", "_", result)
         # Strip leading/trailing dots, underscores and dashes

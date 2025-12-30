@@ -1,9 +1,12 @@
 from typing import List, Tuple, Union, cast
+from urllib.parse import urlsplit
 
 from anicli_api.base import BaseEpisode
 from anicli_api.player.base import Video
+from anicli_api.source.anilibme import BaseSource
 from anicli_api.tools.helpers import get_video_by_quality
 from rich import get_console
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
 from anicli.common.anicli_api_helpers import videos_iterator
 from anicli.common.mpv import play_mpv_batched_videos, play_mpv_video
@@ -78,12 +81,14 @@ class OngoingFSM(BaseFSM[OngoingContext]):
         elif state_name == "step_2":
             episodes = self.ctx.get("episodes", [])
             # Add both index-based and title-based completions
-            completions = [(str(i), result.title) for i, result in enumerate(episodes, 1)]
+            completions = [(str(i), f"{result.title} {result.ordinal}") for i, result in enumerate(episodes, 1)]
             return completions
         elif state_name in ("step_3", "step_3_batched"):
             sources = self.ctx.get("sources", [])
             # Add both index-based and title-based completions
-            completions = [(str(i), result.title) for i, result in enumerate(sources, 1)]
+            completions = [
+                (str(i), f"{result.title} ({urlsplit(result.url).netloc})") for i, result in enumerate(sources, 1)
+            ]
             return completions
         return []
 
@@ -110,6 +115,9 @@ class OngoingFSM(BaseFSM[OngoingContext]):
     @fsm_state("step_2", prompt_message="~/ongoing/{result}/episode ")
     async def step_2(self, user_input: str):
         episodes = self.ctx.get("episodes", [])
+        if not episodes:
+            CONSOLE.print("not available episodes")
+            return await self.go_back()
         self.set_prompt_var("episode", f"[{user_input}]")
 
         # single episode choice
@@ -146,7 +154,9 @@ class OngoingFSM(BaseFSM[OngoingContext]):
     async def step_3(self, user_input: str):
         default_quality = self.ctx["default_quality"]  # type: ignore
         sources = self.ctx.get("sources", [])
-
+        if not sources:
+            CONSOLE.print("not available sources")
+            return await self.go_back()
         self.set_prompt_var("video", user_input)
 
         value = int(user_input) - 1
@@ -196,26 +206,42 @@ class OngoingFSM(BaseFSM[OngoingContext]):
         m3u_size = self.ctx["m3u_size"]  # type: ignore
         counter = 1
         playlist: List[Tuple[Video, str]] = []
-        async for video, title in videos_iterator(
-            selected,  # type: ignore
-            initial_anime=self.ctx["anime"],  # type: ignore
-            initial_video=video_candidate,
-            initial_source=source,
-        ):
-            if counter % m3u_size == 0:
+        with Progress(
+            TextColumn("{task.description}"),
+            BarColumn(bar_width=20),
+            MofNCompleteColumn(),
+            console=CONSOLE,
+            transient=True,
+        ) as progress:
+            task_id = progress.add_task("Processing...", total=None)
+            async for video, title in videos_iterator(
+                selected,  # type: ignore
+                initial_anime=self.ctx["anime"],  # type: ignore
+                initial_video=video_candidate,
+                initial_source=source,
+            ):
+                progress.update(task_id, description=f"Fetch: {title[:20]}")
+                progress.advance(task_id)
+                if counter % m3u_size == 0:
+                    progress.stop()
+                    CONSOLE.print(f"Running playlist batch {counter // m3u_size}")
+                    await play_mpv_batched_videos(
+                        [v[0] for v in playlist],  # video
+                        [v[1] for v in playlist],  # str title
+                        mpv_opts=opts,
+                    )
+                    playlist.clear()
+                    progress.start()
+                playlist.append((video, title))
+                counter += 1
+            # Финальный запуск
+            if playlist:
+                progress.stop()
+                CONSOLE.print("Running final playlist batch")
                 await play_mpv_batched_videos(
-                    [v[0] for v in playlist],  # videos
-                    [v[1] for v in playlist],  # titles
+                    [v[0] for v in playlist],  # video
+                    [v[1] for v in playlist],  # str title
                     mpv_opts=opts,
                 )
                 playlist.clear()
-            playlist.append((video, title))
-            counter += 1
-        if playlist:
-            await play_mpv_batched_videos(
-                [v[0] for v in playlist],  # videos
-                [v[1] for v in playlist],  # titles
-                mpv_opts=opts,
-            )
-            playlist.clear()
         await self.go_back()

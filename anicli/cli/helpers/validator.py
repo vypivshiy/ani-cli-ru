@@ -1,4 +1,4 @@
-from typing import List, Literal, Union, Sequence, Any
+from typing import Any, List, Literal, Sequence, Union
 
 from anicli.common.utils import is_arabic_digit
 
@@ -31,6 +31,8 @@ def validate_prompt_index(results: Union[Sequence[Any], List[Any]], user_input: 
 
 
 def validate_prompt_episode(results: Union[Sequence[Any], List[Any]], user_input: str) -> Union[str, Literal[True]]:
+    if user_input == "":
+        return "episode index or slice required"
     try:
         _mask = parse_selection_mask(user_input, len(results))
         return True
