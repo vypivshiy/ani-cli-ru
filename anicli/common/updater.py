@@ -6,6 +6,20 @@ from typing import Optional, TypedDict
 import httpx
 
 
+CMD_PIPX_UNINSTALL = "pipx uninstall anicli-ru"
+CMD_PIPX_INSTALL = "pipx install anicli-ru"
+CMD_PIPX_UPGRADE_FORCE = "pipx upgrade --force {}"
+CMD_PIPX_UPGRADE = "pipx upgrade {}"
+CMD_PIPX_UPGRADE_PIP_PKG = "pipx runpip {} install --upgrade --force-reinstall {}"
+CMD_PIPX_INSTALL_UPGRADE = "pipx runpip {} install {} -U"
+
+CMD_UV_UNINSTALL = "uv tool uninstall anicli-ru"
+CMD_UV_INSTALL = "uv tool install anicli-ru"
+CMD_UV_UPGRADE_REINSTALL = "uv tool upgrade {} --reinstall"
+CMD_UV_UPGRADE = "uv tool upgrade {}"
+CMD_UV_UPGRADE_PACKAGE = "uv tool upgrade {} --upgrade-package {}"
+
+
 class UpdateExceptionError(Exception):
     pass
 
@@ -36,8 +50,8 @@ def is_installed_in_uv() -> bool:
 def reinstall_pipx():
     """Completely reinstall anicli-ru using pipx."""
     try:
-        subprocess.run("pipx uninstall anicli-ru", shell=True, check=True)
-        subprocess.run("pipx install anicli-ru", shell=True, check=True)
+        subprocess.run(CMD_PIPX_UNINSTALL, shell=True, check=True)
+        subprocess.run(CMD_PIPX_INSTALL, shell=True, check=True)
         return True
     except subprocess.CalledProcessError as e:
         msg = "Error reinstalling via pipx"
@@ -47,8 +61,8 @@ def reinstall_pipx():
 def reinstall_uv():
     """Completely reinstall anicli-ru using uv."""
     try:
-        subprocess.run("uv tool uninstall anicli-ru", shell=True, check=True)
-        subprocess.run("uv tool install anicli-ru", shell=True, check=True)
+        subprocess.run(CMD_UV_UNINSTALL, shell=True, check=True)
+        subprocess.run(CMD_UV_INSTALL, shell=True, check=True)
         return True
     except subprocess.CalledProcessError as e:
         msg = "Error reinstalling via uv"
@@ -73,32 +87,32 @@ def update_pipx(package: str = "anicli-ru", dependency: str = "anicli-api", forc
     try:
         if force:
             # Force pipx to re-run installation (under the hood pip install --force-reinstall)
-            subprocess.run(f"pipx upgrade --force {package}", shell=True, check=True)
+            subprocess.run(CMD_PIPX_UPGRADE_FORCE.format(package), shell=True, check=True)
 
             # Forcibly reinstall dependency inside the package venv
             subprocess.run(
-                f"pipx runpip {package} install --upgrade --force-reinstall {dependency}",
+                CMD_PIPX_UPGRADE_PIP_PKG.format(package, dependency),
                 shell=True,
                 check=True,
             )
             # repeat to be robust against pip cache/state (optional but mirrors prior behavior)
             subprocess.run(
-                f"pipx runpip {package} install --upgrade --force-reinstall {dependency}",
+                CMD_PIPX_UPGRADE_PIP_PKG.format(package, dependency),
                 shell=True,
                 check=True,
             )
         else:
             # Normal upgrade path
-            subprocess.run(f"pipx upgrade {package}", shell=True, check=True)
+            subprocess.run(CMD_PIPX_UPGRADE.format(package), shell=True, check=True)
 
             # Update dependency inside the venv normally
             subprocess.run(
-                f"pipx runpip {package} install {dependency} -U",
+                CMD_PIPX_INSTALL_UPGRADE.format(package, dependency),
                 shell=True,
                 check=True,
             )
             subprocess.run(
-                f"pipx runpip {package} install {dependency} -U",
+                CMD_PIPX_INSTALL_UPGRADE.format(package, dependency),
                 shell=True,
                 check=True,
             )
@@ -127,17 +141,17 @@ def update_uv(package: str = "anicli-ru", dependency: str = "anicli-api", force:
     try:
         if force:
             # Try upgrade with reinstall (reinstalls packages in the tool environment)
-            subprocess.run(f"uv tool upgrade {package} --reinstall", shell=True, check=True)
+            subprocess.run(CMD_UV_UPGRADE_REINSTALL.format(package), shell=True, check=True)
 
             # Reinstall/refresh specific dependency inside the tool environment.
             subprocess.run(
-                f"uv tool upgrade {package} --reinstall-package {dependency}",
+                CMD_UV_UPGRADE_PACKAGE.format(package, dependency),
                 shell=True,
                 check=True,
             )
             # repeat to be robust against caching/refresh timing (optional)
             subprocess.run(
-                f"uv tool upgrade {package} --reinstall-package {dependency}",
+                CMD_UV_UPGRADE_PACKAGE.format(package, dependency),
                 shell=True,
                 check=True,
             )
@@ -146,16 +160,17 @@ def update_uv(package: str = "anicli-ru", dependency: str = "anicli-api", force:
             # subprocess.run(f"uv tool install {package} --force", shell=True, check=True)
         else:
             # Normal upgrade
-            subprocess.run(f"uv tool upgrade {package}", shell=True, check=True)
+            
+            subprocess.run(CMD_UV_UPGRADE.format(package), shell=True, check=True)
 
             # Normal dependency upgrade inside the tool environment
             subprocess.run(
-                f"uv tool upgrade {package} --upgrade-package {dependency}",
+                CMD_UV_UPGRADE_PACKAGE.format(package, dependency),
                 shell=True,
                 check=True,
             )
             subprocess.run(
-                f"uv tool upgrade {package} --upgrade-package {dependency}",
+                CMD_UV_UPGRADE_PACKAGE.format(package, dependency),
                 shell=True,
                 check=True,
             )
