@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+    <div style="text-align: center; margin-top: 2rem;">
+        <h2>Find Anime</h2>
+        <form action="/search" method="get">
+            <label for="source">Source:</label>
+            <select name="source" id="source">
+                {% for ext in extractors %}
+                <option value="{{ ext }}" {% if ext == current_extractor %}selected{% endif %}>{{ ext }}</option>
+                {% endfor %}
+            </select>
+            
+            <input type="text" name="q" placeholder="Anime title..." required style="width: 100%; max-width: 400px; margin: 1rem auto; display: block;">
+            <button type="submit">Search</button>
+        </form>
+    </div>
+{% endblock %}

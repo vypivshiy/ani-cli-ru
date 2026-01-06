@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anicli Web</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+    <style>
+        /* Base Layout */
+        body { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 1rem; 
+        }
+        
+        /* Navigation */
+        .nav { 
+            margin-bottom: 1.5rem; 
+            border-bottom: 1px solid #555; 
+            padding-bottom: 1rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .nav h1 { margin: 0; font-size: 1.5rem; margin-right: auto; }
+
+        /* Grid System for Anime/Episodes */
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
+            gap: 1rem; 
+        }
+        /* Mobile Grid Fix */
+        @media (max-width: 600px) {
+            .grid { grid-template-columns: repeat(2, 1fr); }
+            .card a { font-size: 0.9rem; }
+        }
+
+        /* Cards */
+        .card { 
+            border: 1px solid #444; 
+            padding: 0.5rem; 
+            border-radius: 8px; 
+            text-align: center; 
+            background: #252525;
+            transition: transform 0.2s;
+        }
+        .card:hover { transform: translateY(-2px); border-color: #666; }
+        .card img { max-width: 100%; height: auto; border-radius: 4px; aspect-ratio: 2/3; object-fit: cover; }
+        .card a { display: block; margin-top: 0.5rem; text-decoration: none; color: #eee; }
+
+        /* Player Layout */
+        .player-container {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        /* Player Box - Fix Invisible Player */
+        .video-box {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        #artplayer {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Controls Sidebar */
+        .controls-box {
+            background: #202020;
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        /* Responsive Player */
+        @media (max-width: 900px) {
+            .player-container { grid-template-columns: 1fr; }
+            .video-box { min-height: 240px; }
+            .controls-box { order: 2; }
+        }
+
+        /* Utility */
+        .btn-sm { padding: 0.2rem 0.6rem; font-size: 0.9rem; }
+        .active-source { border-left: 3px solid var(--button-base); background: #333; }
+        .source-item { 
+            display: block; 
+            padding: 0.5rem; 
+            text-decoration: none; 
+            border-bottom: 1px solid #333; 
+            color: #ccc;
+        }
+        .source-item small { color: #888; display: block; font-size: 0.8em;}
+        .source-item:hover { background: #333; }
+        
+        .nav-row { display: flex; gap: 0.5rem; justify-content: space-between; align-items: center; }
+        .nav-input { width: 60px !important; margin: 0 !important; text-align: center; padding: 5px; }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <h1>Anicli Web</h1>
+        <a href="/">Home</a>
+        <a href="/ongoing">Ongoings</a>
+    </div>
+    {% block content %}{% endblock %}
+</body>
+</html>

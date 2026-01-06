@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+    <div style="margin-bottom: 1rem;">
+        <a href="javascript:history.back()" class="btn-sm">← Back</a>
+    </div>
+    
+    <h2>{{ anime.title }}</h2>
+    <p style="opacity: 0.8; font-size: 0.9rem;">{{ anime.description|truncate(300) }}</p>
+    
+    <h3>Episodes</h3>
+    <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));">
+        {% for ep in episodes %}
+        <a href="/play/{{ ep.uid }}?anime_uid={{ anime_uid }}" style="text-decoration: none;">
+            <button style="width: 100%; padding: 0.5rem;">{{ ep.num }}</button>
+        </a>
+        {% endfor %}
+    </div>
+{% endblock %}

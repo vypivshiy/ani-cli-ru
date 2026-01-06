@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+    <a href="javascript:history.back()" class="back-btn">← Back</a>
+    <h2>Select Source</h2>
+    <p>Episode: {{ episode.title }}</p>
+    
+    <ul>
+        {% for src in sources %}
+        <li>
+            <a href="/play/{{ src.uid }}">{{ src.title }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+{% endblock %}
