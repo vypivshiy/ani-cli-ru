@@ -1,15 +1,16 @@
 import base64
 import json
 import secrets
+import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import quote, urlparse
 
 import httpx
 from anicli_api.player.base import Video
-from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from anicli.common.extractors import dynamic_load_extractor_module, get_extractor_modules
@@ -22,52 +23,121 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
 class Options:
-    CHUNK_SIZE = 1024*1024  # 1M
+    CHUNK_SIZE = 1024 * 1024  # 1M
     EXTRACTOR_NAME = "animego"
     MAX_QUALITY = 2060
-    TTL = 3600 # seconds
+    TTL = 3600  # seconds
+
 
 OPTIONS = Options()
 
 
-# --- MEMORY STORAGE ---
+# --- MEMORY STORAGE WITH TTL ---
 class MemoryStorage:
-    def __init__(self):
-        # Хранилище: UUID -> Object
-        self.objects: Dict[str, Any] = {}
+    def __init__(self, ttl: int = 3600):
+        # Хранилище: UUID -> (Object, timestamp)
+        self.objects: Dict[str, Tuple[Any, float]] = {}
         # Кэш для быстрого поиска UUID по id(object) чтобы не дублировать
         self._cache_ids: Dict[int, str] = {}
+        self.ttl = ttl
+
+    def _cleanup_expired(self):
+        """Удаляет устаревшие объекты"""
+        current_time = time.time()
+        expired_uids = [uid for uid, (_, timestamp) in self.objects.items() if current_time - timestamp > self.ttl]
+        for uid in expired_uids:
+            obj, _ = self.objects.pop(uid)
+            # Удаляем из кэша ID
+            obj_id = id(obj)
+            if obj_id in self._cache_ids:
+                del self._cache_ids[obj_id]
 
     def save(self, obj: Any) -> str:
         """Сохраняет объект и возвращает UUID. Если объект уже есть, вернет старый UUID"""
+        self._cleanup_expired()
+
         obj_id = id(obj)
         if obj_id in self._cache_ids:
-            return self._cache_ids[obj_id]
+            uid = self._cache_ids[obj_id]
+            # Обновляем timestamp
+            self.objects[uid] = (obj, time.time())
+            return uid
 
         uid = str(uuid.uuid4())
-        self.objects[uid] = obj
+        self.objects[uid] = (obj, time.time())
         self._cache_ids[obj_id] = uid
         return uid
 
     def get(self, uid: str) -> Any:
-        return self.objects.get(uid)
+        """Получает объект. Возвращает None если истек TTL"""
+        self._cleanup_expired()
+
+        if uid not in self.objects:
+            return None
+
+        obj, timestamp = self.objects[uid]
+        if time.time() - timestamp > self.ttl:
+            del self.objects[uid]
+            obj_id = id(obj)
+            if obj_id in self._cache_ids:
+                del self._cache_ids[obj_id]
+            return None
+
+        return obj
 
 
 class HeaderStorage:
-    def __init__(self):
-        self._store: dict[str, dict[str, str]] = {}
+    def __init__(self, ttl: int = 3600):
+        # Хранилище: hid -> (headers, timestamp)
+        self._store: Dict[str, Tuple[Dict[str, str], float]] = {}
+        self.ttl = ttl
+
+    def _cleanup_expired(self):
+        """Удаляет устаревшие заголовки"""
+        current_time = time.time()
+        expired_hids = [hid for hid, (_, timestamp) in self._store.items() if current_time - timestamp > self.ttl]
+        for hid in expired_hids:
+            del self._store[hid]
 
     def save(self, headers: dict[str, str]) -> str:
+        self._cleanup_expired()
         hid = uuid.uuid4().hex
-        self._store[hid] = headers
+        self._store[hid] = (headers, time.time())
         return hid
 
     def get(self, hid: str) -> dict[str, str] | None:
-        return self._store.get(hid)
+        self._cleanup_expired()
+
+        if hid not in self._store:
+            return None
+
+        headers, timestamp = self._store[hid]
+        if time.time() - timestamp > self.ttl:
+            del self._store[hid]
+            return None
+
+        return headers
 
 
-header_storage = HeaderStorage()
-storage = MemoryStorage()
+# --- GLOBAL STATE ---
+class GlobalState:
+    """Глобальное состояние для всех пользователей (локальное использование)"""
+
+    def __init__(self):
+        self.preferred_source = OPTIONS.EXTRACTOR_NAME
+
+    def set_source(self, source: str):
+        extractors = get_extractor_modules()
+        if source in extractors:
+            self.preferred_source = source
+
+    def get_source(self) -> str:
+        return self.preferred_source
+
+
+global_state = GlobalState()
+header_storage = HeaderStorage(ttl=OPTIONS.TTL)
+storage = MemoryStorage(ttl=OPTIONS.TTL)
 app = FastAPI(docs_url=None, redoc_url=None)
 http_client = httpx.AsyncClient(
     headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
@@ -81,10 +151,12 @@ def generate_qr_code(url: str) -> str:
     try:
         # Легковесная библиотека только для терминала
         import segno
+
         qr = segno.make(url)
-        
+
         # Рендерим в терминал как Unicode блоки
         from io import StringIO
+
         out = StringIO()
         qr.terminal(out=out, border=1, compact=True)
         return out.getvalue()
@@ -99,7 +171,7 @@ async def startup_event():
     print(f"\n{'=' * 60}")
     print(f"Server started at: {url}")
     print(f"{'=' * 60}")
-    
+
     # Генерируем QR код
     print("\nScan QR code to access from mobile:")
     print(generate_qr_code(url))
@@ -139,19 +211,6 @@ def create_url_rewriter(base_proxy_url: str, hid: Optional[str] = None):
     return rewriter
 
 
-def get_preferred_source(request: Request) -> str:
-    """Получает предпочитаемый источник из cookie или параметра"""
-    source = request.query_params.get("source")
-    if not source:
-        source = request.cookies.get("preferred_source", OPTIONS.EXTRACTOR_NAME)
-    return source
-
-
-def set_source_cookie(response: Response, source: str):
-    """Устанавливает cookie с предпочитаемым источником"""
-    response.set_cookie(key="preferred_source", value=source, max_age=30*24*60*60)  # 30 дней
-
-
 # --- MIDDLEWARE & AUTH ---
 
 
@@ -179,34 +238,36 @@ async def auth_middleware(request: Request, call_next):
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request, response: Response, source: str = None):
-    if source is None:
-        source = get_preferred_source(request)
-    
+async def index(request: Request):
     extractors = get_extractor_modules()
-
-    # Проверяем, что выбранный source существует
-    if source not in extractors:
-        source = OPTIONS.EXTRACTOR_NAME
-
-    # Сохраняем выбранный источник
-    set_source_cookie(response, source)
+    current_source = global_state.get_source()
 
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
             "extractors": extractors,
-            "current_extractor": source,
+            "current_extractor": current_source,
+            "can_change_source": True,
         },
     )
 
 
+@app.post("/set-source")
+async def set_source(request: Request):
+    """Эндпоинт для изменения глобального источника"""
+    data = await request.json()
+    source = data.get("source")
+    if source:
+        global_state.set_source(source)
+        return {"status": "ok", "source": global_state.get_source()}
+    return {"status": "error", "message": "No source provided"}
+
+
 @app.get("/search", response_class=HTMLResponse)
-async def search(request: Request, response: Response, q: str, source: str = None):
-    if source is None:
-        source = get_preferred_source(request)
-    
+async def search(request: Request, q: str):
+    source = global_state.get_source()
+
     extractor_cls = dynamic_load_extractor_module(source)
     if not extractor_cls:
         return templates.TemplateResponse(
@@ -215,19 +276,16 @@ async def search(request: Request, response: Response, q: str, source: str = Non
                 "request": request,
                 "error_title": "Extractor Not Found",
                 "error_message": f"The extractor '{source}' was not found.",
-                "back_url": "/"
-            }
+                "back_url": "/",
+            },
         )
-    
-    # Сохраняем выбранный источник
-    set_source_cookie(response, source)
-    
+
     extractor = extractor_cls.Extractor()
     results = await extractor.a_search(q)
     data = [{"uid": storage.save(r), "title": r.title, "meta": r} for r in results]
-    
+
     extractors = get_extractor_modules()
-    
+
     return templates.TemplateResponse(
         "grid.html",
         {
@@ -237,17 +295,17 @@ async def search(request: Request, response: Response, q: str, source: str = Non
             "search_query": q,
             "extractors": extractors,
             "current_extractor": source,
-            "back_url": "/"
-        }
+            "back_url": "/",
+            "can_change_source": True,
+        },
     )
 
 
 @app.get("/ongoing", response_class=HTMLResponse)
-async def ongoing(request: Request, response: Response, source: str = None):
+async def ongoing(request: Request):
     """Список онгоингов с поддержкой выбора extractor"""
-    if source is None:
-        source = get_preferred_source(request)
-    
+    source = global_state.get_source()
+
     extractor_cls = dynamic_load_extractor_module(source)
     if not extractor_cls:
         return templates.TemplateResponse(
@@ -256,13 +314,10 @@ async def ongoing(request: Request, response: Response, source: str = None):
                 "request": request,
                 "error_title": "Extractor Not Found",
                 "error_message": f"The extractor '{source}' was not found.",
-                "back_url": "/"
-            }
+                "back_url": "/",
+            },
         )
-    
-    # Сохраняем выбранный источник
-    set_source_cookie(response, source)
-    
+
     extractor = extractor_cls.Extractor()
     results = await extractor.a_ongoing()
     data = [{"uid": storage.save(r), "title": r.title, "meta": r} for r in results]
@@ -278,7 +333,8 @@ async def ongoing(request: Request, response: Response, source: str = None):
             "title": "Ongoings",
             "extractors": extractors,
             "current_extractor": source,
-            "back_url": "/"
+            "back_url": "/",
+            "can_change_source": True,
         },
     )
 
@@ -293,8 +349,8 @@ async def anime_details(request: Request, uid: str, from_page: str = None):
                 "request": request,
                 "error_title": "Anime Not Found",
                 "error_message": "The anime you're looking for has expired or doesn't exist.",
-                "back_url": from_page or "/"
-            }
+                "back_url": from_page or "/",
+            },
         )
 
     anime = await result.a_get_anime()
@@ -320,9 +376,11 @@ async def anime_details(request: Request, uid: str, from_page: str = None):
 
     # Сохраняем список эпизодов для переиспользования в player
     episodes_list_uid = storage.save(all_episodes_info)
-    
+
     # Определяем URL для возврата
     back_url = from_page if from_page else "/"
+
+    extractors = get_extractor_modules()
 
     return templates.TemplateResponse(
         "episodes.html",
@@ -332,7 +390,10 @@ async def anime_details(request: Request, uid: str, from_page: str = None):
             "episodes": ep_data,
             "anime_uid": uid,
             "episodes_list_uid": episodes_list_uid,
-            "back_url": back_url
+            "back_url": back_url,
+            "extractors": extractors,
+            "current_extractor": global_state.get_source(),
+            "can_change_source": False,
         },
     )
 
@@ -357,8 +418,8 @@ async def player(
                 "request": request,
                 "error_title": "Episode Not Found",
                 "error_message": "The episode you're trying to watch has expired or doesn't exist.",
-                "back_url": f"/anime/{anime_uid}" if anime_uid else "/"
-            }
+                "back_url": f"/anime/{anime_uid}" if anime_uid else "/",
+            },
         )
 
     sources = await episode.a_get_sources()
@@ -369,19 +430,17 @@ async def player(
                 "request": request,
                 "error_title": "No Sources Found",
                 "error_message": "No video sources are available for this episode.",
-                "back_url": f"/anime/{anime_uid}" if anime_uid else "/"
-            }
+                "back_url": f"/anime/{anime_uid}" if anime_uid else "/",
+            },
         )
 
     if source_index < 0 or source_index >= len(sources):
         source_index = 0
 
     current_source = sources[source_index]
-    # okcdn case:
-    # для успешного трансляции видеопотока без обновления через API ok.ru
-    # 
-    # useragent запроса и видеопотока должны совпадать
-    videos: List[Video] = await current_source.a_get_videos(headers={"User-Agent": request.headers.get("User-Agent", "Mozilla/5.0")})
+    videos: List[Video] = await current_source.a_get_videos(
+        headers={"User-Agent": request.headers.get("User-Agent", "Mozilla/5.0")}
+    )
 
     if not videos:
         return templates.TemplateResponse(
@@ -390,8 +449,8 @@ async def player(
                 "request": request,
                 "error_title": "No Video Streams",
                 "error_message": "No video streams were found for this source.",
-                "back_url": f"/anime/{anime_uid}" if anime_uid else "/"
-            }
+                "back_url": f"/anime/{anime_uid}" if anime_uid else "/",
+            },
         )
 
     base_proxy = str(request.url_for("proxy_stream"))
@@ -402,7 +461,6 @@ async def player(
     for vid in videos:
         hid = None
         if vid.headers:
-            # headers гарантированно корректны и специфичны для этого Video
             hid = header_storage.save(vid.headers)
 
         rewriter = create_url_rewriter(base_proxy, hid=hid)
@@ -465,9 +523,10 @@ async def player(
         }
         for idx, src in enumerate(sources)
     ]
-    
-    # Определяем URL для возврата
+
     back_url = f"/anime/{anime_uid}" if anime_uid else (from_page if from_page else "/")
+
+    extractors = get_extractor_modules()
 
     return templates.TemplateResponse(
         "player.html",
@@ -486,7 +545,10 @@ async def player(
             "all_episodes": all_episodes_data,
             "all_episodes_json": json.dumps(all_episodes_data),
             "back_url": back_url,
-            "from_page": from_page
+            "from_page": from_page,
+            "extractors": extractors,
+            "current_extractor": global_state.get_source(),
+            "can_change_source": False,
         },
     )
 
@@ -508,13 +570,10 @@ async def proxy_stream(
     }
 
     if hid:
-        # Получаем заголовки из хранилища (если есть)
         video_headers = header_storage.get(hid)
         if video_headers:
             upstream_headers.update(video_headers)
 
-    # --- КЛЮЧЕВОЙ МОМЕНТ 1: Проброс Range ---
-    # Браузер/плеер при перемотке отправляет Range: bytes=1234-
     if "range" in request.headers:
         upstream_headers["Range"] = request.headers["range"]
 
@@ -522,14 +581,13 @@ async def proxy_stream(
     rewriter = create_url_rewriter(base_proxy_url, hid=hid)
 
     try:
-        # Получаем ProxyResponse (заголовки уже у нас, а стрим еще не начался)
         proxy_ctx = await stream(
             target_url,
             http_client,
             rewriter,
             headers=upstream_headers,
             mode="auto",
-            chunk_size=OPTIONS.CHUNK_SIZE,  # Чуть больше чанк для бинарников
+            chunk_size=OPTIONS.CHUNK_SIZE,
         )
 
         return StreamingResponse(
@@ -540,6 +598,5 @@ async def proxy_stream(
         )
 
     except Exception as e:
-        # Логирование
         print(f"Proxy error for {target_url}: {e}")
         raise HTTPException(502, f"Upstream error: {e}")

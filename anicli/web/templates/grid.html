@@ -3,17 +3,6 @@
     <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
         <a href="{{ back_url }}" class="btn-sm">← Back</a>
         <h2 style="margin: 0;">{{ title }}</h2>
-        
-        {% if extractors %}
-        <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center;">
-            <label for="source">Source:</label>
-            <select name="source" id="source" onchange="switchSource(this.value)">
-                {% for ext in extractors %}
-                <option value="{{ ext }}" {% if ext == current_extractor %}selected{% endif %}>{{ ext }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        {% endif %}
     </div>
     
     <div class="grid">
@@ -26,14 +15,4 @@
         </div>
         {% endfor %}
     </div>
-
-    {% if extractors %}
-    <script>
-        function switchSource(source) {
-            const url = new URL(window.location);
-            url.searchParams.set('source', source);
-            window.location.href = url.toString();
-        }
-    </script>
-    {% endif %}
 {% endblock %}

@@ -144,8 +144,53 @@
         <div class="nav-links">
             <a href="/">Home</a>
             <a href="/ongoing">Ongoings</a>
+            {% if can_change_source %}
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <label for="global-source">Source:</label>
+                <select name="source" id="global-source" onchange="changeGlobalSource(this.value)">
+                    {% for ext in extractors %}
+                    <option value="{{ ext }}" {% if ext == current_extractor %}selected{% endif %}>{{ ext }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
         </div>
     </div>
     {% block content %}{% endblock %}
+    
+    <footer style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #555; text-align: center; color: #888; font-size: 0.9rem;">
+        <p>
+            <a href="https://github.com/vypivshiy/ani-cli-ru" target="_blank" style="color: #aaa;">
+                GitHub: vypivshiy/ani-cli-ru
+            </a>
+        </p>
+        <p style="margin-top: 0.5rem;">⚠️ This server is intended for local use only</p>
+    </footer>
+
+    {% if can_change_source %}
+    <script>
+        async function changeGlobalSource(source) {
+            try {
+                const response = await fetch('/set-source', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ source: source })
+                });
+                
+                if (response.ok) {
+                    // Перезагружаем страницу если мы на search или ongoing
+                    const currentPath = window.location.pathname;
+                    if (currentPath === '/' || currentPath === '/search' || currentPath === '/ongoing') {
+                        window.location.reload();
+                    }
+                }
+            } catch (error) {
+                console.error('Error setting source:', error);
+            }
+        }
+    </script>
+    {% endif %}
 </body>
 </html>
