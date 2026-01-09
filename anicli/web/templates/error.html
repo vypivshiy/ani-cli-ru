@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="error-container">
+        <div class="error-icon">⚠️</div>
+        <h1 class="error-title">{{ error_title }}</h1>
+        <p class="error-message">{{ error_message }}</p>
+        <div class="error-actions">
+            <a href="{{ back_url }}" style="text-decoration: none;">
+                <button>← Go Back</button>
+            </a>
+            <a href="/" style="text-decoration: none;">
+                <button>🏠 Home</button>
+            </a>
+        </div>
+    </div>
+{% endblock %}

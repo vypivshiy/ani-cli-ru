@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block content %}
+    <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem;">
+        <a href="{{ back_url }}" class="btn-sm">← Back to Episodes</a>
+        <span style="font-weight: bold;">{{ title }}</span>
+    </div>
+    
+    <div class="player-container">
+        <div class="video-box">
+            <div id="artplayer"></div>
+        </div>
+
+        <div class="controls-box">
+            
+            <div style="border-bottom: 1px solid #444; padding-bottom: 1rem;">
+                <label>Episode Navigation</label>
+                <div class="nav-row">
+                    {% if nav.prev_uid %}
+                        <button class="btn-sm" onclick="goToEpisode('{{ nav.prev_uid }}')">← Prev</button>
+                    {% else %}
+                        <button class="btn-sm" disabled style="opacity: 0.3">← Prev</button>
+                    {% endif %}
+
+                    <div style="display: flex; gap: 5px;">
+                        <select id="episode-selector" class="nav-input" style="width: 80px;">
+                            {% for ep in all_episodes %}
+                            <option value="{{ ep.uid }}" {% if ep.num == nav.current_num %}selected{% endif %}>
+                                Ep {{ ep.num }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" class="btn-sm" onclick="goToSelectedEpisode()">Go</button>
+                    </div>
+
+                    {% if nav.next_uid %}
+                        <button class="btn-sm" onclick="goToEpisode('{{ nav.next_uid }}')">Next →</button>
+                    {% else %}
+                        <button class="btn-sm" disabled style="opacity: 0.3">Next →</button>
+                    {% endif %}
+                </div>
+                
+                {% if nav.total_episodes %}
+                <div style="margin-top: 0.5rem; text-align: center; color: #888; font-size: 0.9em;">
+                    Episode {{ nav.current_num }} / {{ nav.total_episodes }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label>Source / Dubbing</label>
+                <div style="max-height: 300px; overflow-y: auto; border: 1px solid #444; border-radius: 4px;">
+                    {% for src in sources %}
+                    <a href="javascript:void(0)" 
+                       onclick="switchSource({{ src.index }})"
+                       class="source-item {% if src.selected %}active-source{% endif %}">
+                        {{ src.title }}
+                        <small>{{ src.netloc }}</small>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dashjs/dist/dash.all.min.js"></script>
+
+    <script>
+        // Данные для навигации
+        const episodeUid = "{{ episode_uid }}";
+        const animeUid = "{{ anime_uid }}";
+        const episodesListUid = "{{ episodes_list_uid }}";
+        const currentSourceIndex = {{ current_source_index }};
+        const allEpisodes = {{ all_episodes_json | safe }};
+        const fromPage = "{{ from_page }}";
+        
+        // Функции навигации
+        function goToEpisode(targetUid) {
+            const url = `/play/${targetUid}?anime_uid=${animeUid}&episodes_list_uid=${episodesListUid}&source_index=${currentSourceIndex}&from_page=${encodeURIComponent(fromPage)}`;
+            window.location.href = url;
+        }
+        
+        function goToSelectedEpisode() {
+            const selector = document.getElementById('episode-selector');
+            const selectedUid = selector.value;
+            goToEpisode(selectedUid);
+        }
+        
+        function switchSource(sourceIndex) {
+            const url = `/play/${episodeUid}?anime_uid=${animeUid}&episodes_list_uid=${episodesListUid}&source_index=${sourceIndex}&from_page=${encodeURIComponent(fromPage)}`;
+            window.location.href = url;
+        }
+
+        // Artplayer setup
+        const qualityList = {{ quality_json | safe }};
+        const defaultUrl = "{{ default_url | safe}}";
+        const defaultType = "{{ default_type }}";
+
+        function playM3u8(video, url, art) {
+            if (Hls.isSupported()) {
+                if (art.hls) art.hls.destroy();
+                const hls = new Hls({
+                    xhrSetup: function(xhr, url) {
+                        // Headers передаются через proxy
+                    }
+                });
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                art.hls = hls;
+                art.on('destroy', () => hls.destroy());
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+            } else {
+                art.notice.show = 'Unsupported format: m3u8';
+            }
+        }
+
+        function playMpd(video, url, art) {
+            if (art.dash) art.dash.destroy();
+            const dash = dashjs.MediaPlayer().create();
+            dash.initialize(video, url, art.option.autoplay);
+            art.dash = dash;
+            art.on('destroy', () => dash.destroy());
+        }
+
+        var art = new Artplayer({
+            container: '#artplayer',
+            url: defaultUrl,
+            type: defaultType,
+            quality: qualityList,
+            setting: true,
+            fullscreen: true,
+            fullscreenWeb: true,
+            autoplay: false,
+            autoSize: false,
+            setting: true,
+            fullscreen: true,
+            fullscreenWeb: true,
+            playbackRate: true,
+            aspectRatio: true,
+            hotkey: true,
+            pip: true,
+            mutex: true,
+            customType: {
+                m3u8: playM3u8,
+                mpd: playMpd
+            }
+        });
+        
+        // Автопереход на следующий эпизод
+        art.on('video:ended', () => {
+            {% if nav.next_uid %}
+                setTimeout(() => goToEpisode("{{ nav.next_uid }}"), 1000);
+            {% endif %}
+        });
+        
+        // Горячие клавиши для навигации
+        document.addEventListener('keydown', (e) => {
+            {% if nav.prev_uid %}
+            if (e.key === 'ArrowLeft' && e.shiftKey) {
+                goToEpisode("{{ nav.prev_uid }}");
+            }
+            {% endif %}
+            {% if nav.next_uid %}
+            if (e.key === 'ArrowRight' && e.shiftKey) {
+                goToEpisode("{{ nav.next_uid }}");
+            }
+            {% endif %}
+        });
+    </script>
+{% endblock %}

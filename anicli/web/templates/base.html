@@ -23,7 +23,8 @@
             align-items: center;
             flex-wrap: wrap;
         }
-        .nav h1 { margin: 0; font-size: 1.5rem; margin-right: auto; }
+        .nav h1 { margin: 0; font-size: 1.5rem; }
+        .nav-links { display: flex; gap: 1rem; margin-left: auto; align-items: center; }
 
         /* Grid System for Anime/Episodes */
         .grid { 
@@ -35,6 +36,8 @@
         @media (max-width: 600px) {
             .grid { grid-template-columns: repeat(2, 1fr); }
             .card a { font-size: 0.9rem; }
+            .nav { flex-direction: column; align-items: flex-start; }
+            .nav-links { margin-left: 0; width: 100%; justify-content: space-between; }
         }
 
         /* Cards */
@@ -104,13 +107,44 @@
         
         .nav-row { display: flex; gap: 0.5rem; justify-content: space-between; align-items: center; }
         .nav-input { width: 60px !important; margin: 0 !important; text-align: center; padding: 5px; }
+        
+        /* Error Page Styles */
+        .error-container {
+            text-align: center;
+            padding: 3rem 1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        .error-title {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #ff6b6b;
+        }
+        .error-message {
+            font-size: 1.1rem;
+            color: #999;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
     </style>
 </head>
 <body>
     <div class="nav">
         <h1>Anicli Web</h1>
-        <a href="/">Home</a>
-        <a href="/ongoing">Ongoings</a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/ongoing">Ongoings</a>
+        </div>
     </div>
     {% block content %}{% endblock %}
 </body>

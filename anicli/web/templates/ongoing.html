@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+    <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <h2 style="margin: 0;">{{ title }}</h2>
+        <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center;">
+            <label for="source">Source:</label>
+            <select name="source" id="source" onchange="switchSource(this.value)">
+                {% for ext in extractors %}
+                <option value="{{ ext }}" {% if ext == current_extractor %}selected{% endif %}>{{ ext }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="grid">
+        {% for item in items %}
+        <div class="card">
+            {% if item.meta.thumbnail %}
+            <img src="{{ item.meta.thumbnail }}" alt="cover" loading="lazy">
+            {% endif %}
+            <a href="/anime/{{ item.uid }}?from_page={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">{{ item.title }}</a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        function switchSource(source) {
+            const url = new URL(window.location);
+            url.searchParams.set('source', source);
+            window.location.href = url.toString();
+        }
+    </script>
+{% endblock %}

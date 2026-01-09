@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+    <div style="margin-bottom: 1rem;">
+        <a href="{{ back_url }}" class="btn-sm">← Back</a>
+    </div>
+    
+    <h2>{{ anime.title }}</h2>
+    
+    {% if anime.description %}
+    <p style="color: #aaa; margin-bottom: 2rem;">{{ anime.description }}</p>
+    {% endif %}
+    
+    <h3>Episodes</h3>
+    <div class="grid">
+        {% for ep in episodes %}
+        <div class="card">
+            <a href="/play/{{ ep.uid }}?anime_uid={{ anime_uid }}&episodes_list_uid={{ episodes_list_uid }}&from_page={{ back_url }}">
+                <div style="padding: 1rem;">
+                    <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem;">{{ ep.num }}</div>
+                    <div style="font-size: 0.9rem; color: #aaa;">{{ ep.title }}</div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+{% endblock %}
