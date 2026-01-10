@@ -1,10 +1,10 @@
 [project]
 name = "anicli-ru"
 # todo: bump ver via script
-version="5.0.17"
+version="6.0.0"
 description = 'cli tool for watching anime'
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = "MIT"
 keywords = []
 authors = [
@@ -13,7 +13,6 @@ authors = [
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
@@ -22,23 +21,46 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
 ]
 dependencies = [
-    "anicli-api>=0.7.14",
-    "eggella>=0.1.7",
-    "tqdm>=4.67.1",
+    "anicli-api>=0.8.8",
+    "prompt-toolkit>=3.0.52",
+    "rich>=14.2.0",
+    "typer>=0.20.0",
 ]
 
 [project.optional-dependencies]
-browser-cookies = [
-  "anicli-api[browser-cookies]"
+cookies = [
+    "rookiepy>=0.5.6",
 ]
-
 dev = [
     "mypy>=1.14.1",
     "ruff>=0.9.9",
 ]
+web = [
+    "fastapi>=0.121.2",
+    "jinja2>=3.1.6",
+    "uvicorn>=0.33.0",
+    "python-multipart>=0.0.20",
+    "segno>=1.6.6",
+]
+
+all = [
+    "anicli-api>=0.8.8",
+    "prompt-toolkit>=3.0.52",
+    "rich>=14.2.0",
+    "typer>=0.20.0",
+    "rookiepy>=0.5.6",
+    "mypy>=1.14.1",
+    "ruff>=0.9.9",
+    "fastapi>=0.121.2",
+    "jinja2>=3.1.6",
+    "uvicorn>=0.33.0",
+    "python-multipart>=0.0.20",
+    "segno>=1.6.6",
+]
+
 
 [project.scripts]
-anicli-ru = "anicli:run_cli"
+anicli-ru = "anicli.main:main"
 
 [project.urls]
 Documentation = "https://github.com/vypivshiy/ani-cli-ru#readme"
@@ -55,7 +77,7 @@ packages = ["anicli/"]
 [tool.ruff]
 target-version = "py38"
 line-length = 120
-select = [
+lint.select = [
   "A",
   "ARG",
   "B",
@@ -82,7 +104,10 @@ select = [
   "W",
   "YTT",
 ]
-ignore = [
+
+lint.ignore = [
+  "RUF001",  # allow single cyrillic letters (H, c) etc
+  "RUF002",
   # print function allowed in CLI client
   "T201",
   # Allow non-abstract empty methods in abstract base classes
@@ -94,7 +119,10 @@ ignore = [
   # Ignore complexity
   "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915",
 ]
-unfixable = [
+lint.unfixable = [
   # Don't touch unused imports
   "F401",
 ]
+
+[tool.uv.sources]
+anicli-api = { path = "../anicli-api" }
