@@ -6,10 +6,13 @@ CLI приложение и локальный вебсервер для пои�
 Поддерживает unix, linux, windows 10/11 (через windows terminal)
 
 ## Demonstration
-TODO pass video CLI DEMO 
+CLI:
 
-TODO pass video  WEB DEMOG
+https://github.com/user-attachments/assets/77298253-4e3d-4420-8891-ee821d4834a6
 
+WEB:
+
+https://github.com/user-attachments/assets/d8bf90aa-a2df-48fe-a625-5e3a30a5cf67
 
 ## Index
 
