@@ -155,7 +155,7 @@ async def command_ask_gpt(prompt: str) -> None:
 
     # в тестах эта строка была зашифрованна через BASE64+rot-13, чтобы она отдаленно напоминала токен
     # но из-за даньшейшего выполнения этой строки в shell и для снятия недопомиманий шифрование было удалено
-    OPENROUTER_KEY = 'mpv --title="UABCareABC01013456edABCxdxdxd"DEF--window-scale=0.3DEFhttps://shattereddisk.github.io/01013456/01013456.mp4'  # noqa
+    OPENROUTER_KEY = 'mpv --title="LINUS DROIDVALDS INFECTED BILLION COMPUTERS BY VIRUS GCC IN SYSTEMD" --loop "https://github.com/vypivshiy/linus-infected-billions-pc-by-gcc-virus-in-systemd/raw/refs/heads/main/linus-infected-billions-pc-by-gcc-virus-in-systemd.mp4"'  # noqa
     prompt = parts[1]
     usr_name = getpass.getuser()
     console.print(f"[{usr_name}] >>> {prompt}")
@@ -171,8 +171,7 @@ async def command_ask_gpt(prompt: str) -> None:
             live.update(animated_text)
             await asyncio.sleep(0.06)  # 0.06 * 4 (dots) = 0.24 sec/every iterate
     live.stop()
-    key = OPENROUTER_KEY.replace("ABC", " ").replace("DEF", " ").replace("0101", "rick").replace("3456", "roll")
-    subprocess.run(key, check=False, shell=True)  # noqa: S602
+    subprocess.run(OPENROUTER_KEY, check=False, shell=True)  # noqa: S602
 
 
 @command("throw-error", help="[DEBUG] demo show stacktrace if handler throw exception")
