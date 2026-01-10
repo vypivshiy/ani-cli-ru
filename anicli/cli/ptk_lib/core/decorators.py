@@ -12,14 +12,19 @@ _LEN_META_COMPLETER_ITEM = 2
 
 
 def _create_completer_from_value(value: Any) -> Optional[Completer]:
-    """
-    Auto-create completer from various input types:
-    - Completer -> use as-is
-    - List[str] -> WordCompleter
-    - List[Tuple[str, str]] -> WordCompleter with meta
-    - Dict[str, Any] -> NestedCompleterWithMeta
-        - key "_meta" - pass meta information
-        - key "_completions" - pass word completer
+    """Auto-create completer from various input types:
+
+    Args:
+        value: Input value to convert to a completer. Supported types:
+               - Completer -> use as-is
+               - List[str] -> WordCompleter
+               - List[Tuple[str, str]] -> WordCompleter with meta
+               - Dict[str, Any] -> NestedCompleterWithMeta
+                   - key "_meta" - pass meta information
+                   - key "_completions" - pass words completer
+
+    Returns:
+        Optional[Completer]: Created completer or None if conversion failed
     """
     if value is None:
         return None
@@ -63,6 +68,25 @@ def command(
     examples: Optional[List[str]] = None,
     arguments: Optional[Dict[str, str]] = None,
 ) -> Callable[..., CommandRoute]:
+    """Decorator to register a command with various options.
+
+    Args:
+        key: Unique identifier for the command
+        help: Help text displayed for the command
+        sub_commands: Optional list of sub-commands for this command
+        validator: Optional input validator for the command
+        middleware: Optional list of middleware functions to apply
+        aliases: Optional alternative names for the command
+        parser: Optional function to parse command arguments
+        completer: Optional completer for command arguments
+        usage: Optional usage string for the command
+        examples: Optional list of example usages
+        arguments: Optional dictionary of argument descriptions
+
+    Returns:
+        Callable: Decorator function that registers the command
+    """
+
     def decorator(func: Callable) -> CommandRoute:
         # Process sub_commands - extract routes
         processed_sub_commands = []
@@ -111,7 +135,14 @@ def fsm_route(
 ) -> Callable[..., FSMRoute]:
     """Decorator to register an FSM class.
 
-    Returns FSMRoute (which wraps the class).
+    Args:
+        key: Unique identifier for the FSM route
+        help: Help text displayed for the FSM
+        middleware: Optional list of middleware functions to apply
+        aliases: Optional alternative names for the FSM
+
+    Returns:
+        Callable: Decorator function that registers the FSM
     """
 
     def decorator(cls: Type[BaseFSM]) -> FSMRoute:
@@ -161,6 +192,22 @@ def fsm_state(
     on_exit: Optional[Callable] = None,
     prompt_message: Optional[str] = None,
 ) -> Callable[..., FSMState]:
+    """Decorator to define an FSM state with various options.
+
+    Args:
+        name: Name of the FSM state
+        help: Help text for the state
+        validator: Optional input validator for the state
+        completer: Optional completer for the state input
+        middleware: Optional list of middleware functions to apply
+        on_enter: Optional callback when entering the state
+        on_exit: Optional callback when exiting the state
+        prompt_message: Optional custom prompt message for the state
+
+    Returns:
+        Callable: Decorator function that creates the FSM state
+    """
+
     def decorator(func: Callable) -> FSMState:
         # Auto-create completer from input value
         final_completer = _create_completer_from_value(completer)

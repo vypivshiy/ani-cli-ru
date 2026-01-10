@@ -18,6 +18,16 @@ FALLBACK_CONTEXT_NAMES = ("ctx", "context", "_ctx", "_context")
 
 
 class CommandManager:
+    """Manages command registration, alias mapping, and execution with sub-command support.
+
+    This class handles the registration of commands and their aliases, as well as the
+    execution of commands including sub-commands. It provides the core functionality
+    for command lookup and execution within the application.
+
+    Args:
+        app: Reference to the main Application instance
+    """
+
     def __init__(self, app: "Application"):
         self.app = app
         self.commands: Dict[str, CommandRoute] = {}
@@ -25,7 +35,14 @@ class CommandManager:
         self.console = get_console()
 
     def register(self, route: CommandRoute) -> None:
-        """Register a command and its aliases"""
+        """Register a command and its aliases.
+
+        Args:
+            route: The CommandRoute to register
+
+        Raises:
+            ValueError: If an alias is already registered
+        """
         self.commands[route.key] = route
         for alias in route.aliases:
             if alias in self.commands or alias in self._command_aliases:
@@ -34,7 +51,14 @@ class CommandManager:
             self._command_aliases[alias] = route.key
 
     def get_command(self, key: str) -> Optional[CommandRoute]:
-        """Get command by key or alias"""
+        """Get command by key or alias.
+
+        Args:
+            key: The command key or alias to look up
+
+        Returns:
+            The CommandRoute if found, None otherwise
+        """
         if key in self.commands:
             return self.commands[key]
         if key in self._command_aliases:
@@ -42,9 +66,14 @@ class CommandManager:
         return None
 
     def _resolve_sub_command(self, route: CommandRoute, parts: List[str]) -> Tuple[CommandRoute, List[str]]:
-        """
-        Recursively resolve sub_command path.
-        Returns (final_route, remaining_args)
+        """Recursively resolve sub_command path.
+
+        Args:
+            route: The current CommandRoute to check for sub-commands
+            parts: List of command parts to resolve
+
+        Returns:
+            Tuple containing the final route and remaining arguments
 
         Example:
             parts = ["spam", "test", "arg"]
@@ -64,10 +93,17 @@ class CommandManager:
         return route, parts
 
     def _validate_input(self, validator: T_VALIDATOR, parsed_args: Any, ctx: CommandContext) -> bool:
-        """
-        Universal validator handler that supports:
+        """Universal validator handler that supports:
         - Callable validators (sync)
         - prompt_toolkit Validator objects
+
+        Args:
+            validator: The validator to use
+            parsed_args: The arguments to validate
+            ctx: The command context
+
+        Returns:
+            bool: True if validation passes, False otherwise
         """
         if validator is None:
             return True
@@ -92,7 +128,12 @@ class CommandManager:
         return False
 
     async def execute(self, cmd_key: str, raw_args: str) -> None:
-        """Execute command with sub_command support"""
+        """Execute command with sub_command support.
+
+        Args:
+            cmd_key: The command key to execute
+            raw_args: Raw arguments string to pass to the command
+        """
         route = self.get_command(cmd_key)
         if route is None:
             self.console.print(f"[red]Unknown command: {cmd_key}[/red]")

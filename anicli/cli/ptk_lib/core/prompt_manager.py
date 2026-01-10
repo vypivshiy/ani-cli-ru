@@ -8,9 +8,12 @@ from prompt_toolkit.validation import Validator
 
 
 class PromptManager:
-    """
-    Manages the dynamic prompt message shown to the user.
+    """Manages the dynamic prompt message shown to the user.
+
     Supports template formatting like "~/search/{anime}/episode/{ep}".
+
+    Args:
+        msg: Default prompt message template
     """
 
     def __init__(self, msg: str = "~ "):
@@ -20,16 +23,25 @@ class PromptManager:
         self._session: Optional[PromptSession] = None
 
     def reset_prompt_template(self):
+        """Reset the prompt template to the default and clear all variables."""
         self.clear_vars()
         self.set_prompt_template(self._default_template)
 
     def set_prompt_template(self, template: str) -> None:
-        """Set the prompt template (e.g., "~/search/{anime} ")."""
+        """Set the prompt template (e.g., "~/search/{anime} ").
+
+        Args:
+            template: The new prompt template string
+        """
         self._template = template
         self._update_session_message()
 
     def update_vars(self, vars_dict: Dict[str, str]) -> None:
-        """Update formatting variables (e.g., {"anime": "5"})."""
+        """Update formatting variables (e.g., {"anime": "5"}).
+
+        Args:
+            vars_dict: Dictionary of variable names to values for template formatting
+        """
         self._vars.update(vars_dict)
         self._update_session_message()
 
@@ -39,7 +51,11 @@ class PromptManager:
         self._update_session_message()
 
     def get_current_prompt(self) -> str:
-        """Render current prompt using template and variables."""
+        """Render current prompt using template and variables.
+
+        Returns:
+            The formatted prompt string with variables substituted
+        """
         try:
             return self._template.format(**self._vars)
         except KeyError as e:
@@ -47,7 +63,11 @@ class PromptManager:
             return self._template.replace("{" + str(e) + "}", "<unset>")
 
     def bind_session(self, session: PromptSession) -> None:
-        """Bind to a PromptSession to control its message."""
+        """Bind to a PromptSession to control its message.
+
+        Args:
+            session: The PromptSession to bind to
+        """
         self._session = session
         self._update_session_message()
 
@@ -62,9 +82,15 @@ class PromptManager:
         completer: Optional[Completer] = None,
         validator: Optional[Validator] = None,
     ) -> PromptSession:
-        """
-        Create or reconfigure a PromptSession with current prompt,
+        """Create or reconfigure a PromptSession with current prompt,
         and optional completer/validator (used in FSM states).
+
+        Args:
+            completer: Optional completer for the prompt session
+            validator: Optional validator for the prompt session
+
+        Returns:
+            Configured PromptSession instance
         """
         session = PromptSession(
             message=self.get_current_prompt(),

@@ -27,6 +27,23 @@ EVENT_CALLBACK = Callable[[AppContext[CtxT]], Awaitable[None]]
 
 
 class Application(Generic[CtxT]):
+    """Main application class that manages commands, FSMs, events, and the main loop.
+
+    This class serves as the central hub for the CLI application, handling command registration,
+    FSM management, event handling, and the main input loop. It provides a structured way to
+    build interactive CLI applications with both command-based and state-machine-based interactions.
+
+    Args:
+        routes: Optional list of routes (functions or FSM classes) to register
+        on_startup: Optional list of startup event callbacks
+        on_close: Optional list of close event callbacks
+        initial_context: Initial application context data
+        prompt_msg: Default prompt message to display
+        enable_default_commands: Whether to enable default commands (help, exit, clear)
+        debug: Enable debug mode with enhanced error information
+        rich_traceback: Enable rich traceback formatting for exceptions
+    """
+
     def __init__(
         self,
         routes: Optional[List[Union[Callable, Type["BaseFSM"]]]] = None,
@@ -313,7 +330,25 @@ class Application(Generic[CtxT]):
         examples: Optional[List[str]] = None,
         arguments: Optional[Dict[str, str]] = None,
     ):
-        """inline init commands"""
+        """inline init commands
+
+        Args:
+            key: Unique identifier for the command
+            help: Help text displayed for the command
+            sub_commands: Optional list of sub-commands for this command
+            validator: Optional input validator for the command
+            middleware: Optional list of middleware functions to apply
+            aliases: Optional alternative names for the command
+            parser: Optional function to parse command arguments
+            completer: Optional completer for command arguments
+            usage: Optional usage string for the command
+            examples: Optional list of example usages
+            arguments: Optional dictionary of argument descriptions
+
+        Returns:
+            Callable: Decorator function that registers the command
+
+        """
         from .decorators import command as cmd_decorator  # noqa: PLC0415
 
         def wrapper(func):

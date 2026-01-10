@@ -22,6 +22,17 @@ def create_confirm_session(
     *,
     default_value: bool = True,
 ) -> PromptSession[bool]:
+    """Create a confirmation prompt session with customizable key bindings.
+
+    Args:
+        message: The confirmation message to display
+        suffix: Suffix to append to the message (default " ([y]/n) ")
+        default_key: Key that triggers the default value (default Enter key)
+        default_value: Default return value if default_key is pressed (default True)
+
+    Returns:
+        PromptSession[bool]: A configured prompt session that returns a boolean
+    """
     bindings = KeyBindings()
 
     @bindings.add("y")
@@ -62,14 +73,35 @@ def create_confirm_session(
 
 
 def async_yes_no_exit(message: str = "Do you really want to exit?") -> Awaitable[bool]:
+    """Create and run an asynchronous yes/no confirmation prompt for exit.
+
+    Args:
+        message: The confirmation message to display (default "Do you really want to exit?")
+
+    Returns:
+        Awaitable[bool]: An awaitable that returns True if user confirms, False otherwise
+    """
     return create_confirm_session(message).prompt_async()
 
 
 def yes_no_exit(message: str = "Do you really want to exit?") -> bool:
+    """Create and run a synchronous yes/no confirmation prompt for exit.
+
+    Args:
+        message: The confirmation message to display (default "Do you really want to exit?")
+
+    Returns:
+        bool: True if user confirms, False otherwise
+    """
     return create_confirm_session(message).prompt()
 
 
 def print_subcommand_help(ctx: "CommandContext"):
+    """Print help information for subcommands of a given command context.
+
+    Args:
+        ctx: The command context containing the command with subcommands
+    """
     cmd_route = ctx.command
 
     if cmd_route.sub_commands:
@@ -89,14 +121,13 @@ def print_subcommand_help(ctx: "CommandContext"):
 def table_fill_limited_rows(
     table: Table, *rows: Tuple[RenderableType, ...], max_view_count: int = 25, end_view_count: int = 3
 ) -> None:
-    """
-    Docstring for fill_limited_rows
+    """Fill a Rich table with rows, limiting the number displayed with a summary for large datasets.
 
-    Arugmens:
-        table: Table
-        rows: Description
-        max_view_count: int
-        end_view_count: int
+    Args:
+        table: The Rich Table to fill
+        rows: Variable number of row tuples to add to the table
+        max_view_count: Maximum number of rows to display (default 25)
+        end_view_count: Number of rows to show at the end when truncating (default 3)
     """
     if len(rows) <= max_view_count:
         for row in rows:

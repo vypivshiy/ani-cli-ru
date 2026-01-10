@@ -10,7 +10,14 @@ if TYPE_CHECKING:
 
 
 class CallableWrapperValidator(PTValidator):
-    """Validator that uses static validator if available, otherwise dynamic validator from FSM"""
+    """Validator that uses static validator if available, otherwise dynamic validator from FSM.
+
+    Args:
+        validator_func: Optional static validator function
+        fsm_context: FSM context for validation
+        fsm_instance: Optional FSM instance for dynamic validation
+        state_name: Optional state name for dynamic validation
+    """
 
     def __init__(
         self,
@@ -30,6 +37,14 @@ class CallableWrapperValidator(PTValidator):
             self.validator = None
 
     def validate(self, document):
+        """Validate the input document using either static or dynamic validation.
+
+        Args:
+            document: The document to validate
+
+        Raises:
+            ValidationError: If validation fails
+        """
         text = document.text
         try:
             if self.validator:
@@ -49,7 +64,13 @@ class CallableWrapperValidator(PTValidator):
 
 
 class HybridFSMValidator:
-    """Validator that uses static validator if provided, otherwise dynamic validator from FSM"""
+    """Validator that uses static validator if provided, otherwise dynamic validator from FSM.
+
+    Args:
+        static_validator: Optional static validator function with priority
+        fsm_instance: FSM instance for dynamic validation
+        state_name: Name of the state for dynamic validation
+    """
 
     def __init__(self, static_validator: Optional[T_FSM_VALIDATOR], fsm_instance: "BaseFSM", state_name: str):
         self.static_validator = static_validator
@@ -57,6 +78,15 @@ class HybridFSMValidator:
         self.state_name = state_name
 
     def __call__(self, user_input: str, fsm_context: FSMContext) -> bool:
+        """Validate user input using either static or dynamic validation.
+
+        Args:
+            user_input: The input string to validate
+            fsm_context: The FSM context for validation
+
+        Returns:
+            bool: True if validation passes, False otherwise
+        """
         # static validator has absolute priority
         if self.static_validator:
             return self.static_validator(user_input, fsm_context)
@@ -64,6 +94,15 @@ class HybridFSMValidator:
         return self._validate_dynamic(user_input, fsm_context)
 
     def _validate_dynamic(self, user_input: str, _fsm_context: FSMContext) -> bool:
+        """Perform dynamic validation using the FSM instance.
+
+        Args:
+            user_input: The input string to validate
+            _fsm_context: The FSM context for validation (unused)
+
+        Returns:
+            bool: True if validation passes, False otherwise
+        """
         dynamic_result = self.fsm_instance.get_dynamic_validator(self.state_name, user_input)
 
         if dynamic_result is None:
@@ -77,6 +116,15 @@ class HybridFSMValidator:
             return True
 
     def get_error_message(self, user_input: str, fsm_context: FSMContext) -> Optional[str]:
+        """Get the error message for invalid input.
+
+        Args:
+            user_input: The input string that failed validation
+            fsm_context: The FSM context for validation
+
+        Returns:
+            Optional[str]: Error message if validation failed, None otherwise
+        """
         if self.static_validator:
             static_result = self.static_validator(user_input, fsm_context)
             if not static_result:

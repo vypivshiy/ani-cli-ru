@@ -13,6 +13,15 @@ if TYPE_CHECKING:
 
 
 class FSMManager:
+    """Manages FSM routes, session creation, and state execution.
+
+    This class handles the registration of FSM routes and the creation and execution
+    of FSM sessions, providing the core functionality for FSM management in the application.
+
+    Args:
+        app: Reference to the main Application instance
+    """
+
     def __init__(self, app: "Application"):
         self.app = app
         self.fsm_routes: Dict[str, FSMRoute] = {}
@@ -20,7 +29,14 @@ class FSMManager:
         self.console = Console()
 
     def register(self, route: FSMRoute) -> None:
-        """Register an FSM route."""
+        """Register an FSM route with its aliases.
+
+        Args:
+            route: The FSMRoute to register
+
+        Raises:
+            ValueError: If an alias is already registered
+        """
         self.fsm_routes[route.key] = route
         for alias in route.aliases:
             if alias in self.fsm_routes or alias in self._fsm_aliases:
@@ -29,7 +45,14 @@ class FSMManager:
             self._fsm_aliases[alias] = route.key
 
     def get_route(self, key: str) -> Optional[FSMRoute]:
-        """Get FSM route by key or alias."""
+        """Get FSM route by key or alias.
+
+        Args:
+            key: The route key or alias to look up
+
+        Returns:
+            The FSMRoute if found, None otherwise
+        """
         if key in self.fsm_routes:
             return self.fsm_routes[key]
         if key in self._fsm_aliases:
@@ -42,7 +65,19 @@ class FSMManager:
         initial_state: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None,
     ) -> "BaseFSM":
-        """Create a new FSM session instance."""
+        """Create a new FSM session instance.
+
+        Args:
+            route_key: The key of the FSM route to instantiate
+            initial_state: Optional initial state name (uses FSM's default if not provided)
+            context: Optional context data for the FSM session
+
+        Returns:
+            BaseFSM: An instance of the FSM class
+
+        Raises:
+            ValueError: If the route or initial state is not found
+        """
         route = self.get_route(route_key)
         if route is None:
             msg = f"FSM route '{route_key}' not found"
@@ -67,7 +102,13 @@ class FSMManager:
         state: "FSMState",
         user_input: str,
     ) -> None:
-        """Execute an FSM state handler."""
+        """Execute an FSM state handler.
+
+        Args:
+            fsm_instance: The FSM instance whose state is being executed
+            state: The FSM state to execute
+            user_input: The input provided by the user
+        """
 
         async def _call_handler():
             # Validate (this should already be done by PromptSession.validator,
