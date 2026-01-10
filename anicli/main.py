@@ -26,7 +26,6 @@ from .common.updater import get_api_version
 from .common.utils import validate_proxy_url
 
 app = typer.Typer(
-    # no_args_is_help=True,
     pretty_exceptions_enable=False,
     pretty_exceptions_short=False,
     pretty_exceptions_show_locals=False,
@@ -37,7 +36,7 @@ console = get_console()
 APP_VERSION = "6.0.0a"
 
 
-@app.command(help="show app and api versions and exit")
+@app.command(help="Show app, anicli-api versions and exit")
 def version():
     from rich.panel import Panel  # noqa
 
@@ -47,8 +46,8 @@ def version():
     console.print(panel)
 
 
-@app.command(help="update anicli and anicli-api and exit")
-def update(force: Annotated[bool, Option("--force", is_flag=True, help="force update client")] = False):  # noqa: FBT002
+@app.command(help="update anicli and anicli-api packages")
+def update(force: Annotated[bool, Option("--force", is_flag=True, help="force update api and client")] = False):  # noqa: FBT002
     # I do not know a reliable way in which virtual environment the script is running, so
     # we are polling all the listed package managers in a simple way
     from .common.updater import update_pipx, update_uv, is_installed_in_pipx, is_installed_in_uv  # noqa
@@ -76,17 +75,54 @@ def check_updates():
         console.print("Used actual versions")
 
 
-@app.command(help="run webserver (experimental)", epilog="Use in local network only, not adopted to production")
+def _cb_parse_cache_size(size: str) -> int:
+    if size.endswith(("M", "m")) and size[:-1].isdigit():
+        return int(size[:-1]) * 1024 * 1024
+    elif size.endswith(("K", "k")) and size[:-1].isdigit():
+        return int(size[:-1]) * 1024
+    elif size.isdigit():  # bytes
+        return int(size)
+    raise BadParameter("Shoud be integer or have suffix (k, K - kbytes. m, M - mbytes)")
+
+
+def _cb_parse_ttl(ttl: str) -> int:
+    if ttl.endswith(("h", "H")) and ttl[:-1].isdigit():
+        return int(ttl[:-1]) * 3600
+    elif ttl.endswith(("m", "M")) and ttl[:-1].isdigit():
+        return int(ttl[:-1]) * 60
+    elif ttl.isdigit():  # seconds
+        return int(ttl)
+    raise BadParameter("Should be integer or have suffix (m, M - minutes. h, H - hours)")
+
+
+
+@app.command(help="run local anicli webserver (experimental)",
+             epilog="Use in local network only, not adopted to production")
 def web(
     host: Annotated[str, Option("-h", "--host", help="ip host")] = "127.0.0.1",
     port: Annotated[int, Option("-p", "--port", help="port")] = 8000,
-    workers: Annotated[int, Option("-mw", "--max-workers", help="max workers")] = 1,
+    workers: Annotated[int, Option("-mw", "--max-workers", help="uvicorn max workers")] = 1,
+    chunk_size: Annotated[
+        str,
+        Option(
+            "-c", "--chunk-size",
+            help="chunk video stream size. Support suffixes: k/K (kbytes), m/M (mbytes), or plain integer (bytes)",
+            callback=_cb_parse_cache_size
+        ),
+    ] = "1M",
     source: Annotated[
         str,
         Option("-s", "--source", click_type=EXTRACTORS_CHOICE, help="extractor source"),
     ] = "animego",
-    ttl: Annotated[int, Option("--ttl", help="cache TTL in seconds")] = 3600,
-    quality: Annotated[int, Option("-q", "--quality", help="default video quality")] = 1080,
+    # TODO
+    ttl: Annotated[
+        str,
+        Option(
+            "--ttl",
+            help="cache TTL destroy parsed objects (in seconds). Support suffixes: h/H (hours), m/M (minutes), or plain integer (seconds)",
+            callback=_cb_parse_ttl
+        ),
+    ] = "12h",  # 12h
 ):
     """
     Run the web server for watching anime in browser.
@@ -94,7 +130,16 @@ def web(
     This is an experimental feature for local network use only.
     Not suitable for production deployment.
     """
-    # TODO
+    try:
+        import uvicorn
+        from .web.server import app, OPTIONS
+    except ImportError:
+        raise BadParameter("web group required fastapi dependency. Add via `anicli-ru[web]`")
+    
+    OPTIONS.EXTRACTOR_NAME = source  # type: ignore
+    OPTIONS.CHUNK_SIZE = chunk_size  # type: ignore (cast to int by callback)
+    OPTIONS.TTL = ttl  # type: ignore (cast to int by callback)
+    uvicorn.run(app, host=host, port=port, workers=workers)
 
 
 # typer callbacks
@@ -117,6 +162,8 @@ def _cb_check_read_browser_cookie_opt(browser_name: str) -> Optional[CookieJar]:
     try:
         cookies = read_from_browser(browser_name)
         return cookies
+    except ImportError:
+        raise BadParameter("rookiepy dependency required. Add via `anicli-ru[cookies]`")
     except Exception as e:
         raise BadParameter(e.args[0])
 
@@ -141,10 +188,7 @@ def _cb_parse_headers_file(headers_file: Path) -> Optional[Dict[str, str]]:
         raise BadParameter(e.args[0]) from e
 
 
-# end typer callbacks
-
-
-@app.command(help="run cli-repl application")
+@app.command(help="run cli-repl application (play video via mpv player)")
 def cli(
     # fmt: off
     source: Annotated[
@@ -155,11 +199,11 @@ def cli(
         int,
         Option("-q", "--quality", help="default video quality"),
     ] = 2060,
-    search: Annotated[Optional[str], Option("--search", help="call search after start")] = None,
+    search: Annotated[Optional[str], Option("--search", help="call search by query after start")] = None,
     ongoing: Annotated[bool, Option("--ongoing", help="call ongoing after start")] = False,
-    mpv_opts: Annotated[str, Option("-mo", "--mpv-opts", help="Extra MPV options/arguments (should be a string)")] = "",
+    mpv_opts: Annotated[str, Option("-mo", "--mpv-opts", help="extra MPV options/arguments (should be a string)")] = "",
     m3u_size: Annotated[int, Option("--m3u-size", help="max m3u temp playlist")] = 6,
-    timeout: Annotated[int, Option("--timeout", help="http client timeout")] = 60,
+    timeout: Annotated[int, Option("--timeout", help="http client timeout (seconds)")] = 60,
     proxy: Annotated[
         Optional[str],
         Option(
@@ -172,7 +216,7 @@ def cli(
         Optional[str],
         Option(
             "--cookies-from-browser",
-            help="extract cookies from browser (rookiepy required)",
+            help="extract cookies from browser",
             click_type=BROWSER_CHOICE,
             # !!! cast to CookieJar type if arg passed else None
             callback=_cb_check_read_browser_cookie_opt,
