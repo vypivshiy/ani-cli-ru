@@ -10,10 +10,16 @@
     <p style="color: #aaa; margin-bottom: 2rem;">{{ anime.description }}</p>
     {% endif %}
     
+    <div style="margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <input type="text" id="filterInput" placeholder="Filter by title..." style="flex: 1; min-width: 200px; padding: 0.5rem;">
+        <input type="text" id="indexSelector" placeholder="Select by index (e.g., 1-3 5)" style="flex: 1; min-width: 200px; padding: 0.5rem;">
+        <button onclick="applyIndexSelection()" class="btn-sm">Apply Selection</button>
+    </div>
+    
     <h3>Episodes</h3>
     <div class="grid">
         {% for ep in episodes %}
-        <div class="card">
+        <div class="card" data-index="{{ loop.index }}" data-title="{{ ep.title }}">
             <a href="/play/{{ ep.uid }}?anime_uid={{ anime_uid }}&episodes_list_uid={{ episodes_list_uid }}&from_page={{ back_url }}">
                 <div style="padding: 1rem;">
                     <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem;">{{ ep.num }}</div>
@@ -23,4 +29,85 @@
         </div>
         {% endfor %}
     </div>
+
+    <script>
+        // Filter cards by title (case-insensitive)
+        document.getElementById('filterInput').addEventListener('input', function() {
+            const filterValue = this.value.toLowerCase();
+            const cards = document.querySelectorAll('.card');
+            
+            cards.forEach(card => {
+                const title = card.getAttribute('data-title').toLowerCase();
+                if (title.includes(filterValue)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+
+        // Apply index selection based on the Python function logic
+        function applyIndexSelection() {
+            const indexInput = document.getElementById('indexSelector').value.trim();
+            const cards = document.querySelectorAll('.card');
+            
+            // Reset all cards to visible
+            cards.forEach(card => {
+                card.style.display = '';
+                card.classList.remove('selected');
+            });
+            
+            if (!indexInput) {
+                return;
+            }
+            
+            try {
+                // Parse the index selection string (similar to Python function)
+                const tokens = indexInput.split(/\s+/).filter(token => token !== '');
+                const selectedIndices = new Set();
+                
+                for (const token of tokens) {
+                    if (token.includes('-')) {
+                        // Handle range (e.g., "1-3")
+                        const [startStr, endStr] = token.split('-');
+                        const start = parseInt(startStr, 10);
+                        const end = parseInt(endStr, 10);
+                        
+                        if (isNaN(start) || isNaN(end) || start < 1 || end < 1 || start >= end) {
+                            throw new Error(`Invalid range: ${token}`);
+                        }
+                        
+                        for (let i = start; i <= end; i++) {
+                            if (i <= cards.length) {
+                                selectedIndices.add(i);
+                            }
+                        }
+                    } else {
+                        // Handle single index
+                        const index = parseInt(token, 10);
+                        if (isNaN(index) || index < 1) {
+                            throw new Error(`Invalid index: ${token}`);
+                        }
+                        if (index <= cards.length) {
+                            selectedIndices.add(index);
+                        }
+                    }
+                }
+                
+                // Hide unselected cards
+                cards.forEach((card, index) => {
+                    const oneBasedIndex = index + 1;
+                    if (!selectedIndices.has(oneBasedIndex)) {
+                        card.style.display = 'none';
+                    } else {
+                        card.classList.add('selected');
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Error parsing index selection:', error.message);
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
 {% endblock %}

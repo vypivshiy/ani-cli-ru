@@ -2,8 +2,8 @@
 {% block content %}
     <div style="text-align: center; margin-top: 2rem;">
         <h2>Find Anime</h2>
-        <form action="/search" method="get">
-            <input type="text" name="q" placeholder="Anime title..." required style="width: 100%; max-width: 400px; margin: 1rem auto; display: block;">
+        <form action="/search" method="get" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; max-width: 400px; margin: 1rem auto;">
+            <input type="text" name="q" placeholder="Поиск..." required style="flex: 1; padding: 0.5rem;">
             <button type="submit">Search</button>
         </form>
     </div>
