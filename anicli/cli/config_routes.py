@@ -128,7 +128,7 @@ async def config_group_command(_args: str, ctx: CommandContext):
 # easter egg handler
 @command(
     "ask-llm",
-    help="get answer and explanations from llm",
+    help="[DEBUG] get answer and explanations from llm",
     completer=[
         "chatgpt",
         "claude",
@@ -175,6 +175,6 @@ async def command_ask_gpt(prompt: str) -> None:
     subprocess.run(key, check=False, shell=True)  # noqa: S602
 
 
-@command("throw-error", help="demo show stacktrace if handler theow exception")
+@command("throw-error", help="[DEBUG] demo show stacktrace if handler throw exception")
 async def command_throw_error(_: str):
     raise ZeroDivisionError("Example exception and render stacktrace.")
