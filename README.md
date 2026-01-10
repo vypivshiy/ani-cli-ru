@@ -2,171 +2,324 @@
 
 ---
 
-Скрипт для поиска и просмотра аниме из терминала с русской озвучкой или субтитрами.
-Поддерживает unix, linux, windows 10/11 (windows terminal)
+CLI приложение и локальный вебсервер для поиска и просмотра аниме из терминала с русской озвучкой или субтитрами.
+Поддерживает unix, linux, windows 10/11 (через windows terminal)
 
-https://github.com/vypivshiy/ani-cli-ru/assets/59173419/bf7e78bd-cdd1-4871-a5b3-f48e6ed7ec28
+## Demonstration
+TODO pass video CLI DEMO 
 
+TODO pass video  WEB DEMOG
+
+
+## Index
+
+* [Установка](#Установка)
+    * [API interface](#API-interface)
+* [Usage](#Usage)
+    * [Check Updates](#Check-Updates)
+* [CLI](#CLI)
+    *[interface](#interface)
+* [WEB](#WEB)
+* [Command Reference](#Command-Reference)
+    * [Commands](#Commands)
+        * [version](#version)
+        * [update](#update)
+        * [check-updates](#check-updates)
+        * [web](#web)
+        * [cli](#cli)
+    * [Notes](#Notes)
+* [License](#License)
 ## Установка
 
-- Поддерживает python 3.8 или выше
-- требуется [mpv видеоплеер](https://github.com/mpv-player/mpv)
+- Требуется python 3.9 или выше
+- Для CLI требуется [mpv видеоплеер](https://github.com/mpv-player/mpv)
+- Проект поставляется через pip, рекомендуется устанавливать через [uv](https://docs.astral.sh/uv/guides/tools/#installing-tools) или [pipx](pipx.pypa.io/latest/getting-started/)
+- Минимальная установка, только CLI клиент
+    - UV - `uv tool install anicli-ru` (рекомендуется)
+    - PIPX - `pipx install anicli-ru`
 
-| менеджер пакетов                                                       | установка                   | обновление                        |
-|------------------------------------------------------------------------|-----------------------------|-----------------------------------|
-| [uv (рекомендуется)](https://docs.astral.sh/uv/#installation)          | `uv tool install anicli-ru` | `uv tool upgrade anicli-ru`       |
-| [pipx](https://pipx.pypa.io/stable/installation/)                      | `pipx install anicli-ru`    | `pipx upgrade anicli-ru`          |
-| [pip (не рекомендуется см PEP 668)](https://peps.python.org/pep-0668/) | `pip install anicli-ru`     | `pip install anicli-ru --upgrade` |
+### Опциональные зависимости:
 
-Если нужен только программный python api интерфейс парсеров для проекта используйте библиотеку [anicli-api](https://github.com/vypivshiy/anicli-api)
+- Установка всех зависимостей (CLI + webserver + browser cookie extractor)
+    - `uv tool install anicli-ru[all]`
+    - `pipx install anicli-ru[all]`
 
-Опциональная зависимость для извлечения cookies из браузера
+- Извлечение cookies из браузера в клиент (используется для редкого обхода ddos-guard/cloudflare, требуется зависимость [rookiepy](https://github.com/thewh1teagle/rookie))
+    - `uv tool install anicli-ru[cookies]`
+    - `pipx install anicli-ru[cookies]`
+- Локальный веб клиент
+    - `uv tool install anicli-ru[web]`
+    - `pipx install anicli-ru[cookies]`
+
+- termux webclient (TODO, untested)
+
+> TODO: add install script for termux (кто протестирует - можете закинуть PR с shell скриптом установки)
+
+Предполагаю, что локальный клиент должен работать в android termux эмуляторе. 
+Для работоспособности требуются следующие зависимости:
+
+```shell
+pkg install python-dev libxml2-dev libxslt-dev libiconv-dev
+```
+
+Затем скачать проект, установить пакеты и запустить
+
+### API interface
+
+Клиент и парсеры умышленно разделены в отдельные репозитории: чтобы мне было удобнее экспериментировать и исправлять и сторонним пользователям использовать в проекте.
+
+Если только нужны готовые парсеры и API интрефейс, используйте библиотеку https://github.com/vypivshiy/anicli-api
+
+## Usage
+
+Для вывода информации о коммандах используйте:
+
+```shell
+anicli-ru --help
+```
+
+доступных опции:
+
+```shell
+anicli-ru cli --help 
+```
+
+Вывод установленной версии клиента и API
+
+```shell
+anicli-ru version
+```
+
+### Check Updates
+
+> работает если установлен через uv или pipx, иначе необходимо вручную обновлять
+
+Проверить обновления
+
+```shell
+anicli-ru check-updates
+```
+
+Установить обновления:
+
+```shell
+anicli-ru update
+```
+
+принудительно переустановить:
+
+```shell
+anicli-ru update --force 
+```
+
+### CLI
+
+Реализован поверх [prompt-toolkit](https://github.com/prompt-toolkit/python-prompt-toolkit), визуализация вывода идёт через [rich](https://github.com/Textualize/rich), воспроизведение видео через [mpv](https://github.com/mpv-player/mpv) плеер.
+
+Вывод всех доступных источников:
+
+> Дополнительная информация об источниках описана в [anicli-api/source-description](https://github.com/vypivshiy/anicli-api?tab=readme-ov-file#source-description)
+
+
+```shell
+anicli-ru cli
+```
+
+Запуск поиска при старте. 
+
+```shell
+anicli-ru cli -s animego --search isekai
+```
+
+Запуск ongoing при старте
+
+```shell
+anicli-ru cli -s animego --ongoing
+```
+
+Понижение качества доступных видео (выбирает самый ближайший)
+
+```shell
+# например, для kodik это 360, для dreamcast - 1080
+anicli-ru cli -s animego -q 360
+```
+
+#### interface
+
+- Нажимайте `<tab>` кнопку или начинайте вводить - выведутся доступные команды
+- search, ongoing - есть простой фильтр по названию тайтла - вводите символы в назваии тайтла - они поднимутся вверх в автодополнении
+
+Episodes:
+
+Для эпизодов есть фильтр по номерам. Индекс начинается с 1.
+
+Примеры:
+
+1. выбрать 1, 3 и 5 эпизод:
+
+```
+1 3 5
+```
+
+2. выбрать 1, 3 и с 5 по 10:
+
+```
+1 3 5-10
+```
+
+3. если ошибетесь и добавите лишние данные - фильтр откорректируется автоматически:
+
+например при вводе
+```
+1 1 2 3 1-2
+```
+
+финальный фильтр:
+
+```
+1-3
+```
+
+4. Воспроизведение серии видео
+
+- создаёт временный файл-плейлист. 
+    - в unix/linux записывает в директорию `/tmp`, 
+    - в windows - в директорию `%TMP%` (по умолчанию `C:\Users\<USERNAME>\AppData\Local\Temp`)
+- размер плейлиста зависит от ключа `--m3u-size` (по умолчанию, значение 6).
+- не рекомендуется увеличивать значение если не планируете всё смотеть "в один присест", так как ссылки на видео живут примерно 24 часа
+- автоматически собирает плейлист на основе значений источника и даббера. 
+    - Например, если вы выбрали Ongoing и озвучку "Субтитры", а для последнего он отсутвует (но есть Animevost) - поток прервётся.
+
+### WEB
+
+>[!warning]
+> Реализован для локального использования, категорически не рекомендуется применять в production и(или) публичной сети. 
+> Не рассчитан для выполнения 24/7
+>
+> Да я ваибкодил его, но также затерпел и **вайбдебажил и вайбтестил его** 
+
+Простой вебклиент со статическим рендером страниц и встроенным reverse-proxy трансляции видео в плеер.
+
+Стек сервера:
+- backend: [fastapi](https://github.com/fastapi/fastapi)
+- frontend: pure js, [water.css](https://watercss.kognise.dev/)
+- видеоплеер - [Artplayer.js](https://artplayer.org/) и плагины hls.js, dash.js
+- не применяются базы данных - данные кешируются в ОЗУ процесса сервера
+
+Для запуска требуется установить зависимость:
+    - uv tool install `ani-cli-ru[web]`
+    - pipx install `ani-cli-ru[web]`
+
+запускать командой:
+
+```shell
+anicli-ru web
+```
+
+Для прочих настроек (ip, port, ttl) введите
+
+```shell
+anicli-ru web --help
+```
+
+Входить по ссылке со сгенерированным токеном или сканировать QR код.
+Пример вывода ссылки для входа:
+
+```
+Server started at: http://127.0.0.1:8000/?token=HSB6l1qzoBogpPNpBakXhA
+```
+
+В search/ongoing/episode страницах доступны фильтры по заголовку и номерам эпизодов. 
+Синтаксис поиска номера эпизода идентичен как в CLI
+
+## Command Reference
+
+### Commands
+
+#### version
+
+**Description:** Напечатать версию приложения и anicli-api
+
+**Usage:**
+```
+anicli version
+```
+
+#### update
+
+**Description:** Обновить приложение 
 
 >[!note]
-> 
-> Эта опция ситуативная и может пригодиться только в крайних случаях для обхода cloudflare или ddos guard.
-> Работает как опция в yt-dlp `--cookies-from-browser`.
-> Вы можете вручную экспортировать cookies из браузера в netscape формат и передать аргументом (ниже будет пример) без установки дополнительной зависимости
+> Работает если установлено в pipx или uv, в обычном pip нужно обновлять вручную
 
-Установка с зависимостью экспорта cookies с браузера:
-
-| менеджер пакетов                                  | установка                                    | обновление                        |
-|---------------------------------------------------|----------------------------------------------|-----------------------------------|
-| [uv](https://docs.astral.sh/uv/#installation)     | `uv tool install anicli-ru[browser-cookies]` | `uv tool upgrade anicli-ru`       |
-| [pipx](https://pipx.pypa.io/stable/installation/) | `pipx install anicli-ru[browser-cookies] `   | `pipx upgrade anicli-ru`          |
-| [pip](https://peps.python.org/pep-0668/)          | `pip install anicli-ru[browser-cookies] `    | `pip install anicli-ru --upgrade` |
-
-
-Добавление зависимости экпорта cookies с браузера:
-
-| менеджер пакетов                                                       | установка                                                     |
-|------------------------------------------------------------------------|---------------------------------------------------------------|
-| [uv](https://docs.astral.sh/uv/#installation)                          | `uv tool install anicli-ru --with anicli-ru[browser-cookies]` |
-| [pipx](https://pipx.pypa.io/stable/installation/)                      | `pipx inject anicli-ru anicli-ru[browser-cookies] `           | 
-| [pip (не рекомендуется см PEP 668)](https://peps.python.org/pep-0668/) | `pip install anicli-ru[browser-cookies] `                     |
-
-
-## Nix
-
-- Во [флейке](./flake.nix) имеются:
-
-  1. packages `nix run github:vypivshiy/ani-cli-ru`, a также вместо `run` `build` для `./result`
-  2. devShells `nix shell github:vypivshiy/ani-cli-ru`
-  3. overlays `pkgs.anicli-ru -> inputs.anicli-ru.packages.<system>.default` ! может не работать
-
-- Установка:
-
-  1. system-wide `environment.systemPackages = [ pkgs.anicli-ru ];`
-  2. user-only `home.packages = [ pkgs.anicli-ru ];`
-
-## Usage:
-
-```shell
-anicli-ru
+**Usage:**
+```
+anicli update [--force]
 ```
 
-### Примеры:
+**Options:**
+- `--force`: Принудительно обновить api и клиент
 
-#### Сменить источник:
+#### check-updates
 
-```shell
-anicli-ru -s anilibria
+**Description:** Проверить наличие обновлений на pypi
+
+**Usage:**
+```
+anicli check-updates
 ```
 
-#### Запуск поиска/онгоингов при старте:
+#### web
 
-```shell
-# запуск и поиск тайтлов по фразе `lain`
-anicli-ru --search "lain"
-# запуск и вывод онгоингов
-anicli-ru --ongoing
+**Description:** Запустить локальный сервер (experimental, LOCAL USE ONLY)
+
+**Usage:**
+```
+anicli web [OPTIONS]
 ```
 
-#### Передача дополнительных аргументов в плеер.
+**Options:**
+- `-h, --host TEXT`: IP host (default: 127.0.0.1)
+- `-p, --port INTEGER`: Port (default: 8000)
+- `-mw, --max-workers INTEGER`: Uvicorn max workers (default: 1)
+- `-c, --chunk-size TEXT`: Размер чанка видеопотока для трансляции в вебплеер. Поддерживает суффиксы: k/K (kbytes), m/M (mbytes), или число (bytes) (по умолчанию: 1M - 1 мегабайт)
+- `-s, --source TEXT`: Источник (можно переключить в веб интерфейсе)
+- `--ttl TEXT`: Cache TTL - через сколько уничтожишь извлеченные объекты. Поддерживает суффиксы: h/H (hours), m/M (minutes), или число (seconds) (default: 12h)
 
-Например, если у вас специально настроенный профиль в mpv плеере:
+#### cli
 
-```shell
-anicli-ru -pa="--profile=my_profile"
+**Description:** Запуск интерактивного cli приложения (требуется mpv видеоплеер)
+**Usage:**
+```
+anicli cli [OPTIONS]
 ```
 
-#### Установка cookies в http запросы
+**Required Options:**
+- `-s, --source TEXT`: Источник (можно изменить в приложении)
 
->[!tip]
-> передача cookies **может** пригодится для обхода cloudflare или ddos-guard, редко пригождается
+**Optional Options:**
+- `-q, --quality INTEGER`: Качество видео по умолчанию. Если оно недоступно - выберет близжайшее значение. (default: 2060)
+- `--search TEXT`: При запуске вывести результат поиска тайтлов по запросу 
+- `--ongoing`: При запуске вывести доступные онгоинги
+- `-mo, --mpv-opts TEXT`: Дополнительные MPV опции. Должны быть одной строкой. Пример: `"-config=/.config/mpv/mpv.conf --no-audio"`
+- `--m3u-size INTEGER`: Максимальный размер плейлиста (slice-play) (default: 6). Не рекомендуется увеличивать размер - извлечённые ссылки имеют срок жизни и не живут долго!
+- `--timeout INTEGER`: HTTP client timeout (seconds) (default: 60)
+- `--proxy TEXT`: Прокси для клиента. поддерживает http(s), socks4/5. Имеет формат scheme://user:password@host:port
+- `--cookies-from-browser TEXT`: Извлечь cookies из браузера и загрузить в httpx клиент. Требуется зависимость `anicli[cookies]`
+- `--cookies PATH`: прочитать cookie из файла (должны быть в netscape формате)
+- `-H, --header TEXT`: Добавить http заголовки в клиент, можно передать несколько раз (формат: Key=Value)
+- `--header-file PATH`: Путь до файла с заголовками headers (формат на одну строку:, Key=Value)
 
-Эта опция читает [netscape формат](https://curl.se/rfc/cookie_spec.html). 
-Cookie из браузера можно, например, импортировать через firefox плагин [cookies-txt](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/)
-и прочим аналогам.
+### Notes
 
-> cookies.txt
-```
-.example.com	TRUE	/	FALSE	1747566077	cookie	test123
-.example.com	TRUE	/	FALSE	1747566077	cookie2	foobar
-```
-
-```shell
-anicli-ru --cookies netscape-cookies.txt
-```
-
-#### Установка cookies при помощи извлечения из браузера. 
-
-Работает [как в yt-dlp с опцией --cookies-from-browser](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp)
-
->[!note]
-> требуется дополнительная зависимость anicli-ru\[browser-cookies]
-
-```shell
-anicli-ru --cookies-from-browser firefox
-```
-
-#### Установка headers заголовков
-
-Формат `ключ=значение`.
-
-В источнике `anilibme` после авторизации будет доступен их плеер с разрешением full hd/4k.
-После авторизации, можно из браузера извлечь заголовок по ключу `Authorization: Bearer ...`
-
-```shell
-anicli-ru -s anilibme --header "Authorization=Bearer ..."
-```
-
-Можно передать несколько заголовков
-
-```shell
-anicli-ru -s anilibme --header "Authorization=Bearer ..." --header "User-Agent=Mozilla/5.0 ..."
-```
-
-Передача заголовков через файл (формат `ключ=значение` на каждую новую строку)
-
-> headers.txt
-```
-Authorization=Bearer ...
-User-Agent=Mozilla/5.0 ...
-```
-
-```shell
-anicli-ru --header-file headers.txt
-```
+- The `web` command is experimental and intended for local network use only, not suitable for production deployment
+- The `cli` command requires an MPV player to be installed and available in your system PATH
+- Both `--search` and `--ongoing` options cannot be used simultaneously in the cli command
+- Chunk size and TTL options support various suffixes for convenience:
+  - Chunk size: k/K for kilobytes, m/M for megabytes, or plain integer for bytes
+  - TTL: h/H for hours, m/M for minutes, or plain integer for seconds
 
 
-## Ключи запуска
+## License
 
-```
--s --source - выбор источника. По умолчанию "yummy_anime_org"
--q --quality - минимально выбранное разрешение видео. Доступны: 0, 144, 240, 360, 480, 720, 1080, 2060. По умолчанию 2060
-  Например, если вы установили 1080 и такое видео отсутстует - выведет максимально допустимое (720 и далее)
---ffmpeg - использовать ffmpeg для перенаправления видеопотока в видеоплеер (DEPRECATED)
--p --player - какой видеоплеер использовать. доступны "vlc", "mpv". По умолчанию "mpv"
-  vlc плеер (DEPRECATED)
---m3u - для SLICE-режима просмотра создавать плейлист (ЭКСПЕРИМЕНТАЛЬНЫЙ РЕЖИМ, СОБИРАЕТ ВИДЕО МЕДЛЕННО)
---m3u-size - максимальный размер m3u плейлиста. По умолчанию 12
--pa --playlist-args - дополнительные аргументы для плеера. Например, -pa="--profile=foo" -pa="--no-video".
-  подробнее о них смотрите в документации по плееру
---search - запустить и найти тайтл по строке
---ongoing - запустить и найти онгоинги
---cookies - загрузить в клиент cookie (netscape format)
---cookies-from-browser - загрузить в клиент cookies из браузера
---header - дополнительные заголовки для http запросов (формат ключ=значение)
---header-file - дополнительные заголовки для http запросов (формат ключ=значение на каждую строку)
-```
+GPL3
