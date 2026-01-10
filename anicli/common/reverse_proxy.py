@@ -1,7 +1,13 @@
 """
-Примитивный модуль для reverse-proxy плейлистов или видео для обхода проблемы CORS.
-Переписывает URL плейлистов на локальный URL, для reverse-proxy streaming.
-Поддерживает проксирование заголовков для seek (Range requests).
+Primitive module for reverse-proxying playlists or videos to bypass CORS issues.
+Rewrites playlist URLs to local URLs for reverse-proxy streaming.
+Supports header proxying for seek operations (Range requests).
+
+This module provides functionality for:
+- HLS (HTTP Live Streaming) playlist proxying
+- DASH (Dynamic Adaptive Streaming over HTTP) manifest proxying
+- Binary content (video files) proxying with range request support
+- URL rewriting for streaming content
 """
 
 from __future__ import annotations
@@ -9,7 +15,7 @@ from __future__ import annotations
 import io
 import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, AsyncGenerator, Callable, Optional, overload
+from typing import TYPE_CHECKING, AsyncGenerator, Callable, Literal, Optional, overload
 from urllib.parse import urljoin
 
 if TYPE_CHECKING:
@@ -30,7 +36,16 @@ class ProxyResponse:
 
 
 async def _yield_bytes(data: bytes | str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> AsyncGenerator[bytes, None]:
-    """Генератор для статических данных (плейлистов)."""
+    """
+    Generator for static data (playlists).
+
+    Args:
+        data: Input data as bytes or string
+        chunk_size: Size of chunks to yield, defaults to DEFAULT_CHUNK_SIZE
+
+    Yields:
+        Bytes in specified chunk sizes
+    """
     if isinstance(data, str):
         data = data.encode("utf-8")
 
@@ -40,7 +55,18 @@ async def _yield_bytes(data: bytes | str, chunk_size: int = DEFAULT_CHUNK_SIZE) 
 
 
 def _process_hls_line(line: str, url_target: str, url_rewriter: UrlRewriter, uri_pattern: re.Pattern) -> str:
-    """Обрабатывает одну строку HLS плейлиста."""
+    """
+    Process a single HLS playlist line.
+
+    Args:
+        line: The HLS playlist line to process
+        url_target: Target URL to join relative URLs with
+        url_rewriter: Function to rewrite URLs
+        uri_pattern: Regex pattern to match URI attributes
+
+    Returns:
+        Processed line with rewritten URLs where applicable
+    """
     if not line or line.startswith("#EXTINF") or line.startswith("#EXT-X-"):
         if "URI=" not in line:
             return line
@@ -67,7 +93,19 @@ async def reverse_stream_hls(
     headers: Headers | dict[str, str] | None = None,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
 ) -> ProxyResponse:
-    """Обрабатывает HLS плейлист (.m3u8)."""
+    """
+    Process HLS playlist (.m3u8).
+
+    Args:
+        url_target: Target URL of the HLS playlist
+        client: HTTPX async client for making requests
+        url_rewriter: Function to rewrite URLs in the playlist
+        headers: Optional headers to send with the request
+        chunk_size: Size of chunks for yielding data
+
+    Returns:
+        ProxyResponse containing the processed HLS playlist content
+    """
     resp = await client.get(url_target, headers=headers)
     resp.raise_for_status()
 
@@ -78,7 +116,7 @@ async def reverse_stream_hls(
 
     playlist_content = "\n".join(processed_lines).encode("utf-8")
 
-    # Формируем заголовки для ответа
+    # Form response headers
     response_headers = {
         "Content-Type": resp.headers.get("Content-Type", "application/vnd.apple.mpegurl"),
         "Content-Length": str(len(playlist_content)),
@@ -97,7 +135,14 @@ def _process_dash_xml(
     url_target: str,
     url_rewriter: UrlRewriter,
 ) -> None:
-    """Обрабатывает DASH MPD XML."""
+    """
+    Process DASH MPD XML.
+
+    Args:
+        root: Root XML element of the DASH manifest
+        url_target: Target URL to join relative URLs with
+        url_rewriter: Function to rewrite URLs in the XML
+    """
     ns = dict(root.nsmap)
     if None in ns:
         ns["d"] = ns.pop(None)
@@ -133,7 +178,19 @@ async def reverse_stream_dash(
     headers: Headers | dict[str, str] | None = None,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
 ) -> ProxyResponse:
-    """Обрабатывает DASH MPD манифест (.mpd)."""
+    """
+    Process DASH MPD manifest (.mpd).
+
+    Args:
+        url_target: Target URL of the DASH manifest
+        client: HTTPX async client for making requests
+        url_rewriter: Function to rewrite URLs in the manifest
+        headers: Optional headers to send with the request
+        chunk_size: Size of chunks for yielding data
+
+    Returns:
+        ProxyResponse containing the processed DASH manifest content
+    """
     resp = await client.get(url_target, headers=headers)
     resp.raise_for_status()
 
@@ -165,21 +222,30 @@ async def reverse_stream_binary(
     chunk_size: int = DEFAULT_CHUNK_SIZE,
 ) -> ProxyResponse:
     """
-    Проксирует бинарный контент (mp4, ts) с поддержкой Range requests.
-    Использует client.send(stream=True) вместо context manager для доступа к заголовкам.
+    Proxy binary content (mp4, ts) with Range request support.
+    Uses client.send(stream=True) instead of context manager to access headers.
+
+    Args:
+        url_target: Target URL of the binary content
+        client: HTTPX async client for making requests
+        headers: Optional headers to send with the request
+        chunk_size: Size of chunks for yielding data
+
+    Returns:
+        ProxyResponse containing the binary content stream
     """
     request = client.build_request("GET", url_target, headers=headers)
 
-    # Отправляем запрос, но не читаем тело сразу (stream=True)
+    # Send the request but don't read the body immediately (stream=True)
     resp = await client.send(request, stream=True)
 
-    # ВАЖНО: В случае ошибки (404, 500) мы должны сразу закрыть соединение,
-    # если не собираемся читать тело (или прочитать и выбросить ошибку)
+    # IMPORTANT: In case of error (404, 500) we should close the connection immediately,
+    # if we don't intend to read the body (or read and discard the error)
     if resp.is_error:
         await resp.aclose()
         resp.raise_for_status()
 
-    # Заголовки, которые критичны для видео-плеера
+    # Headers that are critical for video player
     forward_headers = ["content-type", "content-length", "content-range", "accept-ranges", "last-modified", "etag"]
 
     response_headers = {}
@@ -187,10 +253,10 @@ async def reverse_stream_binary(
         if val := resp.headers.get(key):
             response_headers[key] = val
 
-    # Добавляем CORS
+    # Add CORS
     response_headers["Access-Control-Allow-Origin"] = "*"
 
-    # Создаем генератор-обертку, который закроет соединение httpx после завершения стриминга
+    # Create a wrapper generator that will close the httpx connection after streaming completes
     async def stream_wrapper():
         try:
             async for chunk in resp.aiter_bytes(chunk_size):
@@ -206,7 +272,7 @@ async def stream(
     url_target: str,
     client: AsyncClient,
     url_rewriter: UrlRewriter,
-    mode: str,
+    mode: Literal["hls", "dash", "binary", "auto"],
     headers: Headers | dict[str, str] | None = ...,
     chunk_size: int = ...,
 ) -> ProxyResponse: ...
@@ -217,7 +283,7 @@ async def stream(
     url_target: str,
     client: AsyncClient,
     url_rewriter: None = None,
-    mode: str = "binary",
+    mode: Literal["hls", "dash", "binary", "auto"] = "binary",
     headers: Headers | dict[str, str] | None = ...,
     chunk_size: int = ...,
 ) -> ProxyResponse: ...
@@ -227,13 +293,27 @@ async def stream(
     url_target: str,
     client: AsyncClient,
     url_rewriter: UrlRewriter | None = None,
-    mode: str = "auto",
+    mode: Literal["hls", "dash", "binary", "auto"] = "auto",
     headers: Headers | dict[str, str] | None = None,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
 ) -> ProxyResponse:
     """
-    Универсальная функция для проксирования видео потоков и плейлистов.
-    Возвращает ProxyResponse с генератором и заголовками.
+    Universal function for proxying video streams and playlists.
+    Returns ProxyResponse with generator and headers.
+
+    Args:
+        url_target: Target URL to proxy
+        client: HTTPX async client for making requests
+        url_rewriter: Function to rewrite URLs (required for HLS/DASH modes)
+        mode: Processing mode ("auto", "hls", "dash", or "binary")
+        headers: Optional headers to send with the request
+        chunk_size: Size of chunks for yielding data
+
+    Returns:
+        ProxyResponse containing the processed content stream
+
+    Raises:
+        ValueError: If url_rewriter is not provided when required for HLS/DASH modes
     """
     if mode == "auto":
         clean_path = url_target.split("?")[0].lower()
