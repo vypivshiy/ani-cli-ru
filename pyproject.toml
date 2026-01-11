@@ -21,7 +21,6 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
 ]
 dependencies = [
-    "anicli-api>=0.8.8",
     "prompt-toolkit>=3.0.52",
     "rich>=14.2.0",
     "typer>=0.20.0",
@@ -122,6 +121,3 @@ lint.unfixable = [
   # Don't touch unused imports
   "F401",
 ]
-
-[tool.uv.sources]
-anicli-api = { path = "../anicli-api" }
