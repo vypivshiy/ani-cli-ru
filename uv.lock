@@ -27,6 +27,7 @@ name = "anicli-ru"
 version = "6.0.1"
 source = { editable = "." }
 dependencies = [
+    { name = "anicli-api" },
     { name = "prompt-toolkit" },
     { name = "rich" },
     { name = "typer" },
@@ -66,6 +67,7 @@ web = [
 
 [package.metadata]
 requires-dist = [
+    { name = "anicli-api", specifier = ">=0.8.8" },
     { name = "anicli-api", marker = "extra == 'all'", specifier = ">=0.8.8" },
     { name = "fastapi", marker = "extra == 'all'", specifier = ">=0.121.2" },
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.121.2" },

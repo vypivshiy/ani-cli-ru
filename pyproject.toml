@@ -1,7 +1,7 @@
 [project]
 name = "anicli-ru"
 # todo: bump ver via script
-version="6.0.1"
+version="6.0.2"
 description = 'cli tool for watching anime'
 readme = "README.md"
 requires-python = ">=3.9"
@@ -21,6 +21,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
 ]
 dependencies = [
+    "anicli-api>=0.8.8",
     "prompt-toolkit>=3.0.52",
     "rich>=14.2.0",
     "typer>=0.20.0",
