@@ -3,21 +3,26 @@
 from typing import TYPE_CHECKING, Iterable, List, Tuple, Union
 
 if TYPE_CHECKING:
-    from anicli_api.base import BaseAnime, BaseEpisode, BaseOngoing, BaseSearch, BaseSource
+    from anicli_api.base import BaseOngoing, BaseSearch
 
 
 def make_ongoing_or_search_completer(
     results: Iterable[Union["BaseOngoing", "BaseSearch"]], current_text: str
 ) -> List[Tuple[str, str]]:
-    # fi
-    completions = [(str(i), result.title) for i, result in enumerate(results, 1)]
-    if current_text:
-        title_completions = []
-        for i, result in enumerate(results, 1):
-            if current_text.lower() in result.title.lower():
-                # Add the title as a completion option with index as the actual value to submit
-                title_completions.append((str(i), f"[#{i}] {result.title} "))
-        # Insert title completions at the beginning
-        completions = title_completions + completions
+    # Optimization: One-pass iteration and pre-calculate search term
+    search_term = current_text.lower() if current_text else None
 
-    return completions
+    title_matches = []
+    all_indices = []
+
+    for i, result in enumerate(results, 1):
+        idx_str = str(i)
+        title = result.title
+
+        all_indices.append((idx_str, title))
+
+        if search_term and search_term in title.lower():
+            title_matches.append((idx_str, f"[#{idx_str}] {title} "))
+
+    # Return prioritized matches followed by the full list
+    return title_matches + all_indices

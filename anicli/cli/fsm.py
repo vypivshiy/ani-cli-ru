@@ -26,6 +26,10 @@ T = TypeVar("T", bound=Context)
 class BaseAnimeFSM(BaseFSM[T]):
     ROUTE_NAME = "base"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_prompt_var("ROUTE_NAME", f"{self.ROUTE_NAME}")
+
     def _get_user_dynamic_validator(
         self, state_name: str, user_input: str
     ) -> Union[bool, str]:

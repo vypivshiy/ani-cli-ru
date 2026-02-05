@@ -47,10 +47,19 @@ def version():
 
 
 @app.command(help="update anicli and anicli-api packages")
-def update(force: Annotated[bool, Option("--force", is_flag=True, help="force update api and client")] = False):  # noqa: FBT002
+def update(
+    force: Annotated[
+        bool, Option("--force", is_flag=True, help="force update api and client")
+    ] = False,
+):  # noqa: FBT002
     # I do not know a reliable way in which virtual environment the script is running, so
     # we are polling all the listed package managers in a simple way
-    from .common.updater import update_pipx, update_uv, is_installed_in_pipx, is_installed_in_uv  # noqa
+    from .common.updater import (
+        update_pipx,
+        update_uv,
+        is_installed_in_pipx,
+        is_installed_in_uv,
+    )  # noqa
 
     is_pipx, is_uv = is_installed_in_pipx(), is_installed_in_uv()
     if not is_pipx and not is_uv:
@@ -92,22 +101,28 @@ def _cb_parse_ttl(ttl: str) -> int:
         return int(ttl[:-1]) * 60
     elif ttl.isdigit():  # seconds
         return int(ttl)
-    raise BadParameter("Should be integer or have suffix (m, M - minutes. h, H - hours)")
+    raise BadParameter(
+        "Should be integer or have suffix (m, M - minutes. h, H - hours)"
+    )
 
 
-
-@app.command(help="run local anicli webserver (experimental)",
-             epilog="Use in local network only, not adopted to production")
+@app.command(
+    help="run local anicli webserver (experimental)",
+    epilog="Use in local network only, not adopted to production",
+)
 def web(
     host: Annotated[str, Option("-h", "--host", help="ip host")] = "127.0.0.1",
     port: Annotated[int, Option("-p", "--port", help="port")] = 8000,
-    workers: Annotated[int, Option("-mw", "--max-workers", help="uvicorn max workers")] = 1,
+    workers: Annotated[
+        int, Option("-mw", "--max-workers", help="uvicorn max workers")
+    ] = 1,
     chunk_size: Annotated[
         str,
         Option(
-            "-c", "--chunk-size",
+            "-c",
+            "--chunk-size",
             help="chunk video stream size. Support suffixes: k/K (kbytes), m/M (mbytes), or plain integer (bytes)",
-            callback=_cb_parse_cache_size
+            callback=_cb_parse_cache_size,
         ),
     ] = "1M",
     source: Annotated[
@@ -120,7 +135,7 @@ def web(
         Option(
             "--ttl",
             help="cache TTL destroy parsed objects (in seconds). Support suffixes: h/H (hours), m/M (minutes), or plain integer (seconds)",
-            callback=_cb_parse_ttl
+            callback=_cb_parse_ttl,
         ),
     ] = "12h",  # 12h
 ):
@@ -134,8 +149,10 @@ def web(
         import uvicorn
         from .web.server import app, OPTIONS
     except ImportError:
-        raise BadParameter("web group required fastapi dependency. Add via `anicli-ru[web]`")
-    
+        raise BadParameter(
+            "web group required fastapi dependency. Add via `anicli-ru[web]`"
+        )
+
     OPTIONS.EXTRACTOR_NAME = source  # type: ignore
     OPTIONS.CHUNK_SIZE = chunk_size  # type: ignore (cast to int by callback)
     OPTIONS.TTL = ttl  # type: ignore (cast to int by callback)
@@ -258,18 +275,22 @@ def cli(
         )
         raise BadParameter(msg)
     if search and ongoing:
-        msg = "Not allowed pass both `--search` and `--ongoing` options. Pick once option"
+        msg = (
+            "Not allowed pass both `--search` and `--ongoing` options. Pick once option"
+        )
         raise BadParameter(msg)
 
-    cfg = AnicliContext()
-    cfg["app_version"] = APP_VERSION
-    cfg["api_version"] = get_api_version()
-    cfg["extractor_name"] = source
-    cfg["quality"] = quality if quality else 2060
-    cfg["mpv_opts"] = mpv_opts if mpv_opts else ""
-    cfg["m3u_size"] = m3u_size if m3u_size else 6
-    cfg["timeout"] = timeout if timeout else 60
-    cfg["proxy"] = proxy if proxy else None
+    cfg = AnicliContext(
+        app_version=APP_VERSION,
+        api_version=get_api_version(),
+        extractor_name=source,
+        quality=quality,
+        mpv_opts=mpv_opts,
+        m3u_size=m3u_size,
+        timeout=timeout,
+        proxy=proxy,
+        headers=parse_args_headers(header) if header else {},
+    )
 
     if extract_cookies_from_browser:
         extract_cookies_from_browser = cast(CookieJar, extract_cookies_from_browser)
@@ -283,7 +304,6 @@ def cli(
             for cookie in netscape_cookies:
                 cfg["cookies"].set_cookie(cookie)
 
-    cfg["headers"] = parse_args_headers(header) if header else {}
     if headers_file:
         headers_file = cast(Dict[str, str], headers_file)
         cfg["headers"].update(headers_file)

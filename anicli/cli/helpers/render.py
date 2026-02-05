@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 console = get_console()
 DIGITS_TUPLE = tuple(i for i in "0123456789")
 
-T = TypeVar("T", bound=HttpMixin)
+T = TypeVar("T", bound="HttpMixin")
 
 
 def render_table(title: str, results: Iterable[T]) -> None:
@@ -26,6 +26,7 @@ def render_table(title: str, results: Iterable[T]) -> None:
     table_fill_limited_rows(table, *rows)
 
     console.print(table)
+
 
 def render_update_notification(result: dict, console: Console) -> None:
     """
