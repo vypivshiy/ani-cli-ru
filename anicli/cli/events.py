@@ -26,10 +26,8 @@ async def on_start_config_http_client(ctx: AppContext[AnicliContext]) -> None:
         extractor.http = HTTPSync(proxy=proxy, headers=headers, cookies=cookies, timeout=timeout)
         extractor.http_async = HTTPAsync(proxy=proxy, headers=headers, cookies=cookies, timeout=timeout)
     else:
-        extractor.http.headers.update(headers)
-        extractor.http.cookies.update(cookies)
-        extractor.http.timeout = timeout
-
-        extractor.http_async.headers.update(headers)
-        extractor.http_async.cookies.update(cookies)
-        extractor.http_async.timeout = timeout
+        for client in (extractor.http, extractor.http_async):
+            client.headers.update(headers)
+            client.cookies.update(cookies)
+            if timeout is not None:
+                client.timeout = timeout

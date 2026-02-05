@@ -21,7 +21,7 @@ def make_ongoing_or_search_completer(
 
         all_indices.append((idx_str, title))
 
-        if search_term and search_term in title.lower():
+        if search_term and (search_term == idx_str or search_term in title.lower()):
             title_matches.append((idx_str, f"[#{idx_str}] {title} "))
 
     # Return prioritized matches followed by the full list
