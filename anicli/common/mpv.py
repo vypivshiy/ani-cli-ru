@@ -80,7 +80,7 @@ async def play_mpv_batched_videos(
         args.extend(mpv_opts.split())
 
     with tempfile.NamedTemporaryFile(
-        mode="w", delete=False, suffix=".m3u"
+        mode="w", delete=False, suffix=".m3u", encoding="utf-8"
     ) as temp_file:
         raw_playlist = generate_m3u_str_playlist(videos, titles)
         temp_file.write(raw_playlist)
