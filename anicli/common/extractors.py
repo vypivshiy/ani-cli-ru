@@ -1,8 +1,7 @@
 import importlib.util
-import os
-import re
 from functools import lru_cache
-from typing import List, Optional, Protocol, Type, cast
+from pathlib import Path
+from typing import List, Protocol, Type, cast
 
 from anicli_api.base import (
     BaseAnime,
@@ -27,12 +26,17 @@ class ExtractorLikeModule(Protocol):
 @lru_cache(maxsize=1)
 def get_extractor_modules(package_name: str = "anicli_api.source") -> List[str]:
     # dynamically get available source extractors
-    package_path = importlib.util.find_spec(package_name).submodule_search_locations[0]  # type: ignore
-    files = os.listdir(package_path)
+    spec = importlib.util.find_spec(package_name)
+    if not spec or not spec.submodule_search_locations:
+        return []
 
-    # The '-` character is more convenient to type than `_`, no need to hold the key modifier!
+    package_path = Path(spec.submodule_search_locations[0])
+
+    # Filter: must be .py, not dunder, not private
     return [
-        f[:-3].replace("_", "-") for f in files if f.endswith(".py") and not f.startswith("__") and not f.endswith("__")
+        p.stem.replace("_", "-")
+        for p in package_path.glob("*.py")
+        if not p.name.startswith("__")
     ]
 
 

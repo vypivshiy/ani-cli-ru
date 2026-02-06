@@ -10,7 +10,12 @@ def source_hash(source: "BaseSource") -> int:
     return hash((source.title, urlsplit(source.url).netloc))
 
 
-def default_batch_gen_title(anime: BaseAnime, episode: BaseEpisode, _source: BaseSource, _video: Video) -> str:
+def default_batch_gen_title(
+    anime: BaseAnime,
+    episode: BaseEpisode,
+    _source: BaseSource,
+    _video: Video,
+) -> str:
     return f"{anime.title} - {episode.num} {episode.title}"
 
 
@@ -47,14 +52,19 @@ async def videos_iterator(
 
     for episode in episodes:
         sources = await episode.a_get_sources()
-        for source in sources:
-            if base_hash == source_hash(source):
-                break
-        else:
-            # not founded by source hash - exit from generator
-            break
-        videos = await source.a_get_videos()
-        for video in videos:
-            if video.quality == initial_video.quality:
-                yield video, cb_title(initial_anime, episode, source, video)
-                break
+
+        match_source = next((s for s in sources if source_hash(s) == base_hash), None)
+
+        if not match_source:
+            # Stop iteration if the specific dubber/provider is not found
+            return
+
+        videos = await match_source.a_get_videos()
+        # Find video with matching quality
+        match_video = next(
+            (v for v in videos if v.quality == initial_video.quality), None
+        )
+        if match_video:
+            yield match_video, cb_title(
+                initial_anime, episode, match_source, match_video
+            )

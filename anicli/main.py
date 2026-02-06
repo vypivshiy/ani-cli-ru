@@ -9,6 +9,7 @@ from rich import get_console
 from typer import BadParameter, Option
 from typing_extensions import Annotated
 
+import anicli
 from anicli.common.cookies_config import (
     BROWSER_SUPPORTS,
     parse_args_headers,
@@ -33,7 +34,6 @@ app = typer.Typer(
 EXTRACTORS_CHOICE = Choice(get_extractor_modules())
 BROWSER_CHOICE = Choice(BROWSER_SUPPORTS)
 console = get_console()
-APP_VERSION = "6.0.0a"
 
 
 @app.command(help="Show app, anicli-api versions and exit")
@@ -41,7 +41,7 @@ def version():
     from rich.panel import Panel  # noqa
 
     api_version = get_api_version()
-    renderable = f"anicli-ru : [bold]{APP_VERSION}[/bold]\nanicli-api: [bold]{api_version}[/bold]"
+    renderable = f"anicli-ru : [bold]{anicli.__version__}[/bold]\nanicli-api: [bold]{api_version}[/bold]"
     panel = Panel(renderable, title="Versions", expand=False)
     console.print(panel)
 
@@ -54,30 +54,18 @@ def update(
 ):  # noqa: FBT002
     # I do not know a reliable way in which virtual environment the script is running, so
     # we are polling all the listed package managers in a simple way
-    from .common.updater import (
-        update_pipx,
-        update_uv,
-        is_installed_in_pipx,
-        is_installed_in_uv,
-    )  # noqa
+    from .common.updater import update_tool  # noqa
 
-    is_pipx, is_uv = is_installed_in_pipx(), is_installed_in_uv()
-    if not is_pipx and not is_uv:
-        msg = "anicli-ru package not founded in pipx or uv tool"
-        raise BadParameter(msg)
-    if is_uv:
-        update_uv(force=force)
-    elif is_pipx:
-        update_pipx(force=force)
+    update_tool(force=force)
 
 
 @app.command(help="check updates")
 def check_updates():
-    from .common.updater import check_for_updates, get_api_version  # noqa
+    from .common.updater import check_for_updates  # noqa
     import asyncio  # noqa
     from .cli.helpers.render import render_update_notification  # noqa
 
-    result = asyncio.run(check_for_updates(APP_VERSION, get_api_version()))
+    result = asyncio.run(check_for_updates())
     if result["anicli_api"]["is_outdated"] or result["anicli_ru"]["is_outdated"]:
         render_update_notification(result, console)  # type: ignore
     else:
@@ -147,7 +135,8 @@ def web(
     """
     try:
         import uvicorn
-        from .web.server import app, OPTIONS
+
+        from .web.server import OPTIONS, app
     except ImportError:
         raise BadParameter(
             "web group required fastapi dependency. Add via `anicli-ru[web]`"
@@ -249,7 +238,7 @@ def cli(
         ),
     ] = None,
     header: Annotated[
-        List[str],
+        List[str] | None,
         Option(
             "-H",
             "--header",
@@ -281,7 +270,7 @@ def cli(
         raise BadParameter(msg)
 
     cfg = AnicliContext(
-        app_version=APP_VERSION,
+        app_version=anicli.__version__,
         api_version=get_api_version(),
         extractor_name=source,
         quality=quality,
