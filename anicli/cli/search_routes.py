@@ -23,6 +23,7 @@ async def search_command(query: str, ctx: CommandContext[AnicliContext]):
         "search",
         "step_1",
         context={
+            "extractor_name": ctx.data.get("extractor_name"),
             "query": query,
             "results": results,
             "default_quality": ctx.data.get("quality", 2060),

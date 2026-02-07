@@ -8,10 +8,11 @@ from rich import get_console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
 from anicli.common.anicli_api_helpers import videos_iterator
+from anicli.common.config import AppManager
 from anicli.common.mpv import play_mpv_batched_videos, play_mpv_video
 from anicli.common.utils import is_arabic_digit
 
-from .contexts import Context, OngoingContext, SearchContext
+from .contexts import Context, HistoryContext, OngoingContext, SearchContext
 from .helpers.completer import make_ongoing_or_search_completer
 from .helpers.episode_picker import parse_selection_mask
 from .helpers.render import render_table
@@ -80,6 +81,10 @@ class BaseAnimeFSM(BaseFSM[T]):
         index = int(user_input)
         # transform human index to python
         result = self.ctx["results"][index - 1]  # type: ignore
+
+        extractor_name = self.ctx.get("extractor_name")
+        if extractor_name:
+            AppManager.save_history(result, extractor_name)
 
         anime = await result.a_get_anime()
         episodes = await anime.a_get_episodes()
@@ -237,3 +242,24 @@ class SearchFSM(BaseAnimeFSM[SearchContext]):
 @fsm_route("ongoing")
 class OngoingFSM(BaseAnimeFSM[OngoingContext]):
     ROUTE_NAME = "ongoing"
+
+
+@fsm_route("history")
+class HistoryFSM(BaseAnimeFSM[HistoryContext]):
+    ROUTE_NAME = "history"
+
+    @fsm_state("step_1", prompt_message="~/{ROUTE_NAME} ")
+    async def step_1(self, user_input: str):
+        index = int(user_input)
+        # transform human index to python
+        result = self.ctx["results"][index - 1]  # type: ignore
+
+        anime = await result.a_get_anime()
+        episodes = await anime.a_get_episodes()
+        self.ctx["anime"] = anime
+        self.ctx["episodes"] = episodes
+
+        self.set_prompt_var("result", anime.title)
+        render_table(anime.title, episodes)
+
+        await self.next_state("step_2")

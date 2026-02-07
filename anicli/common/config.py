@@ -1,12 +1,17 @@
 # TODO: coming soon
+import json
 import os
 import platform
 from pathlib import Path
-from typing import Any, Dict
+from typing import Dict, List
 
-import toml
+import attr
 
-from anicli.common.extractors import get_extractor_modules
+# import toml
+from anicli.common.extractors import (
+    dynamic_load_extractor_module,
+    get_extractor_modules,
+)
 
 # use raw string for initialize comments reason
 __DEFAULT_EXTRACTORS = ", ".join(get_extractor_modules())
@@ -37,35 +42,122 @@ host="localhost"
 port=10007
 """
 
-APP_NAME = "anicliru"
 
+class AppManager:
+    APP_NAME = "anicliru"
 
-def get_config_path() -> Path:
-    system = platform.system()
+    @classmethod
+    def get_config_dir(cls) -> Path:
+        system = platform.system()
+        if system == "Windows":
+            base = Path(os.getenv("APPDATA", Path.home() / "AppData" / "Roaming"))
+        elif system == "Darwin":
+            base = Path.home() / "Library" / "Application Support"
+        else:
+            base = Path(os.getenv("XDG_CONFIG_HOME", Path.home() / ".config"))
+        path = base / cls.APP_NAME
+        path.mkdir(parents=True, exist_ok=True)
+        return path
 
-    if system == "Windows":
-        base = Path(os.getenv("APPDATA", Path.home() / "AppData" / "Roaming"))
-    elif system == "Darwin":  # macOS
-        base = Path.home() / "Library" / "Application Support"
-    else:  # Linux / Unix
-        base = Path(os.getenv("XDG_CONFIG_HOME", Path.home() / ".config"))
+    @classmethod
+    def get_data_dir(cls) -> Path:
+        system = platform.system()
+        if system == "Windows":
+            return cls.get_config_dir()
+        elif system == "Darwin":
+            base = Path.home() / "Library" / "Application Support"
+        else:
+            base = Path(os.getenv("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+        path = base / cls.APP_NAME
+        path.mkdir(parents=True, exist_ok=True)
+        return path
 
-    config_dir = base / APP_NAME
-    config_dir.mkdir(parents=True, exist_ok=True)
-    return config_dir / "config.toml"
+    @classmethod
+    def get_config_path(cls) -> Path:
+        config = cls.get_config_dir() / "config.toml"
+        if not config.exists():
+            config.write_text(DEFAULT_CFG, encoding="utf-8")
+        return config
 
+    @classmethod
+    def get_history_path(cls) -> Path:
+        history = cls.get_data_dir() / "history.json"
+        if not history.exists():
+            history.write_text("[]", encoding="utf-8")
+        return history
 
-def create_default_config():
-    config = get_config_path()
-    config.write_text(DEFAULT_CFG, encoding="utf-8")
+    @classmethod
+    def read_history(cls) -> List[Dict]:
+        path = cls.get_history_path()
+        try:
+            with path.open(encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return []
 
+    @classmethod
+    def save_history(cls, item, extractor_name: str):
+        full_data = attr.asdict(item)
 
-def read_config() -> Dict[str, Any]:
-    config = get_config_path()
-    if not config.exists():
-        create_default_config()
+        clean_data = {k: v for k, v in full_data.items() if not k.startswith("_")}
 
-    text = config.read_text(encoding="utf-8")
-    data = toml.loads(text)
-    data["config_path"] = config
-    return data
+        entry_data = {
+            "title": clean_data.pop("title", "Unknown"),
+            "thumbnail": clean_data.pop("thumbnail", ""),
+            "url": clean_data.pop("url", ""),
+            "data": clean_data,
+        }
+
+        entry = {
+            "extractor_name": extractor_name,
+            "type": item.__class__.__name__,
+            "data": entry_data,
+        }
+
+        history = cls.read_history()
+
+        history = [e for e in history if e["data"]["url"] != entry_data["url"]]
+        history.insert(0, entry)
+
+        with cls.get_history_path().open("w", encoding="utf-8") as f:
+            json.dump(history[:50], f, ensure_ascii=False, indent=4)
+
+    @classmethod
+    def load_history(cls):
+        raw_data = cls.read_history()
+        results = []
+
+        for entry in raw_data:
+            ext_name = entry["extractor_name"]
+            model_type = entry["type"]
+            payload = entry["data"]
+
+            try:
+                module = dynamic_load_extractor_module(ext_name)
+                ext_instance = module.Extractor()
+
+                model_cls = getattr(module, model_type)
+                inner_data = payload.get("data", {})
+
+                obj = model_cls(
+                    title=payload["title"],
+                    thumbnail=payload["thumbnail"],
+                    url=payload["url"],
+                    **inner_data,
+                    **ext_instance._kwargs_http,
+                )
+                results.append(obj)
+
+            except Exception as e:
+                print(f"Ошибка загрузки {ext_name} ({model_type}): {e}")
+                continue
+
+        return results
+
+    # @classmethod
+    # def read_config(cls) -> Dict[str, Any]:
+    #     path = cls.get_config_path()
+    #     text = path.read_text(encoding="utf-8")
+    #     data = toml.loads(text)
+    #     data["config_path"] = path
+    #     return data

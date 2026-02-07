@@ -37,6 +37,7 @@ class AnicliContext(TypedDict, total=False):
 
 class Context(TypedDict, total=False):
     # initial via command
+    extractor_name: str
     results: Sequence[BaseSearch | BaseOngoing]
     default_quality: int
     mpv_opts: str
@@ -63,6 +64,10 @@ class Context(TypedDict, total=False):
 
 # ongoing context
 class OngoingContext(Context): ...
+
+
+# history context
+class HistoryContext(Context): ...
 
 
 # search context
