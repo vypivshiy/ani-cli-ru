@@ -3,7 +3,7 @@ import json
 import os
 import platform
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import attr
 
@@ -44,36 +44,46 @@ port=10007
 
 
 class AppManager:
+    """App configuration and history persistence manager."""
+
     APP_NAME = "anicliru"
 
     @classmethod
+    def _get_base_dir(cls, env_var: str, default_path: Path) -> Path:
+        """Resolve base directory and ensure it exists."""
+        base = os.getenv(env_var)
+        path = Path(base) if base else default_path
+        full_path = path / cls.APP_NAME
+        full_path.mkdir(parents=True, exist_ok=True)
+        return full_path
+
+    @classmethod
     def get_config_dir(cls) -> Path:
+        """Get platform-specific config directory."""
         system = platform.system()
         if system == "Windows":
-            base = Path(os.getenv("APPDATA", Path.home() / "AppData" / "Roaming"))
-        elif system == "Darwin":
-            base = Path.home() / "Library" / "Application Support"
-        else:
-            base = Path(os.getenv("XDG_CONFIG_HOME", Path.home() / ".config"))
-        path = base / cls.APP_NAME
-        path.mkdir(parents=True, exist_ok=True)
-        return path
+            return cls._get_base_dir("APPDATA", Path.home() / "AppData" / "Roaming")
+        if system == "Darwin":
+            return cls._get_base_dir(
+                "", Path.home() / "Library" / "Application Support"
+            )
+        return cls._get_base_dir("XDG_CONFIG_HOME", Path.home() / ".config")
 
     @classmethod
     def get_data_dir(cls) -> Path:
+        """Get platform-specific data directory."""
         system = platform.system()
         if system == "Windows":
             return cls.get_config_dir()
-        elif system == "Darwin":
-            base = Path.home() / "Library" / "Application Support"
-        else:
-            base = Path(os.getenv("XDG_DATA_HOME", Path.home() / ".local" / "share"))
-        path = base / cls.APP_NAME
-        path.mkdir(parents=True, exist_ok=True)
-        return path
+        if system == "Darwin":
+            return cls._get_base_dir(
+                "", Path.home() / "Library" / "Application Support"
+            )
+        return cls._get_base_dir("XDG_DATA_HOME", Path.home() / ".local" / "share")
 
     @classmethod
     def get_config_path(cls) -> Path:
+        """Get config.toml path, create default if missing."""
         config = cls.get_config_dir() / "config.toml"
         if not config.exists():
             config.write_text(DEFAULT_CFG, encoding="utf-8")
@@ -81,6 +91,7 @@ class AppManager:
 
     @classmethod
     def get_history_path(cls) -> Path:
+        """Get history.json path, create empty if missing."""
         history = cls.get_data_dir() / "history.json"
         if not history.exists():
             history.write_text("[]", encoding="utf-8")
@@ -88,6 +99,7 @@ class AppManager:
 
     @classmethod
     def read_history(cls) -> List[Dict]:
+        """Read history from JSON file."""
         path = cls.get_history_path()
         try:
             with path.open(encoding="utf-8") as f:
@@ -95,35 +107,38 @@ class AppManager:
         except (json.JSONDecodeError, OSError):
             return []
 
-    @classmethod
-    def save_history(cls, item, extractor_name: str):
+    @staticmethod
+    def _prepare_history_entry(item: Any, extractor_name: str) -> Dict:
+        """Serialize attr object for storage."""
         full_data = attr.asdict(item)
-
         clean_data = {k: v for k, v in full_data.items() if not k.startswith("_")}
 
-        entry_data = {
-            "title": clean_data.pop("title", "Unknown"),
-            "thumbnail": clean_data.pop("thumbnail", ""),
-            "url": clean_data.pop("url", ""),
-            "data": clean_data,
-        }
-
-        entry = {
+        return {
             "extractor_name": extractor_name,
             "type": item.__class__.__name__,
-            "data": entry_data,
+            "data": {
+                "title": clean_data.pop("title", "Unknown"),
+                "thumbnail": clean_data.pop("thumbnail", ""),
+                "url": clean_data.pop("url", ""),
+                "data": clean_data,
+            },
         }
 
+    @classmethod
+    def save_history(cls, item: Any, extractor_name: str, limit: int = 50):
+        """Save item to history with deduplication and limit."""
+        entry = cls._prepare_history_entry(item, extractor_name)
         history = cls.read_history()
 
-        history = [e for e in history if e["data"]["url"] != entry_data["url"]]
+        history = [e for e in history if e["data"]["title"] != entry["data"]["title"]]
         history.insert(0, entry)
 
         with cls.get_history_path().open("w", encoding="utf-8") as f:
-            json.dump(history[:50], f, ensure_ascii=False, indent=4)
+            json.dump(history[:limit], f, ensure_ascii=False, indent=4)
 
     @classmethod
     def load_history(cls):
+        """Restore extractor objects from history."""
         raw_data = cls.read_history()
         results = []
 
@@ -131,26 +146,27 @@ class AppManager:
             ext_name = entry["extractor_name"]
             model_type = entry["type"]
             payload = entry["data"]
-
             try:
                 module = dynamic_load_extractor_module(ext_name)
                 ext_instance = module.Extractor()
-
                 model_cls = getattr(module, model_type)
-                inner_data = payload.get("data", {})
+
+                kwargs = {
+                    **payload.get("data", {}),
+                    **ext_instance._kwargs_http,
+                    **getattr(ext_instance, "_kwargs_api", {}),
+                }
 
                 obj = model_cls(
                     title=payload["title"],
                     thumbnail=payload["thumbnail"],
                     url=payload["url"],
-                    **inner_data,
-                    **ext_instance._kwargs_http,
+                    **kwargs,
                 )
                 results.append(obj)
-
             except Exception as e:
-                print(f"Ошибка загрузки {ext_name} ({model_type}): {e}")
-                continue
+                msg = f"Ошибка загрузки {ext_name} ({model_type})"
+                raise RuntimeError(msg) from e
 
         return results
 
