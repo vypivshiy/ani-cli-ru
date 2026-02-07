@@ -8,7 +8,7 @@ resolution-markers = [
 
 [[package]]
 name = "anicli-api"
-version = "0.8.10"
+version = "0.8.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -18,9 +18,9 @@ dependencies = [
     { name = "lxml" },
     { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bd/9b/61dc7f7ba486f843176a3ca16679e6fdc86f096e9e1a10c9febb72ba2d06/anicli_api-0.8.10.tar.gz", hash = "sha256:f825180c327e47dafcc331833cc48029dd24069f773f4c245444a517016e72dc", size = 71277, upload-time = "2026-01-17T03:41:16.338Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b7/f2/6b9f81a5974a2599c96c1d1242e261eb7ebd9d0fead050cb5696ff6a635c/anicli_api-0.8.11.tar.gz", hash = "sha256:1eeebdca6c20b322d928f670ce644553c5aa44a5a3fedbe05c70a71f1f5e7951", size = 71420, upload-time = "2026-02-06T21:24:54.063Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f4/05/bba1468eb2cbae7f7f8ed230cf001dedee638ddcff7051b9fb633a5bf443/anicli_api-0.8.10-py3-none-any.whl", hash = "sha256:77784685f57c0ce38c5bf735ad92f97c53478002e1f764432dc14bf1413b1580", size = 100279, upload-time = "2026-01-17T03:41:14.677Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/39/518f361a2395029a72d0005ec4e152fbcb9fe44973ec293ddeb11b23ed85/anicli_api-0.8.11-py3-none-any.whl", hash = "sha256:a9f241be2463b8198800b2c6de2bc9465050bb927bfb15f7d5f934064918d60f", size = 100501, upload-time = "2026-02-06T21:24:55.736Z" },
 ]
 
 [[package]]
@@ -68,7 +68,7 @@ web = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anicli-api", specifier = ">=0.8.10" },
+    { name = "anicli-api", specifier = ">=0.8.11" },
     { name = "anicli-api", marker = "extra == 'all'", specifier = ">=0.8.8" },
     { name = "fastapi", marker = "extra == 'all'", specifier = ">=0.121.2" },
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.121.2" },
