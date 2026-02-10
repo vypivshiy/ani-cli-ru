@@ -1,6 +1,5 @@
 import sys
 from http.cookiejar import Cookie, CookieJar
-from os import PathLike
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -33,7 +32,7 @@ def read_from_browser(browser_name: str, domains: Optional[List[str]] = None) ->
         raise ImportError("rookiepy required")
 
 
-def read_from_netscape_file(filename: Union[str, PathLike[str]]) -> CookieJar:
+def read_from_netscape_file(filename: Union[str, Path]) -> CookieJar:
     cookies = parse_netscape_cookies_file(filename)
     jar = CookieJar()
 
@@ -98,7 +97,7 @@ def parse_netscape_cookie_string(netscape_cookie_string: str) -> List[Dict[str, 
     return cookies
 
 
-def parse_netscape_cookies_file(cookie_file: Union[str, PathLike[str]]) -> List[Dict[str, Any]]:
+def parse_netscape_cookies_file(cookie_file: Union[str, Path]) -> List[Dict[str, Any]]:
     """
     Parse Netscape format cookies file into a list of dictionaries.
 
@@ -127,7 +126,7 @@ def parse_args_headers(raw_headers: List[str]) -> Dict[str, str]:
     return out
 
 
-def parse_headers_file(headers_file: Union[str, PathLike[str]]) -> Dict[str, str]:
+def parse_headers_file(headers_file: Union[str, Path]) -> Dict[str, str]:
     out = {}
     with open(headers_file, encoding="utf-8") as f:
         for line in f:

@@ -238,7 +238,7 @@ def cli(
         ),
     ] = None,
     header: Annotated[
-        List[str] | None,
+        Optional[List[str]],
         Option(
             "-H",
             "--header",

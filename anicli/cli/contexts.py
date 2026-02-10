@@ -1,6 +1,6 @@
 from http.cookiejar import CookieJar
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Type, TypedDict
+from typing import Dict, List, Optional, Sequence, Type, TypedDict, Union
 
 from anicli_api.base import (
     BaseAnime,
@@ -37,7 +37,7 @@ class AnicliContext(TypedDict, total=False):
 
 class Context(TypedDict, total=False):
     # initial via command
-    results: Sequence[BaseSearch | BaseOngoing]
+    results: Sequence[Union[BaseSearch, BaseOngoing]]
     default_quality: int
     mpv_opts: str
     m3u_size: int
