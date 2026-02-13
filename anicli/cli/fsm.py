@@ -81,10 +81,7 @@ class BaseAnimeFSM(BaseFSM[T]):
         index = int(user_input)
         # transform human index to python
         result = self.ctx["results"][index - 1]  # type: ignore
-
-        extractor_name = self.ctx.get("extractor_name")
-        if extractor_name:
-            AppManager.save_history(result, extractor_name)
+        self.ctx["result_num"] = index - 1
 
         anime = await result.a_get_anime()
         episodes = await anime.a_get_episodes()
@@ -160,6 +157,13 @@ class BaseAnimeFSM(BaseFSM[T]):
         episode = cast(BaseEpisode, episode)
         title = f"{anime.title} - {episode.ordinal} {episode.title}"
         opts = self.ctx["mpv_opts"]  # type: ignore
+
+        result_num = self.ctx["result_num"]  # type: ignore
+        result = self.ctx["results"][result_num]  # type: ignore
+        extractor_name = self.ctx.get("extractor_name")
+        if extractor_name:
+            AppManager.save_history(result, source, ep_num + 1, extractor_name)
+
         await play_mpv_video(video_candidate, title, mpv_opts=opts)
 
         await self.go_back()
@@ -251,8 +255,32 @@ class HistoryFSM(BaseAnimeFSM[HistoryContext]):
     @fsm_state("step_1", prompt_message="~/{ROUTE_NAME} ")
     async def step_1(self, user_input: str):
         index = int(user_input)
+
+        history_data = AppManager.read_history()[index - 1]
+        time = history_data["time"]
+        if time is not None:
+            minutes, seconds = divmod(time, 60)
+            continue_ep = input(
+                f"Do you want to continue ep {history_data['episode']} at {minutes:02d}:{seconds:02d}\n(y/n): "
+            )
+            if continue_ep == "y":
+                source = AppManager.load_source(history_data)
+                default_quality = self.ctx["default_quality"]  # type: ignore
+                videos = await source.a_get_videos()
+                if not videos:
+                    CONSOLE.print("[red]video not founded[/red]")
+                    await self.go_back()
+                    return
+                videos = cast(List[Video], videos)
+                video_candidate = get_video_by_quality(videos, default_quality)
+                opts = self.ctx["mpv_opts"] + f"--start={time}"  # type: ignore
+                await play_mpv_video(
+                    video_candidate, history_data["data"]["title"], mpv_opts=opts
+                )
+
         # transform human index to python
         result = self.ctx["results"][index - 1]  # type: ignore
+        self.ctx["result_num"] = index - 1
 
         anime = await result.a_get_anime()
         episodes = await anime.a_get_episodes()

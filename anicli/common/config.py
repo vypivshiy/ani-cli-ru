@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import attr
+from anicli_api.base import BaseSource
 
 # import toml
 from anicli.common.extractors import (
@@ -108,26 +109,48 @@ class AppManager:
             return []
 
     @staticmethod
-    def _prepare_history_entry(item: Any, extractor_name: str) -> Dict:
+    def _prepare_history_entry(
+        item: Any, source: BaseSource, episode: int, extractor_name: str
+    ) -> Dict:
         """Serialize attr object for storage."""
-        full_data = attr.asdict(item)
-        clean_data = {k: v for k, v in full_data.items() if not k.startswith("_")}
+        full_item_data = attr.asdict(item)
+        clean_item_data = {
+            k: v for k, v in full_item_data.items() if not k.startswith("_")
+        }
+        full_source_data = attr.asdict(source)
+        clean_source_data = {
+            k: v for k, v in full_source_data.items() if not k.startswith("_")
+        }
 
         return {
             "extractor_name": extractor_name,
             "type": item.__class__.__name__,
+            "episode": episode,
+            "time": None,
+            "source": {
+                "title": clean_source_data.pop("title", "Unknown"),
+                "url": clean_source_data.pop("url", ""),
+                "data": clean_source_data,
+            },
             "data": {
-                "title": clean_data.pop("title", "Unknown"),
-                "thumbnail": clean_data.pop("thumbnail", ""),
-                "url": clean_data.pop("url", ""),
-                "data": clean_data,
+                "title": clean_item_data.pop("title", "Unknown"),
+                "thumbnail": clean_item_data.pop("thumbnail", ""),
+                "url": clean_item_data.pop("url", ""),
+                "data": clean_item_data,
             },
         }
 
     @classmethod
-    def save_history(cls, item: Any, extractor_name: str, limit: int = 50):
+    def save_history(
+        cls,
+        item: Any,
+        source: BaseSource,
+        episode: int,
+        extractor_name: str,
+        limit: int = 50,
+    ):
         """Save item to history with deduplication and limit."""
-        entry = cls._prepare_history_entry(item, extractor_name)
+        entry = cls._prepare_history_entry(item, source, episode, extractor_name)
         history = cls.read_history()
 
         history = [e for e in history if e["data"]["title"] != entry["data"]["title"]]
@@ -135,6 +158,14 @@ class AppManager:
 
         with cls.get_history_path().open("w", encoding="utf-8") as f:
             json.dump(history[:limit], f, ensure_ascii=False, indent=4)
+
+    @classmethod
+    def edit_last_history(cls, key: str, value: Any):
+        history = cls.read_history()
+        history[0][key] = value
+
+        with cls.get_history_path().open("w", encoding="utf-8") as f:
+            json.dump(history, f, ensure_ascii=False, indent=4)
 
     @classmethod
     def load_history(cls):
@@ -169,6 +200,35 @@ class AppManager:
                 raise RuntimeError(msg) from e
 
         return results
+
+    @classmethod
+    def load_source(cls, entry: Dict[str, Any]):
+        """Restore source objects from history."""
+        ext_name = entry["extractor_name"]
+        model_type = entry["type"]
+        payload = entry["source"]
+
+        try:
+            module = dynamic_load_extractor_module(ext_name)
+            ext_instance = module.Extractor()
+            model_cls = module.Source
+
+            kwargs = {
+                **payload.get("data", {}),
+                **ext_instance._kwargs_http,
+                **getattr(ext_instance, "_kwargs_api", {}),
+            }
+
+            obj = model_cls(
+                title=payload["title"],
+                url=payload["url"],
+                **kwargs,
+            )
+
+            return obj
+        except Exception as e:
+            msg = f"Ошибка загрузки {ext_name} ({model_type})"
+            raise RuntimeError(msg) from e
 
     # @classmethod
     # def read_config(cls) -> Dict[str, Any]:
