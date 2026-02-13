@@ -110,7 +110,10 @@ class AppManager:
 
     @staticmethod
     def _prepare_history_entry(
-        item: Any, source: BaseSource, episode: int, extractor_name: str
+        item: Any,
+        source: BaseSource,
+        extractor_name: str,
+        episode: str = "Unknown",
     ) -> Dict:
         """Serialize attr object for storage."""
         full_item_data = attr.asdict(item)
@@ -145,12 +148,17 @@ class AppManager:
         cls,
         item: Any,
         source: BaseSource,
-        episode: int,
         extractor_name: str,
+        episode: str = "Unknown",
         limit: int = 50,
     ):
         """Save item to history with deduplication and limit."""
-        entry = cls._prepare_history_entry(item, source, episode, extractor_name)
+        entry = cls._prepare_history_entry(
+            item,
+            source,
+            extractor_name,
+            episode,
+        )
         history = cls.read_history()
 
         history = [e for e in history if e["data"]["title"] != entry["data"]["title"]]

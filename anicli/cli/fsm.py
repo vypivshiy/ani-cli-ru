@@ -9,7 +9,7 @@ from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
 from anicli.common.anicli_api_helpers import videos_iterator
 from anicli.common.config import AppManager
-from anicli.common.mpv import play_mpv_batched_videos, play_mpv_video
+from anicli.common.mpv import MPVController
 from anicli.common.utils import is_arabic_digit
 
 from .contexts import Context, HistoryContext, OngoingContext, SearchContext
@@ -162,9 +162,16 @@ class BaseAnimeFSM(BaseFSM[T]):
         result = self.ctx["results"][result_num]  # type: ignore
         extractor_name = self.ctx.get("extractor_name")
         if extractor_name:
-            AppManager.save_history(result, source, ep_num + 1, extractor_name)
+            AppManager.save_history(
+                result, source, extractor_name, f"{episode.ordinal} {episode.title}"
+            )
 
-        await play_mpv_video(video_candidate, title, mpv_opts=opts)
+        await MPVController(
+            [video_candidate],
+            [title],
+            mpv_opts=opts,
+            save_time=True,
+        ).play()
 
         await self.go_back()
 
@@ -189,6 +196,12 @@ class BaseAnimeFSM(BaseFSM[T]):
             return
 
         video_candidate = get_video_by_quality(videos, default_quality)
+
+        result_num = self.ctx["result_num"]  # type: ignore
+        result = self.ctx["results"][result_num]  # type: ignore
+        extractor_name = self.ctx.get("extractor_name")
+        if extractor_name:
+            AppManager.save_history(result, source, extractor_name)
 
         mask = self.ctx["episodes_mask"]  # type: ignore
         selected = [x for x, m in zip(self.ctx["episodes"], mask) if m]  # type: ignore
@@ -216,11 +229,12 @@ class BaseAnimeFSM(BaseFSM[T]):
                 if counter % m3u_size == 0:
                     progress.stop()
                     CONSOLE.print(f"Running playlist batch {counter // m3u_size}")
-                    await play_mpv_batched_videos(
+                    await MPVController(
                         [v[0] for v in playlist],  # video
                         [v[1] for v in playlist],  # str title
                         mpv_opts=opts,
-                    )
+                    ).play()
+
                     playlist.clear()
                     progress.start()
                 playlist.append((video, title))
@@ -229,11 +243,12 @@ class BaseAnimeFSM(BaseFSM[T]):
             if playlist:
                 progress.stop()
                 CONSOLE.print("Running final playlist batch")
-                await play_mpv_batched_videos(
+                await MPVController(
                     [v[0] for v in playlist],  # video
                     [v[1] for v in playlist],  # str title
                     mpv_opts=opts,
-                )
+                ).play()
+
                 playlist.clear()
         await self.go_back()
 
@@ -274,9 +289,12 @@ class HistoryFSM(BaseAnimeFSM[HistoryContext]):
                 videos = cast(List[Video], videos)
                 video_candidate = get_video_by_quality(videos, default_quality)
                 opts = self.ctx["mpv_opts"] + f"--start={time}"  # type: ignore
-                await play_mpv_video(
-                    video_candidate, history_data["data"]["title"], mpv_opts=opts
-                )
+                await MPVController(
+                    [video_candidate],
+                    [history_data["data"]["title"]],
+                    mpv_opts=opts,
+                    save_time=True,
+                ).play()
 
         # transform human index to python
         result = self.ctx["results"][index - 1]  # type: ignore
