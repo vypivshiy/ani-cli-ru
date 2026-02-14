@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Sequence
 
 from anicli_api.player.base import Video
 
-from anicli.common.config import AppManager
+from anicli.common import history
 from anicli.common.m3u import generate_m3u_str_playlist
 from anicli.common.sanitizer import sanitize_filename
 
@@ -160,28 +160,41 @@ class MPVController:
                 if p.exists():
                     p.unlink()
 
-    # TODO: batched videos don't save time with this
-    async def observe_time(self, interval: int = 10):
+    async def _monitor_time(self, interval: int = 10):
         if self.ipc:
+            last_title = None
             last_time = None
             while True:
-                await asyncio.sleep(interval)
                 try:
-                    response = await self.ipc.send(
-                        {"command": ["get_property", "time-pos"]}
-                    )
-                    if response:
-                        try:
-                            time_pos = int(response.get("data"))
-                        except (TypeError, ValueError):
-                            continue
+                    # title handler
+                    title = await self.get_title()
+                    if title != last_title:
+                        last_title = title
+                        history.update_last({"episode": title})
 
-                        if time_pos is not None:
-                            if time_pos != last_time:
-                                last_time = time_pos
-                                AppManager.edit_last_history("time", last_time)
-                except Exception:
+                    # time handler
+                    if self.ipc:
+                        time_resp = await self.ipc.send(
+                            {"command": ["get_property", "time-pos"]}
+                        )
+                        if time_resp:
+                            try:
+                                t = int(time_resp.get("data"))
+                                if t != last_time:
+                                    last_time = t
+                                    history.update_last({"time": t})
+                            except (TypeError, ValueError):
+                                pass
+                    await asyncio.sleep(interval)
+                except Exception as e:
+                    print(e)
                     await asyncio.sleep(1)
+
+    async def get_title(self):
+        if self.ipc:
+            response = await self.ipc.send({"command": ["get_property", "media-title"]})
+            if response:
+                return response.get("data")
 
     async def pause(self):
         if self.ipc:
@@ -206,7 +219,7 @@ class MPVController:
                         if Path(self.ipc_socket).exists():
                             break
                         await asyncio.sleep(0.1)
-                monitor_task = asyncio.create_task(self.observe_time())
+                monitor_task = asyncio.create_task(self._monitor_time())
 
                 try:
                     await process.wait()

@@ -1,6 +1,6 @@
 from rich import get_console
 
-from anicli.common.config import AppManager
+from anicli.common import history
 
 from .contexts import AnicliContext
 from .helpers.render import render_table
@@ -14,7 +14,7 @@ async def history_command(_args: str, ctx: CommandContext[AnicliContext]):
     if not (extractor := ctx.data.get("extractor", None)):
         CONSOLE.print("[red]Extractor not initialized[/red]")
         return
-    results = AppManager.load_history()
+    results = history.load()
     if not results:
         CONSOLE.print("No results founded")
         return
