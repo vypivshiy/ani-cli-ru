@@ -8,8 +8,13 @@ _M3U_SEP = "\n\n"
 
 
 def generate_m3u_str_playlist(videos: Sequence[Video], titles: Sequence[str]) -> str:
-    assert len(videos) == len(titles), "videos and titles sequences must have same length"
+    if len(videos) != len(titles):
+        raise ValueError(
+            f"Length mismatch: {len(videos)} videos and {len(titles)} titles provided."
+        )
     playlist_items = [_M3U_HEADER]
-    for video, title in zip(videos, titles):
-        playlist_items.append(_M3U_ITEM.format(name=title, url=video.url))
+    playlist_items.extend(
+        _M3U_ITEM.format(name=title, url=video.url)
+        for video, title in zip(videos, titles)
+    )
     return _M3U_SEP.join(playlist_items)

@@ -1,8 +1,9 @@
 from .config_routes import command_ask_gpt, command_throw_error, config_group_command
 from .events import on_start_config_http_client
-from .ongoing_routes import OngoingFSM, ongoing_command
+from .fsm import OngoingFSM, SearchFSM
+from .ongoing_routes import ongoing_command
 from .ptk_lib import Application
-from .search_routes import SearchFSM, search_command
+from .search_routes import search_command
 
 # main APP entrypoint
 APP = Application(

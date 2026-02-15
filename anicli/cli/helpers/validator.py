@@ -5,7 +5,7 @@ from anicli.common.utils import is_arabic_digit
 from .episode_picker import parse_selection_mask
 
 
-def validate_prompt_index(results: Union[Sequence[Any], List[Any]], user_input: str) -> Union[str, Literal[True]]:
+def validate_prompt_index(results: Sequence[Any], user_input: str) -> Union[str, Literal[True]]:
     """return true if userinput is digit and its valid index in result
 
     index starts at 1

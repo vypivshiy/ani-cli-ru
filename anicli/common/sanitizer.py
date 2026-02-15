@@ -6,6 +6,21 @@ https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/utils/_utils.py#L613
 import re
 import unicodedata
 
+# Table for translation: map dangerous characters to safer alternatives
+_DANGEROUS_CHARS_TABLE = str.maketrans(
+    {
+        '"': "'",
+        ":": "-",
+        "/": "_",
+        "\\": "_",
+        "|": "_",
+        "*": "_",
+        "<": "_",
+        ">": "_",
+        "?": None,  # Remove question marks
+    }
+)
+
 
 def _deaccent(s: str) -> str:
     """
@@ -52,56 +67,26 @@ def sanitize_filename(s: str, restricted: bool = False, is_id: bool = False) -> 
         s = _deaccent(s)
 
     # Replace colons inside timestamps (e.g., "01:23:45" -> "01_23_45")
-    s = re.sub(r"[0-9]+(?::[0-9]+)+", lambda m: m.group(0).replace(":", "_"), s)
+    s = re.sub(r"([0-9]+):([0-9]+):([0-9]+)", r"\1_\2_\3", s)
 
-    out = []
-    for ch in s:
-        o = ord(ch)
-        # Remove control characters and DEL
-        if o < 32 or o == 127:
-            continue
+    # Remove control characters (0-31 and 127)
+    s = re.sub(r"[\x00-\x1f\x7f]", "", s)
 
-        # Double quote: remove in restricted mode, otherwise replace with apostrophe
-        if ch == '"':
-            if restricted:
-                continue
-            out.append("'")
-            continue
+    if restricted:
+        # In strict mode, keep only alphanumeric and basic punctuation
+        # Drop everything that is not ASCII or is a space
+        s = "".join(ch for ch in s if ord(ch) <= 127 and not ch.isspace())
 
-        # Remove question mark (as in original behavior)
-        if ch == "?":
-            continue
-        # Replace some dangerous characters with underscore
-        if ch in "/\\|*<>":
-            out.append("_")
-            continue
-        # Replace colon with dash for readability (colons in timestamps already handled)
-        if ch == ":":
-            out.append("-")
-            continue
-        # In restricted mode, drop whitespace and non-ASCII characters
-        if restricted:
-            if ch.isspace():
-                # drop whitespace in strict mode
-                continue
-            if o > 127:
-                # drop non-ASCII (diacritics were removed earlier)
-                continue
-        # For is_id == True, keep most characters (we already removed controls above)
-        out.append(ch)
-
-    result = "".join(out)
+    # Use translation table for fast character replacement
+    s = s.translate(_DANGEROUS_CHARS_TABLE)
 
     # If this is not an identifier, normalize spacing/underscores and trim edges
     if not is_id:
-        # Collapse any whitespace into a single space
-        # (in original yt-dlp sanitaizer replace to '_')
-        result = re.sub(r"\s+", " ", result)
-        # Collapse multiple underscores into one
-        result = re.sub(r"_+", "_", result)
-        # Strip leading/trailing dots, underscores and dashes
-        result = result.strip("._- ")
-        if not result:
-            result = "_"
+        s = re.sub(r"\s+", " ", s)  # Collapse spaces
+        s = re.sub(r"_+", "_", s)  # Collapse underscores
+        s = s.strip("._- ")  # Trim edges
 
-    return result
+        if not s:
+            return "_"
+
+    return s

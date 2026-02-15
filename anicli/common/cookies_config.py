@@ -1,61 +1,20 @@
 import sys
 from http.cookiejar import Cookie, CookieJar
-from os import PathLike
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+BASE_BROWSERS = [
+    "firefox", "librewolf", "brave", "edge", "chrome", "chromium",
+    "arc", "opera", "opera_gx", "vivaldi", "chromium_based",
+    "firefox_based", "any_browser"
+]
+
 if sys.platform == "darwin":
-    BROWSER_SUPPORTS = [
-        "firefox",
-        "librewolf",
-        "brave",
-        "edge",
-        "chrome",
-        "chromium",
-        "arc",
-        "opera",
-        "opera_gx",
-        "vivaldi",
-        "chromium_based",
-        "firefox_based",
-        "any_browser",
-        "safari",
-    ]
+    BASE_BROWSERS.extend(["safari"])
 elif sys.platform == "win32":
-    BROWSER_SUPPORTS = [
-        "firefox",
-        "librewolf",
-        "brave",
-        "edge",
-        "chrome",
-        "chromium",
-        "arc",
-        "opera",
-        "opera_gx",
-        "vivaldi",
-        "chromium_based",
-        "firefox_based",
-        "any_browser",
-        # lib support it, why not?
-        "internet_explorer",
-        "octo_browser",
-    ]
-else:
-    BROWSER_SUPPORTS = [
-        "firefox",
-        "librewolf",
-        "brave",
-        "edge",
-        "chrome",
-        "chromium",
-        "arc",
-        "opera",
-        "opera_gx",
-        "vivaldi",
-        "chromium_based",
-        "firefox_based",
-        "any_browser",
-    ]
+    BASE_BROWSERS.extend(["internet_explorer", "octo_browser"])
+
+BROWSER_SUPPORTS = BASE_BROWSERS
 
 
 def read_from_browser(browser_name: str, domains: Optional[List[str]] = None) -> CookieJar:
@@ -73,7 +32,7 @@ def read_from_browser(browser_name: str, domains: Optional[List[str]] = None) ->
         raise ImportError("rookiepy required")
 
 
-def read_from_netscape_file(filename: Union[str, PathLike[str]]) -> CookieJar:
+def read_from_netscape_file(filename: Union[str, Path]) -> CookieJar:
     cookies = parse_netscape_cookies_file(filename)
     jar = CookieJar()
 
@@ -138,7 +97,7 @@ def parse_netscape_cookie_string(netscape_cookie_string: str) -> List[Dict[str, 
     return cookies
 
 
-def parse_netscape_cookies_file(cookie_file: Union[str, Path]) -> List[Dict[str, str]]:
+def parse_netscape_cookies_file(cookie_file: Union[str, Path]) -> List[Dict[str, Any]]:
     """
     Parse Netscape format cookies file into a list of dictionaries.
 

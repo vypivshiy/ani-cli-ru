@@ -21,7 +21,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
 ]
 dependencies = [
-    "anicli-api>=0.8.8",
+    "anicli-api>=0.8.11",
     "prompt-toolkit>=3.0.52",
     "rich>=14.2.0",
     "typer>=0.20.0",

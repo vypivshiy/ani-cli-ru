@@ -1,4 +1,4 @@
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 
 def is_arabic_digit(s: str) -> bool:
@@ -7,25 +7,24 @@ def is_arabic_digit(s: str) -> bool:
     # True
     # >>> "¹".isdigit()
     # True
-    return all("0" <= char <= "9" for char in s)
+    return s.isascii() and s.isdigit()
 
 
 def is_arabic_slice(s: str, sep: str = "-") -> bool:
-    parts = s.split(sep, 1)
+    """Check if a string is a valid 'start-end' numeric range."""
+    parts = [p.strip() for p in s.split(sep, 1)]
     if len(parts) != 2:
         return False
-    start, end = s.strip().split(sep, 1)
-    if is_arabic_digit(start) and is_arabic_digit(end):
-        return True
-    return False
+    return is_arabic_digit(parts[0]) and is_arabic_digit(parts[1])
 
 
 def str_to_slice(s: str, sep: str = "-") -> slice:
-    if not is_arabic_slice(s, sep=sep):
-        msg = "Not valid slice"
-        raise TypeError(msg)
-    start, end = s.strip().split(sep, 1)
-    return slice(int(start), int(end))
+    """Convert '1-10' string to a Python slice object."""
+    parts = [p.strip() for p in s.split(sep, 1)]
+    if len(parts) != 2 or not all(is_arabic_digit(p) for p in parts):
+        raise TypeError(f"'{s}' is not a valid arabic slice (e.g. '1-10')")
+
+    return slice(int(parts[0]), int(parts[1]))
 
 
 def validate_proxy_url(value: str) -> str:
@@ -43,29 +42,20 @@ def validate_proxy_url(value: str) -> str:
     """
     parts = urlsplit(value)
 
-    # 1. Must have scheme
     if not parts.scheme:
-        msg = "Wrong proxy format: must include scheme (e.g., http, https, socks5)"
-        raise ValueError(msg)
-
-    # 2. Must have hostname
+        raise ValueError("Missing proxy scheme (e.g., http, https, socks5)")
     if not parts.hostname:
-        msg = "Wrong proxy format: must include hostname"
-        raise ValueError(msg)
+        raise ValueError("Missing proxy hostname")
+    if parts.port is None:
+        raise ValueError("Missing proxy port")
 
-    # 3. Must have port
-    if not parts.port:
-        msg = "Wrong proxy format: must include port"
-        raise ValueError(msg)
-
-    # 4. Optional user/password
-    userinfo = ""
+    # urlunsplit requires a 5-tuple: (scheme, netloc, path, query, fragment)
+    # Reconstructing netloc ensures user:pass@host:port format is correct
+    netloc = f"{parts.hostname}:{parts.port}"
     if parts.username:
         userinfo = parts.username
         if parts.password:
             userinfo += f":{parts.password}"
-        userinfo += "@"
+        netloc = f"{userinfo}@{netloc}"
 
-    # 5. Reconstruct normalized URL
-    normalized = f"{parts.scheme}://{userinfo}{parts.hostname}:{parts.port}"
-    return normalized
+    return urlunsplit((parts.scheme, netloc, "", "", ""))

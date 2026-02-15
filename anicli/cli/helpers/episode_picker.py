@@ -1,4 +1,3 @@
-import re
 from typing import List
 
 
@@ -28,31 +27,28 @@ def parse_selection_mask(s: str, n: int) -> List[bool]:
         msg = "n must be positive integer"
         raise ValueError(msg)
 
-    tokens = [t for t in re.split(r"\s+", s.strip()) if t != ""]
-    if not tokens:
-        return [False] * n
-
+    tokens = s.strip().split()
     mask = [False] * n
+
+    if not tokens:
+        return mask
 
     for tok in tokens:
         if "-" in tok:
             parts = tok.split("-")
-            if len(parts) != 2:  # noqa
-                msg = f"Bad token: {tok!r}"
-                raise ValueError(msg)
-            a_str, b_str = parts
-            if not a_str.isdigit() or not b_str.isdigit():
+            if len(parts) != 2 or not (parts[0].isdigit() and parts[1].isdigit()):
                 msg = f"Bad range endpoints: {tok!r}"
                 raise ValueError(msg)
-            a, b = int(a_str), int(b_str)
+
+            a, b = int(parts[0]), int(parts[1])
             if a < 1 or b < 1 or a > n or b > n:
                 msg = f"Range {tok!r} out of bounds (1..{n})"
                 raise ValueError(msg)
             if a >= b:
                 msg = f"Bad range {tok!r} (start must be < end)"
                 raise ValueError(msg)
-            for i in range(a - 1, b):  # included
-                mask[i] = True
+
+            mask[a - 1 : b] = [True] * (b - a + 1)
         else:
             if not tok.isdigit():
                 msg = f"Bad token: {tok!r}"
