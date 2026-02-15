@@ -29,7 +29,7 @@ async def videos_iterator(
     initial_source: BaseSource,
     initial_video: Video,
     cb_title: T_TITLE_GEN_CB = default_batch_gen_title,
-) -> AsyncGenerator[Tuple[Video, str], None]:
+) -> AsyncGenerator[Tuple[Video, str, BaseSource], None]:
     """video iterator helper functions for reuse in playlist-like features
 
     how it works:
@@ -67,4 +67,4 @@ async def videos_iterator(
         if match_video:
             yield match_video, cb_title(
                 initial_anime, episode, match_source, match_video
-            )
+            ), match_source

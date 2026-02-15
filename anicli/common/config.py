@@ -2,10 +2,8 @@
 import os
 import platform
 from pathlib import Path
-from typing import Any, Dict
 
-import toml
-
+# import toml
 from anicli.common.extractors import get_extractor_modules
 
 # use raw string for initialize comments reason
@@ -40,32 +38,54 @@ port=10007
 APP_NAME = "anicliru"
 
 
-def get_config_path() -> Path:
+def _get_base_dir(env_var: str, default_path: Path) -> Path:
+    """Resolve base directory and ensure it exists."""
+    base = os.getenv(env_var)
+    path = Path(base) if base else default_path
+    full_path = path / APP_NAME
+    full_path.mkdir(parents=True, exist_ok=True)
+    return full_path
+
+
+def get_config_dir() -> Path:
+    """Get platform-specific config directory."""
     system = platform.system()
-
     if system == "Windows":
-        base = Path(os.getenv("APPDATA", Path.home() / "AppData" / "Roaming"))
-    elif system == "Darwin":  # macOS
-        base = Path.home() / "Library" / "Application Support"
-    else:  # Linux / Unix
-        base = Path(os.getenv("XDG_CONFIG_HOME", Path.home() / ".config"))
-
-    config_dir = base / APP_NAME
-    config_dir.mkdir(parents=True, exist_ok=True)
-    return config_dir / "config.toml"
+        return _get_base_dir("APPDATA", Path.home() / "AppData" / "Roaming")
+    if system == "Darwin":
+        return _get_base_dir("", Path.home() / "Library" / "Application Support")
+    return _get_base_dir("XDG_CONFIG_HOME", Path.home() / ".config")
 
 
-def create_default_config():
-    config = get_config_path()
-    config.write_text(DEFAULT_CFG, encoding="utf-8")
+def get_data_dir() -> Path:
+    """Get platform-specific data directory."""
+    system = platform.system()
+    if system == "Windows":
+        return get_config_dir()
+    if system == "Darwin":
+        return _get_base_dir("", Path.home() / "Library" / "Application Support")
+    return _get_base_dir("XDG_DATA_HOME", Path.home() / ".local" / "share")
 
 
-def read_config() -> Dict[str, Any]:
-    config = get_config_path()
+def get_config_path() -> Path:
+    """Get config.toml path, create default if missing."""
+    config = get_config_dir() / "config.toml"
     if not config.exists():
-        create_default_config()
+        config.write_text(DEFAULT_CFG, encoding="utf-8")
+    return config
 
-    text = config.read_text(encoding="utf-8")
-    data = toml.loads(text)
-    data["config_path"] = config
-    return data
+
+def get_history_path() -> Path:
+    """Get history.json path, create empty if missing."""
+    history = get_data_dir() / "history.json"
+    if not history.exists():
+        history.write_text("[]", encoding="utf-8")
+    return history
+
+
+# def read_config() -> Dict[str, Any]:
+#     path = get_config_path()
+#     text = path.read_text(encoding="utf-8")
+#     data = toml.loads(text)
+#     data["config_path"] = path
+#     return data

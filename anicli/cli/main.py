@@ -1,6 +1,7 @@
 from .config_routes import command_ask_gpt, command_throw_error, config_group_command
 from .events import on_start_config_http_client
-from .fsm import OngoingFSM, SearchFSM
+from .fsm import HistoryFSM, OngoingFSM, SearchFSM
+from .history_routes import history_command
 from .ongoing_routes import ongoing_command
 from .ptk_lib import Application
 from .search_routes import search_command
@@ -12,6 +13,8 @@ APP = Application(
         SearchFSM,
         ongoing_command,
         OngoingFSM,
+        history_command,
+        HistoryFSM,
         config_group_command,
         command_ask_gpt,
         command_throw_error,

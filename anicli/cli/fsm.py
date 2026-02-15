@@ -1,17 +1,19 @@
 from typing import List, Tuple, TypeVar, Union, cast
 from urllib.parse import urlsplit
 
+import attr
 from anicli_api.base import BaseEpisode
 from anicli_api.player.base import Video
 from anicli_api.tools.helpers import get_video_by_quality
 from rich import get_console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
+from anicli.common import history
 from anicli.common.anicli_api_helpers import videos_iterator
-from anicli.common.mpv import play_mpv_batched_videos, play_mpv_video
+from anicli.common.mpv import MPVController
 from anicli.common.utils import is_arabic_digit
 
-from .contexts import Context, OngoingContext, SearchContext
+from .contexts import Context, HistoryContext, OngoingContext, SearchContext
 from .helpers.completer import make_ongoing_or_search_completer
 from .helpers.episode_picker import parse_selection_mask
 from .helpers.render import render_table
@@ -80,6 +82,7 @@ class BaseAnimeFSM(BaseFSM[T]):
         index = int(user_input)
         # transform human index to python
         result = self.ctx["results"][index - 1]  # type: ignore
+        self.ctx["result_num"] = index - 1
 
         anime = await result.a_get_anime()
         episodes = await anime.a_get_episodes()
@@ -155,7 +158,23 @@ class BaseAnimeFSM(BaseFSM[T]):
         episode = cast(BaseEpisode, episode)
         title = f"{anime.title} - {episode.ordinal} {episode.title}"
         opts = self.ctx["mpv_opts"]  # type: ignore
-        await play_mpv_video(video_candidate, title, mpv_opts=opts)
+
+        result_num = self.ctx["result_num"]  # type: ignore
+        result = self.ctx["results"][result_num]  # type: ignore
+        extractor_name = self.ctx["extractor_name"]  # type: ignore
+        history.save(
+            result,
+            extractor_name,
+            {f"{episode.ordinal} {episode.title}": source},
+            f"{episode.ordinal} {episode.title}",
+        )
+
+        await MPVController(
+            [video_candidate],
+            [title],
+            mpv_opts=opts,
+            save_time=True,
+        ).play()
 
         await self.go_back()
 
@@ -185,6 +204,11 @@ class BaseAnimeFSM(BaseFSM[T]):
         selected = [x for x, m in zip(self.ctx["episodes"], mask) if m]  # type: ignore
         opts = self.ctx["mpv_opts"]  # type: ignore
 
+        result_num = self.ctx["result_num"]  # type: ignore
+        result = self.ctx["results"][result_num]  # type: ignore
+        extractor_name = self.ctx["extractor_name"]  # type: ignore
+        history.save(result, extractor_name)
+
         m3u_size = self.ctx["m3u_size"]  # type: ignore
         counter = 1
         playlist: List[Tuple[Video, str]] = []
@@ -196,7 +220,7 @@ class BaseAnimeFSM(BaseFSM[T]):
             transient=True,
         ) as progress:
             task_id = progress.add_task("Processing...", total=None)
-            async for video, title in videos_iterator(
+            async for video, title, match_source in videos_iterator(
                 selected,
                 initial_anime=self.ctx["anime"],  # type: ignore
                 initial_video=video_candidate,
@@ -204,14 +228,33 @@ class BaseAnimeFSM(BaseFSM[T]):
             ):
                 progress.update(task_id, description=f"Fetch: {title[:20]}")
                 progress.advance(task_id)
+
+                source_data = attr.asdict(match_source)
+                clean_source_data = {
+                    k: v for k, v in source_data.items() if not k.startswith("_")
+                }
+                history_data = history.read()
+                history_source: List[dict] = history_data[0]["source"]
+                history_source.append(
+                    {
+                        "episode_title": title,
+                        "title": clean_source_data.pop("title", "Unknown"),
+                        "url": clean_source_data.pop("url", ""),
+                        "data": clean_source_data,
+                    }
+                )
+                history.update_last({"source": history_source})
+
                 if counter % m3u_size == 0:
                     progress.stop()
                     CONSOLE.print(f"Running playlist batch {counter // m3u_size}")
-                    await play_mpv_batched_videos(
+                    await MPVController(
                         [v[0] for v in playlist],  # video
                         [v[1] for v in playlist],  # str title
                         mpv_opts=opts,
-                    )
+                        save_time=True,
+                    ).play()
+
                     playlist.clear()
                     progress.start()
                 playlist.append((video, title))
@@ -220,11 +263,13 @@ class BaseAnimeFSM(BaseFSM[T]):
             if playlist:
                 progress.stop()
                 CONSOLE.print("Running final playlist batch")
-                await play_mpv_batched_videos(
+                await MPVController(
                     [v[0] for v in playlist],  # video
                     [v[1] for v in playlist],  # str title
                     mpv_opts=opts,
-                )
+                    save_time=True,
+                ).play()
+
                 playlist.clear()
         await self.go_back()
 
@@ -237,3 +282,51 @@ class SearchFSM(BaseAnimeFSM[SearchContext]):
 @fsm_route("ongoing")
 class OngoingFSM(BaseAnimeFSM[OngoingContext]):
     ROUTE_NAME = "ongoing"
+
+
+@fsm_route("history")
+class HistoryFSM(BaseAnimeFSM[HistoryContext]):
+    ROUTE_NAME = "history"
+
+    @fsm_state("step_1", prompt_message="~/{ROUTE_NAME} ")
+    async def step_1(self, user_input: str):
+        index = int(user_input)
+
+        history_data = history.read()[index - 1]
+        time = history_data["time"]
+        if time is not None:
+            minutes, seconds = divmod(time, 60)
+            continue_ep = input(
+                f"Do you want to continue ep {history_data['episode']} at {minutes:02d}:{seconds:02d}\n(y/n): "
+            )
+            if continue_ep == "y":
+                source = history.load_source(history_data, history_data["episode"])
+                default_quality = self.ctx["default_quality"]  # type: ignore
+                videos = await source.a_get_videos()
+                if not videos:
+                    CONSOLE.print("[red]video not founded[/red]")
+                    await self.go_back()
+                    return
+                videos = cast(List[Video], videos)
+                video_candidate = get_video_by_quality(videos, default_quality)
+                opts = self.ctx["mpv_opts"] + f"--start={time}"  # type: ignore
+                await MPVController(
+                    [video_candidate],
+                    [history_data["episode"]],
+                    mpv_opts=opts,
+                    save_time=True,
+                ).play()
+
+        # transform human index to python
+        result = self.ctx["results"][index - 1]  # type: ignore
+        self.ctx["result_num"] = index - 1
+
+        anime = await result.a_get_anime()
+        episodes = await anime.a_get_episodes()
+        self.ctx["anime"] = anime
+        self.ctx["episodes"] = episodes
+
+        self.set_prompt_var("result", anime.title)
+        render_table(anime.title, episodes)
+
+        await self.next_state("step_2")
