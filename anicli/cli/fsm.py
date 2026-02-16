@@ -1,9 +1,7 @@
-from typing import List, Tuple, TypeVar, Union, cast
+from typing import TYPE_CHECKING, List, Tuple, TypeVar, Union, cast
 from urllib.parse import urlsplit
 
 import attr
-from anicli_api.base import BaseEpisode
-from anicli_api.player.base import Video
 from anicli_api.tools.helpers import get_video_by_quality
 from rich import get_console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
@@ -19,6 +17,10 @@ from .helpers.episode_picker import parse_selection_mask
 from .helpers.render import render_table
 from .helpers.validator import validate_prompt_episode, validate_prompt_index
 from .ptk_lib import BaseFSM, fsm_route, fsm_state
+
+if TYPE_CHECKING:
+    from anicli_api.base import BaseEpisode
+    from anicli_api.player.base import Video
 
 CONSOLE = get_console()
 
@@ -150,12 +152,12 @@ class BaseAnimeFSM(BaseFSM[T]):
             CONSOLE.print("[red]video not founded[/red]")
             await self.go_back()
             return
-        videos = cast(List[Video], videos)
+        videos = cast(List["Video"], videos)
         video_candidate = get_video_by_quality(videos, default_quality)
         anime = self.ctx["anime"]  # type: ignore
         ep_num = self.ctx["episodes_num"]  # type: ignore
         episode = self.ctx["episodes"][ep_num]  # type: ignore
-        episode = cast(BaseEpisode, episode)
+        episode = cast("BaseEpisode", episode)
         title = f"{anime.title} - {episode.ordinal} {episode.title}"
         opts = self.ctx["mpv_opts"]  # type: ignore
 
@@ -192,7 +194,7 @@ class BaseAnimeFSM(BaseFSM[T]):
         source = sources[value]
 
         videos = await source.a_get_videos()
-        videos = cast(List[Video], videos)
+        videos = cast(List["Video"], videos)
         if not videos:
             CONSOLE.print("[red]video not founded[/red]")
             await self.go_back()
@@ -211,7 +213,7 @@ class BaseAnimeFSM(BaseFSM[T]):
 
         m3u_size = self.ctx["m3u_size"]  # type: ignore
         counter = 1
-        playlist: List[Tuple[Video, str]] = []
+        playlist: List[Tuple["Video", str]] = []
         with Progress(
             TextColumn("{task.description}"),
             BarColumn(bar_width=20),
@@ -307,7 +309,7 @@ class HistoryFSM(BaseAnimeFSM[HistoryContext]):
                     CONSOLE.print("[red]video not founded[/red]")
                     await self.go_back()
                     return
-                videos = cast(List[Video], videos)
+                videos = cast(List["Video"], videos)
                 video_candidate = get_video_by_quality(videos, default_quality)
                 opts = self.ctx["mpv_opts"] + f"--start={time}"  # type: ignore
                 await MPVController(

@@ -1,16 +1,17 @@
 from http.cookiejar import CookieJar
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Type, TypedDict, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Type, TypedDict, Union
 
-from anicli_api.base import (
-    BaseAnime,
-    BaseEpisode,
-    BaseExtractor,
-    BaseOngoing,
-    BaseSearch,
-    BaseSource,
-)
-from anicli_api.player.base import Video
+if TYPE_CHECKING:
+    from anicli_api.base import (
+        BaseAnime,
+        BaseEpisode,
+        BaseExtractor,
+        BaseOngoing,
+        BaseSearch,
+        BaseSource,
+    )
+    from anicli_api.player.base import Video
 
 
 # main app context
@@ -18,11 +19,9 @@ class AnicliContext(TypedDict, total=False):
     # internal app fields (late init)
 
     # TODO
-    app_version: str
-    api_version: str
     config_path: Path
-    extractor_instance: Type[BaseExtractor]
-    extractor: BaseExtractor
+    extractor_instance: Type["BaseExtractor"]
+    extractor: "BaseExtractor"
 
     # config fields (cli args/read config)
     extractor_name: str
@@ -38,7 +37,7 @@ class AnicliContext(TypedDict, total=False):
 class Context(TypedDict, total=False):
     # initial via command
     extractor_name: str
-    results: Sequence[Union[BaseSearch, BaseOngoing]]
+    results: Sequence[Union["BaseSearch", "BaseOngoing"]]
     default_quality: int
     mpv_opts: str
     m3u_size: int
@@ -47,18 +46,18 @@ class Context(TypedDict, total=False):
     result_num: int
 
     # step_2
-    anime: BaseAnime
-    episodes: Sequence[BaseEpisode]
+    anime: "BaseAnime"
+    episodes: Sequence["BaseEpisode"]
     # single or slice play
     episodes_num: int
     episodes_mask: List[bool]
 
     # step_3
-    sources: Sequence[BaseSource]
+    sources: Sequence["BaseSource"]
     source_num: int
 
     # auto get by default_quality
-    videos: Sequence[Video]
+    videos: Sequence["Video"]
     video_num: int
 
 

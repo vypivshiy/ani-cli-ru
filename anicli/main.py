@@ -17,13 +17,9 @@ from anicli.common.cookies_config import (
     read_from_browser,
     read_from_netscape_file,
 )
-from anicli.common.extractors import (
-    get_extractor_modules,
-)
 
 from .cli.contexts import AnicliContext
 from .common.mpv import is_mpv_installed
-from .common.updater import get_api_version
 from .common.utils import validate_proxy_url
 
 app = typer.Typer(
@@ -31,14 +27,21 @@ app = typer.Typer(
     pretty_exceptions_short=False,
     pretty_exceptions_show_locals=False,
 )
-EXTRACTORS_CHOICE = Choice(get_extractor_modules())
+
 BROWSER_CHOICE = Choice(BROWSER_SUPPORTS)
 console = get_console()
+
+
+def _get_extractors_choice():
+    from anicli.common.extractors import get_extractor_modules  # noqa
+
+    return Choice(get_extractor_modules())
 
 
 @app.command(help="Show app, anicli-api versions and exit")
 def version():
     from rich.panel import Panel  # noqa
+    from .common.updater import get_api_version  # noqa
 
     api_version = get_api_version()
     renderable = f"anicli-ru : [bold]{anicli.__version__}[/bold]\nanicli-api: [bold]{api_version}[/bold]"
@@ -115,7 +118,12 @@ def web(
     ] = "1M",
     source: Annotated[
         str,
-        Option("-s", "--source", click_type=EXTRACTORS_CHOICE, help="extractor source"),
+        Option(
+            "-s",
+            "--source",
+            click_type=_get_extractors_choice(),
+            help="extractor source",
+        ),
     ] = "animego",
     # TODO
     ttl: Annotated[
@@ -134,9 +142,9 @@ def web(
     Not suitable for production deployment.
     """
     try:
-        import uvicorn
+        import uvicorn  # noqa
 
-        from .web.server import OPTIONS, app
+        from .web.server import OPTIONS, app  # noqa
     except ImportError:
         raise BadParameter(
             "web group required fastapi dependency. Add via `anicli-ru[web]`"
@@ -199,7 +207,7 @@ def cli(
     # fmt: off
     source: Annotated[
         str,
-        Option("-s", "--source", click_type=EXTRACTORS_CHOICE, help="extractor target"),
+        Option("-s", "--source", click_type=_get_extractors_choice(), help="extractor target"),
     ],
     quality: Annotated[
         int,
@@ -270,8 +278,6 @@ def cli(
         raise BadParameter(msg)
 
     cfg = AnicliContext(
-        app_version=anicli.__version__,
-        api_version=get_api_version(),
         extractor_name=source,
         quality=quality,
         mpv_opts=mpv_opts,

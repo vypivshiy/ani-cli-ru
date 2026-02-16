@@ -1,9 +1,10 @@
-from typing import AsyncGenerator, Callable, List, Tuple
+from typing import TYPE_CHECKING, AsyncGenerator, Callable, List, Tuple
 from urllib.parse import urlsplit
 
-from anicli_api.base import BaseAnime, BaseEpisode, BaseSource
 from anicli_api.player.base import Video
 
+if TYPE_CHECKING:
+    from anicli_api.base import BaseAnime, BaseEpisode, BaseSource
 
 def source_hash(source: "BaseSource") -> int:
     """default hash function helper for build playlist"""
@@ -11,25 +12,25 @@ def source_hash(source: "BaseSource") -> int:
 
 
 def default_batch_gen_title(
-    anime: BaseAnime,
-    episode: BaseEpisode,
-    _source: BaseSource,
+    anime: "BaseAnime",
+    episode: "BaseEpisode",
+    _source: "BaseSource",
     _video: Video,
 ) -> str:
     return f"{anime.title} - {episode.num} {episode.title}"
 
 
-T_TITLE_GEN_CB = Callable[[BaseAnime, BaseEpisode, BaseSource, Video], str]
+T_TITLE_GEN_CB = Callable[["BaseAnime", "BaseEpisode", "BaseSource", Video], str]
 
 
 async def videos_iterator(
-    episodes: List[BaseEpisode],
+    episodes: List["BaseEpisode"],
     *,
-    initial_anime: BaseAnime,
-    initial_source: BaseSource,
+    initial_anime: "BaseAnime",
+    initial_source: "BaseSource",
     initial_video: Video,
     cb_title: T_TITLE_GEN_CB = default_batch_gen_title,
-) -> AsyncGenerator[Tuple[Video, str, BaseSource], None]:
+) -> AsyncGenerator[Tuple[Video, str, "BaseSource"], None]:
     """video iterator helper functions for reuse in playlist-like features
 
     how it works:
