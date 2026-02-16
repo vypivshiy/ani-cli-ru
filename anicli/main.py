@@ -26,7 +26,6 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
     pretty_exceptions_short=False,
     pretty_exceptions_show_locals=False,
-    rich_help_panel="Commands",
 )
 
 BROWSER_CHOICE = Choice(BROWSER_SUPPORTS)
