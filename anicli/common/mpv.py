@@ -9,13 +9,14 @@ import tempfile
 from asyncio.streams import StreamReader, StreamWriter, open_connection
 from asyncio.subprocess import create_subprocess_exec
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
-
-from anicli_api.player.base import Video
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence
 
 from anicli.common import history
 from anicli.common.m3u import generate_m3u_str_playlist
 from anicli.common.sanitizer import sanitize_filename
+
+if TYPE_CHECKING:
+    from anicli_api.player.base import Video
 
 PLAYER = "mpv"
 TITLE_KEY = "--title"
@@ -106,7 +107,7 @@ class MpvIpcClient:
 class MPVController:
     def __init__(
         self,
-        videos: Sequence[Video],
+        videos: Sequence["Video"],
         titles: Sequence[str],
         *,
         mpv_opts: str = "",
