@@ -1,25 +1,26 @@
 import importlib.util
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Protocol, Type, cast
+from typing import TYPE_CHECKING, List, Protocol, Type, cast
 
-from anicli_api.base import (
-    BaseAnime,
-    BaseEpisode,
-    BaseExtractor,
-    BaseOngoing,
-    BaseSearch,
-    BaseSource,
-)
+if TYPE_CHECKING:
+    from anicli_api.base import (
+        BaseAnime,
+        BaseEpisode,
+        BaseExtractor,
+        BaseOngoing,
+        BaseSearch,
+        BaseSource,
+    )
 
 
 class ExtractorLikeModule(Protocol):
-    Extractor: Type[BaseExtractor]
-    Search: Type[BaseSearch]
-    Ongoing: Type[BaseOngoing]
-    Anime: Type[BaseAnime]
-    Episode: Type[BaseEpisode]
-    Source: Type[BaseSource]
+    Extractor: Type["BaseExtractor"]
+    Search: Type["BaseSearch"]
+    Ongoing: Type["BaseOngoing"]
+    Anime: Type["BaseAnime"]
+    Episode: Type["BaseEpisode"]
+    Source: Type["BaseSource"]
 
 
 # guaranteed not will be updated in runtime, cache it for slightly increase speed

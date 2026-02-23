@@ -1,11 +1,13 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import attr
-from anicli_api.base import BaseSource
 
 from anicli.common.config import get_history_path
 from anicli.common.extractors import dynamic_load_extractor_module
+
+if TYPE_CHECKING:
+    from anicli_api.base import BaseSource
 
 
 def read() -> List[Dict[str, Any]]:
@@ -21,7 +23,7 @@ def read() -> List[Dict[str, Any]]:
 def _prepare_entry(
     item: Any,
     extractor_name: str,
-    source: Optional[Dict[str, BaseSource]] = None,
+    source: Optional[Dict[str, "BaseSource"]] = None,
     episode: str = "Unknown",
 ) -> Dict[str, Any]:
     """Serialize attr object for storage."""
@@ -62,7 +64,7 @@ def _prepare_entry(
 def save(
     item: Any,
     extractor_name: str,
-    source: Optional[Dict[str, BaseSource]] = None,
+    source: Optional[Dict[str, "BaseSource"]] = None,
     episode: str = "Unknown",
     limit: int = 50,
 ) -> None:
@@ -124,7 +126,7 @@ def load() -> List[Any]:
     return results
 
 
-def load_source(entry: Dict[str, Any], episode_title: str) -> BaseSource:
+def load_source(entry: Dict[str, Any], episode_title: str) -> "BaseSource":
     """Restore source objects from history."""
     ext_name = entry["extractor_name"]
     model_type = entry["type"]
