@@ -1,6 +1,6 @@
 [project]
 name = "anicli-ru"
-version="6.1.0"
+version="6.1.1"
 description = 'cli tool for watching anime'
 readme = "README.md"
 requires-python = ">=3.9"
