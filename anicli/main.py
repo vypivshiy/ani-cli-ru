@@ -1,13 +1,12 @@
 import asyncio
 from http.cookiejar import CookieJar
 from pathlib import Path
-from typing import Dict, List, Optional, cast
+from typing import Annotated, Dict, List, Optional, cast
 
 import typer
 from click import Choice
 from rich import get_console
 from typer import BadParameter, Option
-from typing_extensions import Annotated
 
 import anicli
 from anicli.common.cookies_config import (
@@ -51,9 +50,7 @@ def version():
 
 @app.command(help="update anicli and anicli-api packages")
 def update(
-    force: Annotated[
-        bool, Option("--force", is_flag=True, help="force update api and client")
-    ] = False,
+    force: Annotated[bool, Option("--force", is_flag=True, help="force update api and client")] = False,
 ):  # noqa: FBT002
     # I do not know a reliable way in which virtual environment the script is running, so
     # we are polling all the listed package managers in a simple way
@@ -92,9 +89,7 @@ def _cb_parse_ttl(ttl: str) -> int:
         return int(ttl[:-1]) * 60
     elif ttl.isdigit():  # seconds
         return int(ttl)
-    raise BadParameter(
-        "Should be integer or have suffix (m, M - minutes. h, H - hours)"
-    )
+    raise BadParameter("Should be integer or have suffix (m, M - minutes. h, H - hours)")
 
 
 @app.command(
@@ -104,9 +99,7 @@ def _cb_parse_ttl(ttl: str) -> int:
 def web(
     host: Annotated[str, Option("-h", "--host", help="ip host")] = "127.0.0.1",
     port: Annotated[int, Option("-p", "--port", help="port")] = 8000,
-    workers: Annotated[
-        int, Option("-mw", "--max-workers", help="uvicorn max workers")
-    ] = 1,
+    workers: Annotated[int, Option("-mw", "--max-workers", help="uvicorn max workers")] = 1,
     chunk_size: Annotated[
         str,
         Option(
@@ -146,9 +139,7 @@ def web(
 
         from .web.server import OPTIONS, app  # noqa
     except ImportError:
-        raise BadParameter(
-            "web group required fastapi dependency. Add via `anicli-ru[web]`"
-        )
+        raise BadParameter("web group required fastapi dependency. Add via `anicli-ru[web]`")
 
     OPTIONS.EXTRACTOR_NAME = source  # type: ignore
     OPTIONS.CHUNK_SIZE = chunk_size  # type: ignore (cast to int by callback)
@@ -272,9 +263,7 @@ def cli(
         )
         raise BadParameter(msg)
     if search and ongoing:
-        msg = (
-            "Not allowed pass both `--search` and `--ongoing` options. Pick once option"
-        )
+        msg = "Not allowed pass both `--search` and `--ongoing` options. Pick once option"
         raise BadParameter(msg)
 
     cfg = AnicliContext(
